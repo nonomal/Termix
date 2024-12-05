@@ -14,6 +14,7 @@ const App = () => {
   const [password, setPassword] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
+  const [zoomFactor, setZoomFactor] = useState(1); // This will control zoom
 
   useEffect(() => {
     // Initialize the terminal and the fit addon
@@ -25,6 +26,7 @@ const App = () => {
       },
       macOptionIsMeta: true,
       allowProposedApi: true,
+      fontSize: 14, // Start with a default font size
     });
 
     fitAddon.current = new FitAddon();
@@ -41,7 +43,21 @@ const App = () => {
     const resizeTerminal = () => {
       if (terminalRef.current) {
         fitAddon.current.fit();
+        adjustZoom();  // Adjust zoom whenever the terminal resizes
         notifyServerOfResize();
+      }
+    };
+
+    // Adjust the zoom factor based on the terminal container size
+    const adjustZoom = () => {
+      const containerHeight = terminalRef.current.offsetHeight;
+      const containerWidth = terminalRef.current.offsetWidth;
+
+      // Here, adjust zoom based on container size (for example, make it zoom out if it's smaller)
+      const newZoomFactor = Math.max(0.5, Math.min(2, containerHeight / 300));  // Adjust this logic as needed
+      if (zoomFactor !== newZoomFactor) {
+        setZoomFactor(newZoomFactor);
+        terminal.current.setOption('fontSize', 14 * newZoomFactor); // Adjust font size based on zoom
       }
     };
 
@@ -71,7 +87,7 @@ const App = () => {
       }
       window.removeEventListener('resize', resizeTerminal);
     };
-  }, []);
+  }, [zoomFactor]); // Re-run when zoomFactor changes
 
   const handleConnect = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
