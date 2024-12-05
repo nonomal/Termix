@@ -17,6 +17,19 @@ wss.on('connection', (ws) => {
 
   let conn = null; // Declare SSH client outside to manage lifecycle
 
+  // Ping-Pong for WebSocket Keep-Alives
+  const interval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(interval);
+    }
+  }, 15000); // Send a ping every 15 seconds
+
+  ws.on('pong', () => {
+    console.log('Received pong from client');
+  });
+
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message); // Try parsing the incoming message as JSON
@@ -55,8 +68,21 @@ wss.on('connection', (ws) => {
 
             // When the WebSocket client sends a message (from terminal input), forward it to the SSH stream
             ws.on('message', (message) => {
-              console.log(`Received message from WebSocket: ${message}`);
-              stream.write(message); // Write the message (input) to the SSH shell
+              if (typeof message === 'string') {
+                try {
+                  const resizeEvent = JSON.parse(message);
+                  if (resizeEvent.type === 'resize') {
+                    stream.setWindow(
+                      resizeEvent.rows,
+                      resizeEvent.cols,
+                      resizeEvent.height,
+                      resizeEvent.width
+                    );
+                  }
+                } catch {
+                  stream.write(message);
+                }
+              }
             });
           });
         }).on('error', (err) => {
@@ -88,6 +114,7 @@ wss.on('connection', (ws) => {
   // Handle WebSocket close event
   ws.on('close', () => {
     console.log('WebSocket closed');
+    clearInterval(interval);
     if (conn) {
       conn.end(); // Close SSH connection when WebSocket client disconnects
     }

@@ -29,7 +29,6 @@ const App = () => {
 
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
-
     terminal.current.open(terminalRef.current);
 
     terminal.current.onData((data) => {
@@ -40,11 +39,29 @@ const App = () => {
 
     // Resize terminal to fit the container initially
     const resizeTerminal = () => {
-      fitAddon.current.fit();
+      if (terminalRef.current) {
+        fitAddon.current.fit();
+        notifyServerOfResize();
+      }
     };
-    resizeTerminal();
 
-    // Adjust terminal size on window resize
+    // Notify the server of terminal resize
+    const notifyServerOfResize = () => {
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        const { rows, cols } = terminal.current;
+        socket.current.send(
+          JSON.stringify({
+            type: 'resize',
+            rows,
+            cols,
+            height: terminalRef.current.offsetHeight,
+            width: terminalRef.current.offsetWidth,
+          })
+        );
+      }
+    };
+
+    resizeTerminal();
     window.addEventListener('resize', resizeTerminal);
 
     return () => {
@@ -88,6 +105,12 @@ const App = () => {
 
   const handleSideBarHiding = () => {
     setIsSideBarHidden((prevState) => !prevState);
+    if (!isSideBarHidden) {
+      setTimeout(() => {
+        fitAddon.current.fit();
+        notifyServerOfResize();
+      }, 100); // Delay to ensure layout updates before resize
+    }
   };
 
   return (
