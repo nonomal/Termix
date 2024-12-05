@@ -59,16 +59,8 @@ wss.on('connection', (ws) => {
 
               // Forward user input and resize events to the SSH stream
               ws.on('message', (message) => {
-                if (typeof message === 'string') {
-                  try {
-                    const resizeEvent = JSON.parse(message);
-                    if (resizeEvent.type === 'resize') {
-                      stream.setWindow(resizeEvent.rows, resizeEvent.cols, resizeEvent.height, resizeEvent.width);
-                    }
-                  } catch {
-                    stream.write(message);
-                  }
-                }
+                console.log('User Input:', message);
+                stream.write(message);
               });
             });
           })
