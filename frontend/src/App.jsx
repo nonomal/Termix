@@ -25,75 +25,57 @@ const App = () => {
       },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      scrollback: 1000,  // Allow scrollback so the terminal doesn't lose state
     });
 
-    // Initialize and attach the fit addon to the terminal
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
     terminal.current.open(terminalRef.current);
 
-    // Resize terminal to fit the container initially
-    fitAddon.current.fit();
-
-    // Adjust terminal size on window resize
-    const resizeListener = () => {
-      fitAddon.current.fit();
-    };
-    window.addEventListener('resize', resizeListener);
-
-    // Monitor terminal data (activity)
     terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(data);
       }
     });
 
-    // Add specific resize call for certain programs like nano or vim
-    const resizeTerminalOnStart = () => {
-      // Resize immediately after starting vim/nano or other programs
+    // Resize terminal to fit the container initially
+    const resizeTerminal = () => {
       fitAddon.current.fit();
-      terminal.current.clear();
     };
+    resizeTerminal();
 
-    terminal.current.onData((data) => {
-      if (data.includes('nano') || data.includes('vim')) {
-        // Trigger resize immediately when these programs start
-        resizeTerminalOnStart();
-      }
-    });
+    // Adjust terminal size on window resize
+    window.addEventListener('resize', resizeTerminal);
 
-    // Cleanup on component unmount
     return () => {
       terminal.current.dispose();
       if (socket.current) {
         socket.current.close();
       }
-      window.removeEventListener('resize', resizeListener);
+      window.removeEventListener('resize', resizeTerminal);
     };
   }, []);
 
   const handleConnect = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/`; // Use current host and "/ws/" endpoint
-  
+    const wsUrl = `${protocol}//${window.location.host}/ws/`;
+
     socket.current = new WebSocket(wsUrl);
-  
+
     socket.current.onopen = () => {
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
       socket.current.send(JSON.stringify({ host, username, password }));
       setIsConnected(true);
     };
-  
+
     socket.current.onmessage = (event) => {
       terminal.current.write(event.data);
     };
-  
+
     socket.current.onerror = (error) => {
       terminal.current.writeln(`WebSocket error: ${error.message}`);
     };
-  
+
     socket.current.onclose = () => {
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
@@ -139,11 +121,7 @@ const App = () => {
         <div ref={terminalRef} className="terminal-container"></div>
       </div>
 
-      {/* Hide button always positioned in the bottom-right corner */}
-      <button
-        className="hide-sidebar-button"
-        onClick={handleSideBarHiding}
-      >
+      <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
         {isSideBarHidden ? '+' : '-'}
       </button>
     </div>

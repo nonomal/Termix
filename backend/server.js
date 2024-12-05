@@ -67,6 +67,8 @@ wss.on('connection', (ws) => {
           port: 22,              // Default SSH port
           username: data.username,  // Username provided from the client
           password: data.password,  // Password provided from the client
+          keepaliveInterval: 15000, // Send keep-alive packets every 15 seconds
+          keepaliveCountMax: 3,    // Retry keep-alive 3 times before disconnecting
         });
       }
     } catch (error) {
