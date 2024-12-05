@@ -63,12 +63,7 @@ wss.on('connection', (ws) => {
                   try {
                     const resizeEvent = JSON.parse(message);
                     if (resizeEvent.type === 'resize') {
-                      stream.setWindow(
-                        resizeEvent.rows,
-                        resizeEvent.cols,
-                        resizeEvent.height,
-                        resizeEvent.width
-                      );
+                      stream.setWindow(resizeEvent.rows, resizeEvent.cols, resizeEvent.height, resizeEvent.width);
                     }
                   } catch {
                     stream.write(message);
