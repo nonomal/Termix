@@ -53,11 +53,11 @@ const App = () => {
       const containerHeight = terminalRef.current.offsetHeight;
       const containerWidth = terminalRef.current.offsetWidth;
 
-      // Here, adjust zoom based on container size (for example, make it zoom out if it's smaller)
+      // Adjust zoom based on container size
       const newZoomFactor = Math.max(0.5, Math.min(2, containerHeight / 300));  // Adjust this logic as needed
       if (zoomFactor !== newZoomFactor) {
         setZoomFactor(newZoomFactor);
-        terminal.current.setFontSize(14 * newZoomFactor); // Corrected font size update
+        terminal.current.setOption('fontSize', 14 * newZoomFactor); // Use setOption instead of setFontSize
       }
     };
 
