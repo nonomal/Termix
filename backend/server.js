@@ -59,9 +59,24 @@ wss.on('connection', (ws) => {
 
               // Forward user input and resize events to the SSH stream
               ws.on('message', (message) => {
-                console.log('User Input:', message);
-                stream.write(message);
-              });
+                let data;
+              
+                // Try parsing the message as JSON
+                try {
+                  data = JSON.parse(message);
+                } catch (err) {
+                  // If it's not JSON, it's likely user input. Forward it to the SSH stream.
+                  console.log('User Input:', message);
+                  stream.write(message);
+                  return;  // Exit early since it's user input
+                }
+              
+                // If it's a resize event, handle it
+                if (data.type === 'resize' && data.rows && data.cols) {
+                  console.log('Resize event received:', data);
+                  stream.setWindow(data.rows, data.cols, data.height, data.width);
+                }
+              });              
             });
           })
           .on('error', (err) => {
