@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Nano zoom fix #14">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Nano zoom fix #15">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/server.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/info.txt" afterDir="false" />
@@ -64,6 +64,7 @@
     "npm.run_start_vite.executor": "Run",
     "npm.start.executor": "Run",
     "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
+    "ts.external.directory.path": "D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -114,7 +115,7 @@
       <option name="presentableId" value="Default" />
       <updated>1733439468142</updated>
       <workItem from="1733439479708" duration="5489000" />
-      <workItem from="1733448523969" duration="2106000" />
+      <workItem from="1733448523969" duration="3316000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -164,7 +165,15 @@
       <option name="project" value="LOCAL" />
       <updated>1733450304640</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Nano zoom fix #15">
+      <option name="closed" value="true" />
+      <created>1733450681262</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1733450681262</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -175,6 +184,7 @@
     <MESSAGE value="Nano zoom fix #12" />
     <MESSAGE value="Nano zoom fix #13" />
     <MESSAGE value="Nano zoom fix #14" />
-    <option name="LAST_COMMIT_MESSAGE" value="Nano zoom fix #14" />
+    <MESSAGE value="Nano zoom fix #15" />
+    <option name="LAST_COMMIT_MESSAGE" value="Nano zoom fix #15" />
   </component>
 </project>

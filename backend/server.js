@@ -1,5 +1,5 @@
 const WebSocket = require('ws');
-const ssh2 = require('ssh2');
+const SSH = require('ssh2-promise');
 const http = require('http');
 
 const server = http.createServer((req, res) => {
@@ -11,105 +11,81 @@ const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
   console.log('WebSocket connection established');
-  let conn = null;
-  let termDimensions = { rows: 0, cols: 0, height: 0, width: 0 }; // Store terminal dimensions
 
+  let ssh = null;
+  let termDimensions = { rows: 0, cols: 0, height: 0, weight: 0 };
+
+  ws.on('message', async (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'resize') {
+        termDimensions = data;
+      } else if (data.username && data.password) {
+        ssh = new SSH({
+          host: data.host,
+          username: data.username,
+          password: data.password
+        });
+
+        try {
+          await ssh.connect();
+          const stream = await ssh.shell();
+
+          stream.on('data', (data) => {
+            const dataString = data.toString();
+            ws.send(dataString);
+          });
+
+          stream.stderr.on('data', (data) => {
+            const errorString = data.toString();
+            console.error('SSH error:', errorString);
+          });
+
+          ws.on('message', (message) => {
+            try {
+              const data = JSON.parse(message);
+              if (data.type === 'resize') {
+                termDimensions = data;
+              }
+            } catch (err) {
+              stream.write(message);
+            }
+          });
+
+          stream.on('close', () => {
+            console.log('Stream closed');
+            ssh.close();
+          });
+        } catch (err) {
+          console.error('SSH connection error:', err);
+        }
+      }
+    } catch (err) {
+      console.error('Message processing error:', err);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('WebSocket closed');
+    if (ssh) {
+      ssh.close();
+    }
+  });
+
+  ws.on('error', (err) => {
+    console.error('WebSocket error:', err);
+  });
+
+  // Ping-pong is used to keep the connection alive.
   const interval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
     } else {
       clearInterval(interval);
     }
-  }, 15000);
-
-  ws.on('pong', () => {
-    console.log('Received pong from client');
-  });
-
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-
-      if (data.host && data.username && data.password) {
-        if (conn) {
-          conn.end();
-        }
-
-        conn = new ssh2.Client();
-
-        conn
-            .on('ready', () => {
-              console.log('SSH Connection established');
-              conn.shell((err, stream) => {
-                if (err) {
-                  ws.send(`Error: ${err.message}`);
-                  return;
-                }
-
-                stream.on('data', (data) => {
-                  const dataString = data.toString();
-                  ws.send(dataString);
-
-                  if (exitCode === 0) {
-                    stream.setWindow(termDimensions.rows, termDimensions.cols, termDimensions.height, termDimensions.width);
-                  }
-                });
-
-                stream.stderr.on('data', (data) => {
-                  console.error('SSH stderr:', data.toString())
-                })
-
-                stream.on('close', () => {
-                  console.log('SSH Stream closed');
-                  conn.end();
-                  ws.send(JSON.stringify({ type: 'process_closed' })); // Signal process has closed
-                });
-
-                ws.on('message', (message) => {
-                  try {
-                    const data = JSON.parse(message);
-                    if (data.type === 'resize' && data.rows && data.cols) {
-                      console.log('Resize event received:', data);
-                      termDimensions = data; // Store received dimensions
-                      stream.setWindow(data.rows, data.cols, data.height, data.width);
-                    }
-                  } catch (err) {
-                    console.log('User Input:', message);
-                    stream.write(message);
-                  }
-                });
-              });
-            })
-            .on('error', (err) => {
-              console.log('SSH Error:', err.message);
-              ws.send(`SSH Error: ${err.message}`);
-            })
-            .on('close', () => {
-              console.log('SSH Connection closed');
-            })
-            .connect({
-              host: data.host,
-              port: 22,
-              username: data.username,
-              password: data.password,
-              keepaliveInterval: 20000,
-              keepaliveCountMax: 5,
-            });
-      }
-    } catch (error) {
-      console.log('Non-JSON message received:', message);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('WebSocket closed');
-    clearInterval(interval);
-    if (conn) {
-      conn.end();
-    }
-  });
+  }, 5000);
 });
 
-server.listen(8081, () => {
-  console.log('WebSocket server is running on ws://localhost:8081');
+server.listen(8000, () => {
+  console.log('Server listening on port 8000');
 });
