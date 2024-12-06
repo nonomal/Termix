@@ -14,24 +14,26 @@ const App = () => {
   const [password, setPassword] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
-  const [zoomFactor, setZoomFactor] = useState(1); // This will control zoom
 
   useEffect(() => {
-    // Initialize the terminal and the fit addon
+    console.log('Initializing terminal...');
     terminal.current = new Terminal({
       cursorBlink: true,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#ffffff',
-      },
+      theme: { background: '#1e1e1e', foreground: '#ffffff' },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      fontSize: 14, // Start with a default font size
+      fontSize: 14, // Set the default font size initially
     });
 
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
-    terminal.current.open(terminalRef.current);
+
+    if (terminalRef.current) {
+      terminal.current.open(terminalRef.current);
+      console.log('Terminal opened successfully.');
+    } else {
+      console.error('Terminal reference is not valid!');
+    }
 
     terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
@@ -39,40 +41,24 @@ const App = () => {
       }
     });
 
-    // Resize terminal to fit the container initially
     const resizeTerminal = () => {
       if (terminalRef.current) {
         fitAddon.current.fit();
-        adjustZoom();  // Adjust zoom whenever the terminal resizes
         notifyServerOfResize();
       }
     };
 
-    // Adjust the zoom factor based on the terminal container size
-    const adjustZoom = () => {
-      const containerHeight = terminalRef.current.offsetHeight;
-      const containerWidth = terminalRef.current.offsetWidth;
-
-      // Adjust zoom based on container size
-      const newZoomFactor = Math.max(0.5, Math.min(2, containerHeight / 300));  // Adjust this logic as needed
-      if (zoomFactor !== newZoomFactor) {
-        setZoomFactor(newZoomFactor);
-        terminal.current.setOption('fontSize', 14 * newZoomFactor); // Use setOption instead of setFontSize
-      }
-    };
-
-    // Notify the server of terminal resize
     const notifyServerOfResize = () => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         const { rows, cols } = terminal.current;
         socket.current.send(
-          JSON.stringify({
-            type: 'resize',
-            rows,
-            cols,
-            height: terminalRef.current.offsetHeight,
-            width: terminalRef.current.offsetWidth,
-          })
+            JSON.stringify({
+              type: 'resize',
+              rows,
+              cols,
+              height: terminalRef.current.offsetHeight,
+              width: terminalRef.current.offsetWidth,
+            })
         );
       }
     };
@@ -87,29 +73,35 @@ const App = () => {
       }
       window.removeEventListener('resize', resizeTerminal);
     };
-  }, [zoomFactor]); // Re-run when zoomFactor changes
+  }, []);
 
   const handleConnect = () => {
+    console.log('Connecting...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/`;
+    console.log(`WebSocket URL: ${wsUrl}`);
 
     socket.current = new WebSocket(wsUrl);
 
     socket.current.onopen = () => {
+      console.log('WebSocket connection opened');
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
       socket.current.send(JSON.stringify({ host, username, password }));
       setIsConnected(true);
     };
 
     socket.current.onmessage = (event) => {
+      console.log('Received message:', event.data);
       terminal.current.write(event.data);
     };
 
     socket.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
       terminal.current.writeln(`WebSocket error: ${error.message}`);
     };
 
     socket.current.onclose = () => {
+      console.log('WebSocket connection closed');
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
@@ -125,45 +117,45 @@ const App = () => {
       setTimeout(() => {
         fitAddon.current.fit();
         notifyServerOfResize();
-      }, 100); // Delay to ensure layout updates before resize
+      }, 100);
     }
   };
 
   return (
-    <div className="app-container">
-      <div className="main-content">
-        <div className={`sidebar ${isSideBarHidden ? 'hidden' : ''}`}>
-          <h2>Connection Details</h2>
-          <input
-            type="text"
-            placeholder="Host"
-            value={host}
-            onChange={(e) => handleInputChange(e, setHost)}
-          />
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => handleInputChange(e, setUsername)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => handleInputChange(e, setPassword)}
-          />
-          <button onClick={handleConnect} disabled={isConnected}>
-            {isConnected ? 'Connected' : 'Start Session'}
-          </button>
+      <div className="app-container">
+        <div className="main-content">
+          <div className={`sidebar ${isSideBarHidden ? 'hidden' : ''}`}>
+            <h2>Connection Details</h2>
+            <input
+                type="text"
+                placeholder="Host"
+                value={host}
+                onChange={(e) => handleInputChange(e, setHost)}
+            />
+            <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => handleInputChange(e, setUsername)}
+            />
+            <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => handleInputChange(e, setPassword)}
+            />
+            <button onClick={handleConnect} disabled={isConnected}>
+              {isConnected ? 'Connected' : 'Start Session'}
+            </button>
+          </div>
+
+          <div ref={terminalRef} className="terminal-container"></div>
         </div>
 
-        <div ref={terminalRef} className="terminal-container"></div>
+        <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
+          {isSideBarHidden ? '+' : '-'}
+        </button>
       </div>
-
-      <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
-        {isSideBarHidden ? '+' : '-'}
-      </button>
-    </div>
   );
 };
 
