@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Nano zoom fix #11">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Nano zoom fix #12">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
     </list>
@@ -41,30 +41,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;Shell Script.Node Server.js Start.executor&quot;: &quot;Run&quot;,
-    &quot;Shell Script.Run backend and frontend.executor&quot;: &quot;Run&quot;,
-    &quot;Shell Script.run_backend_frontend.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;alpha-1.0&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Programming Projects/SSH-Project-JB&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;npm.run_start.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_frontend.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_node_backend.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_vite.executor&quot;: &quot;Run&quot;,
-    &quot;npm.start.executor&quot;: &quot;Run&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "Shell Script.Node Server.js Start.executor": "Run",
+    "Shell Script.Run backend and frontend.executor": "Run",
+    "Shell Script.run_backend_frontend.executor": "Run",
+    "git-widget-placeholder": "alpha-1.0",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/Programming Projects/SSH-Project-JB",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.run_start.executor": "Run",
+    "npm.run_start_frontend.executor": "Run",
+    "npm.run_start_node_backend.executor": "Run",
+    "npm.run_start_vite.executor": "Run",
+    "npm.start.executor": "Run",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="Shell Script.run_backend_frontend">
     <configuration name="run_backend_frontend" type="ShConfigurationType">
       <option name="SCRIPT_TEXT" value="Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-vite&quot;; Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-server&quot; " />
@@ -112,7 +113,7 @@
       <option name="presentableId" value="Default" />
       <updated>1733439468142</updated>
       <workItem from="1733439479708" duration="5489000" />
-      <workItem from="1733448523969" duration="687000" />
+      <workItem from="1733448523969" duration="1201000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -130,15 +131,31 @@
       <option name="project" value="LOCAL" />
       <updated>1733448864234</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Nano zoom fix #11">
+      <option name="closed" value="true" />
+      <created>1733449234908</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1733449234908</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Nano zoom fix #12">
+      <option name="closed" value="true" />
+      <created>1733449331913</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1733449331913</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Nano zoom fix #12" />
     <MESSAGE value="Nano zoom fix #11" />
-    <option name="LAST_COMMIT_MESSAGE" value="Nano zoom fix #11" />
+    <MESSAGE value="Nano zoom fix #12" />
+    <option name="LAST_COMMIT_MESSAGE" value="Nano zoom fix #12" />
   </component>
 </project>

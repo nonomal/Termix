@@ -100,6 +100,11 @@ const App = () => {
     socket.current.onmessage = (event) => {
       console.log('Received message:', event.data);
       terminal.current.write(event.data);
+
+      const parsedData = JSON.parse(event.data);
+      if (parsedData.type === 'process_closed') {
+        notifyServerOfResize();
+      }
     };
 
     socket.current.onerror = (error) => {
@@ -112,6 +117,21 @@ const App = () => {
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
+  };
+
+  const notifyServerOfResize = () => {
+    if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+      const { rows, cols } = terminal.current;
+      socket.current.send(
+          JSON.stringify({
+            type: 'resize',
+            rows,
+            cols,
+            height: terminalRef.current.offsetHeight,
+            width: terminalRef.current.offsetWidth,
+          })
+      );
+    }
   };
 
   const handleInputChange = (event, setState) => {
