@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "ssh2-promise": "^1.0.3",
     "xterm-addon-fit": "^0.8.0"
   }
 }

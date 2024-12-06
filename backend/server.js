@@ -86,6 +86,6 @@ wss.on('connection', (ws) => {
   }, 5000);
 });
 
-server.listen(8000, () => {
-  console.log('Server listening on port 8000');
+server.listen(8081, () => {
+  console.log('Server listening on port 8081');
 });
