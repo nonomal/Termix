@@ -47,12 +47,6 @@ const App = () => {
       }
     });
 
-    const resizeTerminal = () => {
-      if (terminalRef.current) {
-        fitAddon.current.fit();
-        notifyServerOfResize();
-      }
-    };
 
     const notifyServerOfResize = () => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
@@ -66,6 +60,13 @@ const App = () => {
               width: terminalRef.current.offsetWidth,
             })
         );
+      }
+    };
+
+    const resizeTerminal = () => {
+      if (terminalRef.current) {
+        fitAddon.current.fit();
+        notifyServerOfResize();
       }
     };
 
@@ -99,11 +100,15 @@ const App = () => {
 
     socket.current.onmessage = (event) => {
       console.log('Received message:', event.data);
-      terminal.current.write(event.data);
-
-      const parsedData = JSON.parse(event.data);
-      if (parsedData.type === 'process_closed') {
-        notifyServerOfResize();
+      try {
+        const parsedData = JSON.parse(event.data);
+        if (parsedData.type === 'process_closed') {
+          notifyServerOfResize();
+        } else {
+          terminal.current.write(event.data);
+        }
+      } catch (error) {
+        terminal.current.write(event.data)
       }
     };
 
@@ -119,21 +124,6 @@ const App = () => {
     };
   };
 
-  const notifyServerOfResize = () => {
-    if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-      const { rows, cols } = terminal.current;
-      socket.current.send(
-          JSON.stringify({
-            type: 'resize',
-            rows,
-            cols,
-            height: terminalRef.current.offsetHeight,
-            width: terminalRef.current.offsetWidth,
-          })
-      );
-    }
-  };
-
   const handleInputChange = (event, setState) => {
     setState(event.target.value);
   };
@@ -143,7 +133,6 @@ const App = () => {
     if (!isSideBarHidden) {
       setTimeout(() => {
         fitAddon.current.fit();
-        notifyServerOfResize();
       }, 100);
     }
   };
