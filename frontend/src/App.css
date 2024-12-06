@@ -63,7 +63,7 @@
 .hide-sidebar-button {
   position: fixed;
   bottom: 10px;
-  right: 10px;
+  right: 25px;
   background-color: rgb(108, 108, 108);
   color: white;
   border: none;

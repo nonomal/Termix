@@ -16,85 +16,92 @@ const App = () => {
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
 
   useEffect(() => {
-    // Initialize the terminal and the fit addon
+    console.log('Initializing terminal...');
     terminal.current = new Terminal({
       cursorBlink: true,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#ffffff',
-      },
+      theme: { background: '#1e1e1e', foreground: '#ffffff' },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      scrollback: 1000,  // Allow scrollback so the terminal doesn't lose state
+      fontSize: 14,
     });
 
-    // Initialize and attach the fit addon to the terminal
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
-    terminal.current.open(terminalRef.current);
+    if (terminalRef.current) {
+      terminal.current.open(terminalRef.current);
+      console.log('Terminal opened successfully.');
+    } else {
+      console.error('Terminal reference is not valid!');
+    }
 
-    // Resize terminal to fit the container initially
-    fitAddon.current.fit();
-
-    // Adjust terminal size on window resize
-    const resizeListener = () => {
-      fitAddon.current.fit();
-    };
-    window.addEventListener('resize', resizeListener);
-
-    // Monitor terminal data (activity)
     terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(data);
       }
     });
 
-    // Add specific resize call for certain programs like nano or vim
-    const resizeTerminalOnStart = () => {
-      // Resize immediately after starting vim/nano or other programs
-      fitAddon.current.fit();
-      terminal.current.clear();
+    const resizeTerminal = () => {
+      if (terminalRef.current) {
+        fitAddon.current.fit();
+        notifyServerOfResize();
+      }
     };
 
-    terminal.current.onData((data) => {
-      if (data.includes('nano') || data.includes('vim')) {
-        // Trigger resize immediately when these programs start
-        resizeTerminalOnStart();
+    const notifyServerOfResize = () => {
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        const { rows, cols } = terminal.current;
+        socket.current.send(
+            JSON.stringify({
+              type: 'resize',
+              rows,
+              cols,
+              height: terminalRef.current.offsetHeight,
+              width: terminalRef.current.offsetWidth,
+            })
+        );
       }
-    });
+    };
 
-    // Cleanup on component unmount
+    resizeTerminal();
+    window.addEventListener('resize', resizeTerminal);
+
     return () => {
       terminal.current.dispose();
       if (socket.current) {
         socket.current.close();
       }
-      window.removeEventListener('resize', resizeListener);
+      window.removeEventListener('resize', resizeTerminal);
     };
   }, []);
 
   const handleConnect = () => {
+    console.log('Connecting...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/`; // Use current host and "/ws/" endpoint
-  
+    const wsUrl = `${protocol}//${window.location.host}/ws/`;
+    console.log(`WebSocket URL: ${wsUrl}`);
+
     socket.current = new WebSocket(wsUrl);
-  
+
     socket.current.onopen = () => {
+      console.log('WebSocket connection opened');
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
       socket.current.send(JSON.stringify({ host, username, password }));
       setIsConnected(true);
     };
-  
+
     socket.current.onmessage = (event) => {
+      console.log('Received message:', event.data);
       terminal.current.write(event.data);
     };
-  
+
     socket.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
       terminal.current.writeln(`WebSocket error: ${error.message}`);
     };
-  
+
     socket.current.onclose = () => {
+      console.log('WebSocket connection closed');
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
@@ -106,47 +113,49 @@ const App = () => {
 
   const handleSideBarHiding = () => {
     setIsSideBarHidden((prevState) => !prevState);
+    if (!isSideBarHidden) {
+      setTimeout(() => {
+        fitAddon.current.fit();
+        notifyServerOfResize();
+      }, 100);
+    }
   };
 
   return (
-    <div className="app-container">
-      <div className="main-content">
-        <div className={`sidebar ${isSideBarHidden ? 'hidden' : ''}`}>
-          <h2>Connection Details</h2>
-          <input
-            type="text"
-            placeholder="Host"
-            value={host}
-            onChange={(e) => handleInputChange(e, setHost)}
-          />
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => handleInputChange(e, setUsername)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => handleInputChange(e, setPassword)}
-          />
-          <button onClick={handleConnect} disabled={isConnected}>
-            {isConnected ? 'Connected' : 'Start Session'}
-          </button>
+      <div className="app-container">
+        <div className="main-content">
+          <div className={`sidebar ${isSideBarHidden ? 'hidden' : ''}`}>
+            <h2>Connection Details</h2>
+            <input
+                type="text"
+                placeholder="Host"
+                value={host}
+                onChange={(e) => handleInputChange(e, setHost)}
+            />
+            <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => handleInputChange(e, setUsername)}
+            />
+            <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => handleInputChange(e, setPassword)}
+            />
+            <button onClick={handleConnect} disabled={isConnected}>
+              {isConnected ? 'Connected' : 'Start Session'}
+            </button>
+          </div>
+
+          <div ref={terminalRef} className="terminal-container"></div>
         </div>
 
-        <div ref={terminalRef} className="terminal-container"></div>
+        <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
+          {isSideBarHidden ? '+' : '-'}
+        </button>
       </div>
-
-      {/* Hide button always positioned in the bottom-right corner */}
-      <button
-        className="hide-sidebar-button"
-        onClick={handleSideBarHiding}
-      >
-        {isSideBarHidden ? '+' : '-'}
-      </button>
-    </div>
   );
 };
 

@@ -24,7 +24,7 @@
   },
   "scripts": {
     "start-vite": "cross-env BROWSER=none WDS_SOCKET_PORT=0 vite --port 8080",
-    "start-server": "node 'D:/Programming Projects/SSH-Project/ssh-project/backend/server.js'",
+    "start-server": "node ./start.js",
     "start": "npm run start-vite && npm run start-server",
     "build": "vite build",
     "preview": "vite preview",
