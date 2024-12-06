@@ -22,15 +22,21 @@ const App = () => {
       theme: { background: '#1e1e1e', foreground: '#ffffff' },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      fontSize: 14, // Set the default font size initially
+      fontSize: 14,
     });
 
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
+    let resizeObserver = new ResizeObserver(() => {
+      fitAddon.current.fit();
+      notifyServerOfResize();
+    });
+
     if (terminalRef.current) {
       terminal.current.open(terminalRef.current);
       console.log('Terminal opened successfully.');
+      resizeObserver.observe(terminalRef.current);
     } else {
       console.error('Terminal reference is not valid!');
     }
@@ -72,6 +78,7 @@ const App = () => {
         socket.current.close();
       }
       window.removeEventListener('resize', resizeTerminal);
+      resizeObserver.disconnect();
     };
   }, []);
 
