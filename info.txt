@@ -1,6 +1,7 @@
 Currently:
 Fix issue after nano where the input no longer goes down to the bottom.
 Fix issue where SSH randomly disconnects
+ntfy notifcation after build push
 
 Overall Features:
 SSH/RDP(?)/VNC(?)

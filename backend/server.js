@@ -50,7 +50,7 @@ wss.on('connection', (ws) => {
                   const dataString = data.toString();
                   ws.send(dataString);
 
-                  if (dataString.includes('[Process completed]')) { // Replace with your actual completion detection
+                  if (exitCode === 0) {
                     stream.setWindow(termDimensions.rows, termDimensions.cols, termDimensions.height, termDimensions.width);
                   }
                 });
