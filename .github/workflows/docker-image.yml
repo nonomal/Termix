@@ -72,11 +72,14 @@ jobs:
           # Get the list of images from ghcr.io
           images=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
             "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/ssh-project/versions")
-          
+
+          # Check the response (for debugging)
+          echo "Response from GHCR: $images"
+
           # List image tags and delete older versions (keep the latest 10)
           count=0
           max_images=10
-          for image in $(echo "$images" | jq -r '.[].id'); do
+          for image in $(echo "$images" | jq -r '.[] | .id'); do
             if [ $count -ge $max_images ]; then
               echo "Deleting image $image"
               curl -X DELETE -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
