@@ -22,16 +22,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache Node modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.npm
-            frontend/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
       - name: Install Dependencies and Build Frontend
         run: |
           cd frontend

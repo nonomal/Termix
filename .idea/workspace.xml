@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Docker build update #5 (cache and cleanup)">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Docker build update #6 (cache and cleanup)">
       <change beforePath="$PROJECT_DIR$/.github/workflows/docker-image.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-image.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
@@ -41,32 +41,32 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "Shell Script.Node Server.js Start.executor": "Run",
-    "Shell Script.Run backend and frontend.executor": "Run",
-    "Shell Script.run_backend_frontend.executor": "Run",
-    "git-widget-placeholder": "release-1.0",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/Programming Projects/SSH-Project-JB",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "npm.run_start.executor": "Run",
-    "npm.run_start_frontend.executor": "Run",
-    "npm.run_start_node_backend.executor": "Run",
-    "npm.run_start_vite.executor": "Run",
-    "npm.start.executor": "Run",
-    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
-    "ts.external.directory.path": "D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Shell Script.Node Server.js Start.executor&quot;: &quot;Run&quot;,
+    &quot;Shell Script.Run backend and frontend.executor&quot;: &quot;Run&quot;,
+    &quot;Shell Script.run_backend_frontend.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;release-1.0&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Programming Projects/SSH-Project-JB&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.run_start.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_frontend.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_node_backend.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_vite.executor&quot;: &quot;Run&quot;,
+    &quot;npm.start.executor&quot;: &quot;Run&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Shell Script.run_backend_frontend">
     <configuration name="run_backend_frontend" type="ShConfigurationType">
       <option name="SCRIPT_TEXT" value="Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-vite&quot;; Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-server&quot; " />
@@ -115,7 +115,7 @@
       <updated>1733439468142</updated>
       <workItem from="1733439479708" duration="5489000" />
       <workItem from="1733448523969" duration="3535000" />
-      <workItem from="1733549186397" duration="7027000" />
+      <workItem from="1733549186397" duration="7223000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -261,7 +261,23 @@
       <option name="project" value="LOCAL" />
       <updated>1733556917800</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="Docker build update #5 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733557286584</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557286584</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Docker build update #6 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733557337662</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557337662</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -305,6 +321,7 @@
     <MESSAGE value="Docker build update #3" />
     <MESSAGE value="Docker build update #4 (cache and cleanup)" />
     <MESSAGE value="Docker build update #5 (cache and cleanup)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Docker build update #5 (cache and cleanup)" />
+    <MESSAGE value="Docker build update #6 (cache and cleanup)" />
+    <option name="LAST_COMMIT_MESSAGE" value="Docker build update #6 (cache and cleanup)" />
   </component>
 </project>
