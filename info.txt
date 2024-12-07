@@ -2,7 +2,7 @@ Currently:
 make the cmds run at start not show up
 see if it auto resizes the terminal via cmds after the browser window size has changed or +/- clicked (does not)
 before release, call this version 1.0 (don't do beta and shit/come uip  with naming scheme like 1.1 or just increment by 1 and when to go to next version)
-fix all the giuthub workflow problems
+fix all the giuthub workflow problems (fixed I think)
 
 Overall Features:
 SSH/RDP(?)/VNC(?)

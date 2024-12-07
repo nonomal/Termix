@@ -15,21 +15,22 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
     console.log('WebSocket connection established');
 
-    let conn = null; // Declare SSH client outside to manage lifecycle
+    let conn = null;
+    let stream = null;
+    let interval = null;
 
     ws.on('message', (message) => {
         try {
-            const data = JSON.parse(message); // Try parsing the incoming message as JSON
+            const data = JSON.parse(message);
 
-            // Check if message contains SSH connection details
             if (data.host && data.port && data.username && data.password) {
                 if (conn) {
-                    conn.end(); // Close any previous connection before starting a new one
+                    conn.end();
                 }
 
-                conn = new ssh2.Client(); // Create a new SSH connection instance
+                conn = new ssh2.Client();
 
-                const interval = setInterval(() => {
+                interval = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.ping();
                     } else {
@@ -37,78 +38,81 @@ wss.on('connection', (ws) => {
                     }
                 }, 15000);
 
-                // When the SSH connection is ready
                 conn.on('ready', () => {
                     console.log('SSH Connection established');
-
-                    // Start an interactive shell session
-                    conn.shell((err, stream) => {
+                    conn.shell((err, sshStream) => {
                         if (err) {
                             console.log(`SSH Error: ${err}`);
                             ws.send(`Error: ${err}`);
                             return;
                         }
 
-                        // Handle data from SSH session
-                        stream.on('data', (data) => {
-                            console.log(`SSH Output: ${data}`);
-                            ws.send(data.toString()); // Send the SSH output back to WebSocket client
+                        stream = sshStream;
+
+                        // Send stty commands for resizing rows and columns
+                        const resizeCommand = (rows, cols) => {
+                            return `stty rows ${rows} cols ${cols}\n`;
+                        };
+
+                        // Adjust terminal size once shell is ready
+                        ws.on('message', (msg) => {
+                            try {
+                                const input = JSON.parse(msg);
+                                if (input.type === 'resize') {
+                                    const resizeCmd = resizeCommand(input.rows, input.cols);
+                                    stream.write(resizeCmd);  // Resize the terminal in SSH
+                                } else {
+                                    stream.write(msg); // Regular input handling
+                                }
+                            } catch (e) {
+                                // If it's not JSON, it's a regular key press
+                                stream.write(msg);
+                            }
                         });
 
-                        // Handle stream close event
+                        stream.on('data', (data) => {
+                            console.log(`SSH Output: ${data}`);
+                            ws.send(data.toString()); // Send the data back to the client once
+                        });
+
                         stream.on('close', () => {
                             console.log('SSH stream closed');
                             conn.end();
                         });
 
-                        // When the WebSocket client sends a message (from terminal input), forward it to the SSH stream
-                        ws.on('message', (msg) => {
-                            const input = JSON.parse(msg);
-                            if (input.type === 'resize') {
-                                const resizeCommand = `stty rows ${input.rows} cols ${input.cols}\n`;
-                                stream.write(resizeCommand);
-                            } else {
-                                stream.write(input);
-                            }
-                        });
+                        // Send only the resize commands initially without `stty sane`
+                        const initialResizeCmd = resizeCommand(24, 80); // Example initial size
+                        stream.write(initialResizeCmd);  // Set terminal size
                     });
                 }).on('error', (err) => {
                     console.log('SSH Connection Error: ', err);
                     ws.send(`SSH Error: ${err}`);
                 }).connect({
-                    host: data.host,       // Host provided from the client
-                    port: data.port,       // Default SSH port
-                    username: data.username,  // Username provided from the client
-                    password: data.password,  // Password provided from the client
-                    keepaliveInterval: 10000,  // Send a heartbeat every 10 seconds
-                    keepaliveCountMax: 5,      // Allow three missed heartbeats before considering the connection dead
+                    host: data.host,
+                    port: data.port,
+                    username: data.username,
+                    password: data.password,
+                    keepaliveInterval: 10000,
+                    keepaliveCountMax: 5,
                 });
             }
         } catch (error) {
-            // If message is not valid JSON (i.e., terminal input), treat it as raw text and send it to SSH
-            console.log('Received non-JSON message, sending to SSH session:', message);
-            if (conn) {
-                const stream = conn._stream; // Access the SSH stream directly
-                if (stream && stream.writable) {
-                    stream.write(message); // Write raw input message to SSH stream
-                }
-            } else {
-                console.error('SSH connection is not established yet.');
-            }
+            console.log('Received non-JSON message: ', message);
         }
     });
 
-    // Handle WebSocket close event
     ws.on('close', () => {
-        console.log('WebSocket closed');
-        clearInterval(interval);
         if (conn) {
-            conn.end(); // Close SSH connection when WebSocket client disconnects
+            conn.end();
         }
+        if (interval) {
+            clearInterval(interval);
+        }
+        console.log('WebSocket connection closed');
     });
 });
 
-// Start the WebSocket server on port 8081
+// Start HTTP server
 server.listen(8081, () => {
-    console.log('WebSocket server is listening on ws://localhost:8081');
+    console.log('WebSocket server listening on ws://localhost:8081');
 });
