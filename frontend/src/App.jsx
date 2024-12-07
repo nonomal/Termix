@@ -10,14 +10,13 @@ const App = () => {
   const fitAddon = useRef(null);
   const socket = useRef(null);
   const [host, setHost] = useState('');
-  const [port, setPort] = useState(22);
+  const [port, setPort] = useState('22');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
 
   useEffect(() => {
-    // Initialize the terminal and the fit addon
     terminal.current = new Terminal({
       cursorBlink: true,
       theme: {
@@ -27,36 +26,50 @@ const App = () => {
       macOptionIsMeta: true,
       allowProposedApi: true,
       scrollback: 5000,
-      // Do not enable local echo
-      disableStdin: false,
     });
 
-    // Initialize and attach the fit addon to the terminal
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
     terminal.current.open(terminalRef.current);
-
-    // Resize terminal to fit the container initially
     fitAddon.current.fit();
 
-    // Adjust terminal size on window resize
-    const handleResize = () => {
+    // Fit the terminal and send the size when needed
+    const fitAndNotifyResize = () => {
       fitAddon.current.fit();
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(JSON.stringify({
-          type: 'resize',
-          rows: terminal.current.rows,
           cols: terminal.current.cols,
+          rows: terminal.current.rows,
         }));
       }
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', fitAndNotifyResize);
+
+    terminal.current.onResize(({ cols, rows }) => {
+      console.log(`Terminal resized to cols:${cols}, rows:${rows}`);
+      fitAndNotifyResize();
+    });
+
+    const handleConnectionEstablished = () => {
+      fitAndNotifyResize();
+    };
+
+    window.addEventListener('connection-established', handleConnectionEstablished);
+
+    // Monitor terminal data (activity)
+    terminal.current.onData((data) => {
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        socket.current.send(data);
+      }
+    });
 
     return () => {
       terminal.current.dispose();
-      if (socket.current) socket.current.close();
-      window.removeEventListener('resize', handleResize);
+      if (socket.current) {
+        socket.current.close();
+      }
+      window.removeEventListener('resize', fitAndNotifyResize);
     };
   }, []);
 
@@ -69,7 +82,7 @@ const App = () => {
       return;
     }
 
-    socket.current = new WebSocket("ws://localhost:8081");
+    socket.current = new WebSocket(wsUrl);
 
     socket.current.onopen = () => {
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
@@ -83,12 +96,15 @@ const App = () => {
             cols: terminal.current.cols
           })
       );
+
+      // Dispatch a custom event when connection is open
+      const event = new Event('connection-established');
+      window.dispatchEvent(event);
+
       setIsConnected(true);
     };
 
     socket.current.onmessage = (event) => {
-      // Write the incoming data from WebSocket to the terminal
-      // This ensures that data coming from the WebSocket server is shown in the terminal
       terminal.current.write(event.data);
     };
 
@@ -100,36 +116,45 @@ const App = () => {
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
-
-    // Handle terminal input and send it over WebSocket
-    terminal.current.onData((data) => {
-      // Send input data over WebSocket without echoing it back to the terminal
-      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        socket.current.send(data); // Only send to WebSocket, no echo
-      }
-    });
   };
 
-  const handleInputChange = (event, setState, isNumber = false) => {
-    let value = event.target.value;
-
-    if (isNumber) {
-      value = Number(value); // Convert to number if it's a number field
-      if (isNaN(value)) {
-        value = ''; // Optional: set an empty string if the input is invalid
-      }
-    }
-
-    setState(value); // Set the state with the appropriate value
+  const handleInputChange = (event, setState) => {
+    setState(event.target.value);
   };
 
   const handleSideBarHiding = () => {
-    setIsSideBarHidden((prevState) => !prevState);
+    setIsSideBarHidden((prevState) => {
+      const newState = !prevState;
+      if (newState) {
+        setTimeout(() => {
+          // Add a delay to ensure layout settles before resize action
+          fitAddon.current.fit();
+          if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+            socket.current.send(JSON.stringify({
+              cols: terminal.current.cols,
+              rows: terminal.current.rows,
+            }));
+          }
+        }, 100); // Delay of 100 milliseconds
+      } else {
+        setTimeout(() => {
+          // Refit terminal when showing sidebar as well
+          fitAddon.current.fit();
+          if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+            socket.current.send(JSON.stringify({
+              cols: terminal.current.cols,
+              rows: terminal.current.rows,
+            }));
+          }
+        }, 100); // Delay of 100 milliseconds
+      }
+      return newState;
+    });
   };
 
   return (
       <div className="app-container">
-        <div className={`main-content ${isSideBarHidden ? 'with-sidebar-hidden' : ''}`}>
+        <div className="main-content">
           <div className={`sidebar ${isSideBarHidden ? 'hidden' : ''}`}>
             <h2>Connection Details</h2>
             <input
@@ -139,10 +164,10 @@ const App = () => {
                 onChange={(e) => handleInputChange(e, setHost)}
             />
             <input
-                type="number"
+                type="text"
                 placeholder="Port"
                 value={port}
-                onChange={(e) => handleInputChange(e, setPort, true)}
+                onChange={(e) => handleInputChange(e, setPort)}
             />
             <input
                 type="text"

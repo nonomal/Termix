@@ -1,6 +1,5 @@
 Currently:
-make the cmds run at start not show up
-auto resize the terminal via cmds after the browser window size has changed or +/- clicked
+all done for release!
 
 Overall Features:
 SSH/RDP(?)/VNC(?)
