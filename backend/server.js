@@ -22,12 +22,20 @@ wss.on('connection', (ws) => {
             const data = JSON.parse(message); // Try parsing the incoming message as JSON
 
             // Check if message contains SSH connection details
-            if (data.host && data.username && data.password) {
+            if (data.host && data.port && data.username && data.password) {
                 if (conn) {
                     conn.end(); // Close any previous connection before starting a new one
                 }
 
                 conn = new ssh2.Client(); // Create a new SSH connection instance
+
+                const interval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.ping();
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 15000);
 
                 // When the SSH connection is ready
                 conn.on('ready', () => {
@@ -40,6 +48,10 @@ wss.on('connection', (ws) => {
                             ws.send(`Error: ${err}`);
                             return;
                         }
+
+                        // Set the terminal size dynamically based on the WebSocket message
+                        const sttyCommand = `export TERM=xterm && stty rows ${data.rows} cols ${data.cols}`;
+                        stream.write(sttyCommand + '\n'); // Send the stty command to set terminal size
 
                         // Handle data from SSH session
                         stream.on('data', (data) => {
@@ -64,7 +76,7 @@ wss.on('connection', (ws) => {
                     ws.send(`SSH Error: ${err}`);
                 }).connect({
                     host: data.host,       // Host provided from the client
-                    port: 22,              // Default SSH port
+                    port: data.port,       // Default SSH port
                     username: data.username,  // Username provided from the client
                     password: data.password,  // Password provided from the client
                     keepaliveInterval: 10000,  // Send a heartbeat every 10 seconds
@@ -88,6 +100,7 @@ wss.on('connection', (ws) => {
     // Handle WebSocket close event
     ws.on('close', () => {
         console.log('WebSocket closed');
+        clearInterval(interval);
         if (conn) {
             conn.end(); // Close SSH connection when WebSocket client disconnects
         }

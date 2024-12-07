@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Terminal } from 'xterm';
+import { Terminal } from '@xterm/xterm';
 import 'xterm/css/xterm.css';
-import { FitAddon } from 'xterm-addon-fit';
+import { FitAddon } from '@xterm/addon-fit';
 import './App.css';
 
 const App = () => {
@@ -10,6 +10,7 @@ const App = () => {
   const fitAddon = useRef(null);
   const socket = useRef(null);
   const [host, setHost] = useState('');
+  const [port, setPort] = useState('22');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -50,20 +51,6 @@ const App = () => {
       }
     });
 
-    // Add specific resize call for certain programs like nano or vim
-    const resizeTerminalOnStart = () => {
-      // Resize immediately after starting vim/nano or other programs
-      fitAddon.current.fit();
-      terminal.current.clear();
-    };
-
-    terminal.current.onData((data) => {
-      if (data.includes('nano') || data.includes('vim')) {
-        // Trigger resize immediately when these programs start
-        resizeTerminalOnStart();
-      }
-    });
-
     // Cleanup on component unmount
     return () => {
       terminal.current.dispose();
@@ -87,7 +74,16 @@ const App = () => {
 
     socket.current.onopen = () => {
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
-      socket.current.send(JSON.stringify({ host, username, password }));
+      socket.current.send(
+          JSON.stringify({
+            host,
+            port,
+            username,
+            password,
+            rows: terminal.current.rows,
+            cols: terminal.current.cols
+          })
+      );
       setIsConnected(true);
     };
 
@@ -123,6 +119,12 @@ const App = () => {
                 placeholder="Host"
                 value={host}
                 onChange={(e) => handleInputChange(e, setHost)}
+            />
+            <input
+                type="text"
+                placeholder="Port"
+                value={port}
+                onChange={(e) => handleInputChange(e, setPort)}
             />
             <input
                 type="text"

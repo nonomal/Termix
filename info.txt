@@ -1,8 +1,8 @@
 Currently:
 Fix issue after nano where the input no longer goes down to the bottom.
 Fix issue where SSH randomly disconnects
+lines do not go down a line when wrapping, they overwite previous text on that line
 ntfy notifcation after build push
-numbers dont work in ssh
 
 Overall Features:
 SSH/RDP(?)/VNC(?)
