@@ -79,12 +79,14 @@ jobs:
           curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
           https://ntfy.karmaashomepage.online/ssh-project-build
 
-      - uses: quartx-analytics/ghcr-cleaner@v1
+      - name: Delete all untagged image versions
+        uses: quartx-analytics/ghcr-cleaner@v1
         with:
           owner-type: user
-          token: ${{ secrets.PAT_TOKEN }}
-          repository_owner: ${{ github.repository_owner }}
+          token: ${{ secrets.GHCR_TOKEN }}
+          repository-owner: ${{ github.repository_owner }}
           delete-untagged: true
+          keep-at-most: 0
 
       - name: Cleanup Docker Images Locally
         run: |
