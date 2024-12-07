@@ -1,7 +1,8 @@
 Currently:
 make the cmds run at start not show up
 see if it auto resizes the terminal via cmds after the browser window size has changed or +/- clicked (does not)
-ntfy notifcation after build push (I think I did)
+before release, call this version 1.0 (don't do beta and shit/come uip  with naming scheme like 1.1 or just increment by 1 and when to go to next version)
+fix all the giuthub workflow problems
 
 Overall Features:
 SSH/RDP(?)/VNC(?)

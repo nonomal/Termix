@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Terminal size fix #18 (rows &amp; cols fix)">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-image.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-image.yml" afterDir="false" />
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Test ntfy build notification system">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/server.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/info.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -116,6 +117,7 @@
       <updated>1733439468142</updated>
       <workItem from="1733439479708" duration="5489000" />
       <workItem from="1733448523969" duration="3535000" />
+      <workItem from="1733549186397" duration="3022000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -197,7 +199,15 @@
       <option name="project" value="LOCAL" />
       <updated>1733538097802</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Test ntfy build notification system">
+      <option name="closed" value="true" />
+      <created>1733539381433</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1733539381433</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -233,6 +243,7 @@
     <MESSAGE value="Nano zoom fix #16 (ssh-2-promise)" />
     <MESSAGE value="Full return back to old code with minor fixes" />
     <MESSAGE value="Terminal size fix #18 (rows &amp; cols fix)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Terminal size fix #18 (rows &amp; cols fix)" />
+    <MESSAGE value="Test ntfy build notification system" />
+    <option name="LAST_COMMIT_MESSAGE" value="Test ntfy build notification system" />
   </component>
 </project>

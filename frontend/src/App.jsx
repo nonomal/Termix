@@ -39,25 +39,22 @@ const App = () => {
     fitAddon.current.fit();
 
     // Adjust terminal size on window resize
-    const resizeListener = () => {
+    const handleResize = () => {
       fitAddon.current.fit();
-    };
-    window.addEventListener('resize', resizeListener);
-
-    // Monitor terminal data (activity)
-    terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        socket.current.send(data);
+        socket.current.send(JSON.stringify({
+          type: 'resize',
+          rows: terminal.current.rows,
+          cols: terminal.current.cols,
+        }));
       }
-    });
+    };
 
-    // Cleanup on component unmount
+    window.addEventListener('resize', handleResize);
     return () => {
       terminal.current.dispose();
-      if (socket.current) {
-        socket.current.close();
-      }
-      window.removeEventListener('resize', resizeListener);
+      if (socket.current) socket.current.close();
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 

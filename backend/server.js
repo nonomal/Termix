@@ -50,8 +50,8 @@ wss.on('connection', (ws) => {
                         }
 
                         // Set the terminal size dynamically based on the WebSocket message
-                        const sttyCommand = `export TERM=xterm && stty rows ${data.rows} cols ${data.cols}`;
-                        stream.write(sttyCommand + '\n'); // Send the stty command to set terminal size
+                        const sttyCommand = `stty -echo rows ${data.rows} cols ${data.cols}\n`;
+                        stream.write(sttyCommand);
 
                         // Handle data from SSH session
                         stream.on('data', (data) => {
@@ -66,9 +66,14 @@ wss.on('connection', (ws) => {
                         });
 
                         // When the WebSocket client sends a message (from terminal input), forward it to the SSH stream
-                        ws.on('message', (message) => {
-                            console.log(`Received message from WebSocket: ${message}`);
-                            stream.write(message); // Write the message (input) to the SSH shell
+                        ws.on('message', (msg) => {
+                            const input = JSON.parse(msg);
+                            if (input.type === 'resize') {
+                                const resizeCommand = `stty rows ${input.rows} cols ${input.cols}\n`;
+                                stream.write(resizeCommand);
+                            } else {
+                                stream.write(input);
+                            }
                         });
                     });
                 }).on('error', (err) => {
