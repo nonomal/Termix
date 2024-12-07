@@ -49,10 +49,6 @@ wss.on('connection', (ws) => {
                             return;
                         }
 
-                        // Set the terminal size dynamically based on the WebSocket message
-                        const sttyCommand = `stty -echo rows ${data.rows} cols ${data.cols}\n`;
-                        stream.write(sttyCommand);
-
                         // Handle data from SSH session
                         stream.on('data', (data) => {
                             console.log(`SSH Output: ${data}`);

@@ -38,6 +38,12 @@ const App = () => {
     // Resize terminal to fit the container initially
     fitAddon.current.fit();
 
+    terminal.current.onData((data) => {
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        socket.current.send(data);
+      }
+    });
+
     // Adjust terminal size on window resize
     const handleResize = () => {
       fitAddon.current.fit();
@@ -49,8 +55,8 @@ const App = () => {
         }));
       }
     };
-
     window.addEventListener('resize', handleResize);
+
     return () => {
       terminal.current.dispose();
       if (socket.current) socket.current.close();
