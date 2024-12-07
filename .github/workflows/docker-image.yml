@@ -23,14 +23,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache Node Modules
-        uses: actions/cache@v3
-        with:
-          path: frontend/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
       - name: Install Dependencies and Build Frontend
         run: |
           cd frontend
@@ -60,30 +52,7 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Cache ghcr-cleaner
-        uses: actions/cache@v3
-        with:
-          path: /usr/local/bin/ghcr-cleaner
-          key: ghcr-cleaner-${{ runner.os }}-${{ hashFiles('path/to/ghcr-cleaner-version-file') }}
-          restore-keys: |
-            ghcr-cleaner-${{ runner.os }}-
-
-      - name: Download ghcr-cleaner if not cached
-        run: |
-          if ! command -v ghcr-cleaner &> /dev/null; then
-            echo "ghcr-cleaner not found, downloading..."
-            curl -L https://github.com/quartz-analytics/ghcr-cleaner/releases/download/v1.0.0/ghcr-cleaner-linux-amd64 -o /usr/local/bin/ghcr-cleaner
-            chmod +x /usr/local/bin/ghcr-cleaner
-          else
-            echo "ghcr-cleaner found, skipping download"
-          fi
-
-      - name: Prune BuildKit Cache
-        run: |
-          echo "Pruning BuildKit cache..."
-          docker builder prune -f
-
-      - name: Build and Push Docker Image with Cache
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -91,8 +60,8 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO_OWNER }}/ssh-project:${{ env.IMAGE_TAG }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,ref=ghcr.io/${{ env.REPO_OWNER }}/ssh-project:cache
-          cache-to: type=gha,mode=max,ref=ghcr.io/${{ env.REPO_OWNER }}/ssh-project:cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Notify via ntfy
         run: |
@@ -106,7 +75,6 @@ jobs:
           token: ${{ secrets.GHCR_TOKEN }}
           repository-owner: ${{ github.repository_owner }}
           delete-untagged: true
-          keep-at-most: 0
 
       - name: Cleanup Docker Images Locally
         run: |

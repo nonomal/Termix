@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Docker build update #9 (nevermind not finanl)">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Docker build update #10">
       <change beforePath="$PROJECT_DIR$/.github/workflows/docker-image.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-image.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
@@ -115,7 +115,7 @@
       <updated>1733439468142</updated>
       <workItem from="1733439479708" duration="5489000" />
       <workItem from="1733448523969" duration="3535000" />
-      <workItem from="1733549186397" duration="8033000" />
+      <workItem from="1733549186397" duration="8448000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -301,7 +301,15 @@
       <option name="project" value="LOCAL" />
       <updated>1733558138278</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="Docker build update #10">
+      <option name="closed" value="true" />
+      <created>1733558347319</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1733558347319</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -349,6 +357,7 @@
     <MESSAGE value="Docker build update #7 (final)" />
     <MESSAGE value="Docker build update #8 (nevermind not finanl)" />
     <MESSAGE value="Docker build update #9 (nevermind not finanl)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Docker build update #9 (nevermind not finanl)" />
+    <MESSAGE value="Docker build update #10" />
+    <option name="LAST_COMMIT_MESSAGE" value="Docker build update #10" />
   </component>
 </project>
