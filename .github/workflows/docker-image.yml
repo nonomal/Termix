@@ -22,6 +22,16 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Cache Node modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
       - name: Install Dependencies and Build Frontend
         run: |
           cd frontend
@@ -53,7 +63,7 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image with Cache
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -61,32 +71,20 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO_OWNER }}/ssh-project:${{ env.IMAGE_TAG }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Notify via ntfy
         run: |
           curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
           https://ntfy.karmaashomepage.online/ssh-project-build
 
-      - name: Cleanup Docker Images on GHCR
-        run: |
-          # Get the list of images from ghcr.io
-          images=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
-            "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/ssh-project/versions")
-
-          # Check the response (for debugging)
-          echo "Response from GHCR: $images"
-
-          # List image tags and delete older versions (keep the latest 10)
-          count=0
-          max_images=10
-          for image in $(echo "$images" | jq -r '.[] | .id'); do
-            if [ $count -ge $max_images ]; then
-              echo "Deleting image $image"
-              curl -X DELETE -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
-                "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/ssh-project/versions/$image"
-            fi
-            count=$((count + 1))
-          done
+      - uses: quartx-analytics/ghcr-cleaner@v1
+        with:
+          owner-type: user
+          token: ${{ secrets.PAT_TOKEN }}
+          repository_owner: ${{ github.repository_owner }}
+          delete-untagged: true
 
       - name: Cleanup Docker Images Locally
         run: |
