@@ -16,109 +16,90 @@ const App = () => {
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
 
   useEffect(() => {
-    console.log('Initializing terminal...');
+    // Initialize the terminal and the fit addon
     terminal.current = new Terminal({
       cursorBlink: true,
-      theme: { background: '#1e1e1e', foreground: '#ffffff' },
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#ffffff',
+      },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      fontSize: 14,
+      scrollback: 5000,
     });
 
+    // Initialize and attach the fit addon to the terminal
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
-    let resizeObserver = new ResizeObserver(() => {
+    terminal.current.open(terminalRef.current);
+
+    // Resize terminal to fit the container initially
+    fitAddon.current.fit();
+
+    // Adjust terminal size on window resize
+    const resizeListener = () => {
       fitAddon.current.fit();
-      notifyServerOfResize();
-    });
+    };
+    window.addEventListener('resize', resizeListener);
 
-    if (terminalRef.current) {
-      terminal.current.open(terminalRef.current);
-      console.log('Terminal opened successfully.');
-      resizeObserver.observe(terminalRef.current);
-    } else {
-      console.error('Terminal reference is not valid!');
-    }
-
+    // Monitor terminal data (activity)
     terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(data);
       }
     });
 
-
-    const notifyServerOfResize = () => {
-      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        const { rows, cols } = terminal.current;
-        socket.current.send(
-            JSON.stringify({
-              type: 'resize',
-              rows,
-              cols,
-              height: terminalRef.current.offsetHeight,
-              width: terminalRef.current.offsetWidth,
-            })
-        );
-      }
+    // Add specific resize call for certain programs like nano or vim
+    const resizeTerminalOnStart = () => {
+      // Resize immediately after starting vim/nano or other programs
+      fitAddon.current.fit();
+      terminal.current.clear();
     };
 
-    const resizeTerminal = () => {
-      if (terminalRef.current) {
-        fitAddon.current.fit();
-        notifyServerOfResize();
+    terminal.current.onData((data) => {
+      if (data.includes('nano') || data.includes('vim')) {
+        // Trigger resize immediately when these programs start
+        resizeTerminalOnStart();
       }
-    };
+    });
 
-    resizeTerminal();
-    window.addEventListener('resize', resizeTerminal);
-
+    // Cleanup on component unmount
     return () => {
       terminal.current.dispose();
       if (socket.current) {
         socket.current.close();
       }
-      window.removeEventListener('resize', resizeTerminal);
-      resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeListener);
     };
   }, []);
 
   const handleConnect = () => {
-    console.log('Connecting...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/`;
-    console.log(`WebSocket URL: ${wsUrl}`);
+    const wsUrl = `${protocol}//${window.location.host}/ws/`; // Use current host and "/ws/" endpoint
+
+    if (!host || !username || !password) {
+      terminal.current.writeln('Please fill in all fields.');
+      return;
+    }
 
     socket.current = new WebSocket(wsUrl);
 
     socket.current.onopen = () => {
-      console.log('WebSocket connection opened');
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
       socket.current.send(JSON.stringify({ host, username, password }));
       setIsConnected(true);
     };
 
     socket.current.onmessage = (event) => {
-      console.log('Received message:', event.data);
-      try {
-        const parsedData = JSON.parse(event.data);
-        if (parsedData.type === 'process_closed') {
-          notifyServerOfResize();
-        } else {
-          terminal.current.write(event.data);
-        }
-      } catch (error) {
-        terminal.current.write(event.data)
-      }
+      terminal.current.write(event.data);
     };
 
     socket.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
       terminal.current.writeln(`WebSocket error: ${error.message}`);
     };
 
     socket.current.onclose = () => {
-      console.log('WebSocket connection closed');
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
@@ -130,11 +111,6 @@ const App = () => {
 
   const handleSideBarHiding = () => {
     setIsSideBarHidden((prevState) => !prevState);
-    if (!isSideBarHidden) {
-      setTimeout(() => {
-        fitAddon.current.fit();
-      }, 100);
-    }
   };
 
   return (
@@ -168,7 +144,11 @@ const App = () => {
           <div ref={terminalRef} className="terminal-container"></div>
         </div>
 
-        <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
+        {/* Hide button always positioned in the bottom-right corner */}
+        <button
+            className="hide-sidebar-button"
+            onClick={handleSideBarHiding}
+        >
           {isSideBarHidden ? '+' : '-'}
         </button>
       </div>
