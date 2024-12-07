@@ -60,6 +60,24 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
+      - name: Cache ghcr-cleaner
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/bin/ghcr-cleaner
+          key: ghcr-cleaner-${{ runner.os }}-${{ hashFiles('path/to/ghcr-cleaner-version-file') }}
+          restore-keys: |
+            ghcr-cleaner-${{ runner.os }}-
+
+      - name: Download ghcr-cleaner if not cached
+        run: |
+          if ! command -v ghcr-cleaner &> /dev/null; then
+            echo "ghcr-cleaner not found, downloading..."
+            curl -L https://github.com/quartz-analytics/ghcr-cleaner/releases/download/v1.0.0/ghcr-cleaner-linux-amd64 -o /usr/local/bin/ghcr-cleaner
+            chmod +x /usr/local/bin/ghcr-cleaner
+          else
+            echo "ghcr-cleaner found, skipping download"
+          fi
+
       - name: Build and Push Docker Image with Cache
         uses: docker/build-push-action@v2
         with:
