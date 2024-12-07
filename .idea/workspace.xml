@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Release 1.0!!!!">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/info.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -120,7 +116,7 @@
       <workItem from="1733448523969" duration="3535000" />
       <workItem from="1733549186397" duration="8748000" />
       <workItem from="1733599078854" duration="1895000" />
-      <workItem from="1733601633451" duration="2628000" />
+      <workItem from="1733601633451" duration="4501000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
