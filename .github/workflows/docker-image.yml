@@ -67,5 +67,25 @@ jobs:
           curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
           https://ntfy.karmaashomepage.online/ssh-project-build
 
-      - name: Cleanup Docker Images
-        run: docker image prune -af
+      - name: Cleanup Docker Images on GHCR
+        run: |
+          # Get the list of images from ghcr.io
+          images=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
+            "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/ssh-project/versions")
+          
+          # List image tags and delete older versions (keep the latest 10)
+          count=0
+          max_images=10
+          for image in $(echo "$images" | jq -r '.[].id'); do
+            if [ $count -ge $max_images ]; then
+              echo "Deleting image $image"
+              curl -X DELETE -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
+                "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/ssh-project/versions/$image"
+            fi
+            count=$((count + 1))
+          done
+
+      - name: Cleanup Docker Images Locally
+        run: |
+          docker image prune -af
+          docker system prune -af --volumes
