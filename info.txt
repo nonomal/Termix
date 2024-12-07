@@ -1,8 +1,7 @@
 Currently:
-Fix issue after nano where the input no longer goes down to the bottom.
-Fix issue where SSH randomly disconnects
-lines do not go down a line when wrapping, they overwite previous text on that line
-ntfy notifcation after build push
+make the cmds run at start not show up
+see if it auto resizes the terminal via cmds after the browser window size has changed or +/- clicked (does not)
+ntfy notifcation after build push (I think I did)
 
 Overall Features:
 SSH/RDP(?)/VNC(?)

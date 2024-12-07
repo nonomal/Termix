@@ -59,6 +59,11 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO_OWNER }}/ssh-project:${{ env.IMAGE_TAG }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Notify via ntfy
+        run: |
+          curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
+          https://ntfy.karmaashomepage.online/ssh-project-build
       
       - name: Cleanup Docker Images
         run: docker image prune -af
