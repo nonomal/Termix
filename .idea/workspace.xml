@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Release 1.0!!!!">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Update README.md #4">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TermixLogo.png" beforeDir="false" afterPath="$PROJECT_DIR$/repo-images/TermixLogo.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/info.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -17,7 +18,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="alpha-1.0" />
+        <entry key="$PROJECT_DIR$" value="release-1.0" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -101,8 +102,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Shell Script.run_backend_frontend" />
       <item itemvalue="npm.run_start_frontend" />
+      <item itemvalue="Shell Script.run_backend_frontend" />
     </list>
   </component>
   <component name="SharedIndexes">
@@ -127,6 +128,7 @@
       <workItem from="1733601633451" duration="10190000" />
       <workItem from="1733644355292" duration="59000" />
       <workItem from="1733644430242" duration="42000" />
+      <workItem from="1733688686708" duration="2146000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -344,26 +346,24 @@
       <option name="project" value="LOCAL" />
       <updated>1733603759658</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="Update README.md #4">
+      <option name="closed" value="true" />
+      <created>1733688870582</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1733688870582</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
-    <option name="OPEN_GENERIC_TABS">
-      <map>
-        <entry key="b19a2984-e5f0-4539-aee3-b8a963f11544" value="TOOL_WINDOW" />
-      </map>
-    </option>
     <option name="TAB_STATES">
       <map>
         <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-        <entry key="b19a2984-e5f0-4539-aee3-b8a963f11544">
           <value>
             <State />
           </value>
@@ -396,6 +396,7 @@
     <MESSAGE value="Docker build update #10 (I hope final)" />
     <MESSAGE value="Docker build update #10 (actual final)" />
     <MESSAGE value="Release 1.0!!!!" />
-    <option name="LAST_COMMIT_MESSAGE" value="Release 1.0!!!!" />
+    <MESSAGE value="Update README.md #4" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update README.md #4" />
   </component>
 </project>

@@ -13,7 +13,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/LukeGus/Termix">
-    <img alt="Termimx Banner" src="./TermixLogo.png" style="width: 125px; height: auto;">  </a>
+    <img alt="Termimx Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
 </p>
 
 # Description
