@@ -38,7 +38,7 @@ Before developing Termix, I faced the issue of a server management panel that di
 View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix.
 
 # Known Bugs
-## Please create an [Issue](https://github.com/LukeGus/Termix/issues) if you find any problems!
+### Please create an [Issue](https://github.com/LukeGus/Termix/issues) if you find any problems!
 Start session button stays connected even if SSH fails to connect.
 
 # Show-off
