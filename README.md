@@ -39,3 +39,7 @@ View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information o
 
 # License
 Distributed under the MIT license. See LICENSE for more information.
+
+# Show-off
+
+![Demo Image](repo-images/DemoImage1.png)
