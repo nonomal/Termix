@@ -58,13 +58,13 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_OWNER }}/ssh-project:${{ env.IMAGE_TAG }}
+          tags: ghcr.io/${{ env.REPO_OWNER }}/termix:${{ env.IMAGE_TAG }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Notify via ntfy
         run: |
           curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
-          https://ntfy.karmaashomepage.online/ssh-project-build
+          https://ntfy.karmaashomepage.online/termix-build
 
       - name: Delete all untagged image versions
         uses: quartx-analytics/ghcr-cleaner@v1

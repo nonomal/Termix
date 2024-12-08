@@ -1,5 +1,6 @@
 Currently:
-all done for release!
+Create read.me (copy stuff from nexterm, do planned vs current features, description, why were different, setup tutorial (docker, manual build), example images (live tutorial?), eventually website?, that cool info stuff it shows like the repo stars and the brand iamge and stuff)
+then all done for release!
 
 Minor bugs:
 start session button stays connected even if fail to connect (for example for port). Also should be able to click it again to stop the connection.

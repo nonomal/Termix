@@ -4,8 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Release 1.0!!!!">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-image.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-image.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/info.txt" beforeDir="false" afterPath="$PROJECT_DIR$/info.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/favicon.ico" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/logo192.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/logo512.png" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,9 +36,10 @@
     &quot;accountId&quot;: &quot;f04977d4-c3b2-400a-9c9b-d5b445f8a970&quot;
   }
 }</component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 8
-}</component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "636378de",
+  "associatedIndex": 8
+}]]></component>
   <component name="ProjectId" id="2pojjnjB8kTL4lo1P2No1yvZp4c" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="1" id="Add" />
@@ -66,6 +74,11 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Programming Projects\SSH-Project-JB\public" />
+    </key>
+  </component>
   <component name="RunManager" selected="Shell Script.run_backend_frontend">
     <configuration name="run_backend_frontend" type="ShConfigurationType">
       <option name="SCRIPT_TEXT" value="Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-vite&quot;; Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-server&quot; " />
@@ -116,7 +129,7 @@
       <workItem from="1733448523969" duration="3535000" />
       <workItem from="1733549186397" duration="8748000" />
       <workItem from="1733599078854" duration="1895000" />
-      <workItem from="1733601633451" duration="4501000" />
+      <workItem from="1733601633451" duration="10190000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
