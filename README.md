@@ -34,8 +34,8 @@ Termix is an open-source forever free self-hosted SSH (other protocols planned, 
 # How Termix is Different
 Before developing Termix, I faced the issue of a server management panel that did not have every feature I liked. [Guacamole](https://guacamole.apache.org/) had poor copy/paste abilities and a poor UI. [Shellngn](https://shellngn.com/) was too expensive and all other alternatives had one major problem with them. I plan to develop the management panel of my dreams with even an AI integration for those pesky commands I always forget the syntax of.
 
-# Setup
-View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to self-host Termix.
+# Installation
+View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix.
 
 # License
 Distributed under the MIT license. See LICENSE for more information.
