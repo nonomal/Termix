@@ -37,9 +37,13 @@ Before developing Termix, I faced the issue of a server management panel that di
 # Installation
 View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix.
 
-# License
-Distributed under the MIT license. See LICENSE for more information.
+# Known Bugs
+## Please create an [Issue](https://github.com/LukeGus/Termix/issues) if you find any problems!
+Start session button stays connected even if SSH fails to connect.
 
 # Show-off
 
 ![Demo Image](repo-images/DemoImage1.png)
+
+# License
+Distributed under the MIT license. See LICENSE for more information.
