@@ -1,5 +1,5 @@
 Currently:
-Create read.me (copy stuff from nexterm, do planned vs current features, description, why were different, setup tutorial (docker, manual build), example images (live tutorial?), eventually website?, that cool info stuff it shows like the repo stars and the brand iamge and stuff)
+Create read.me (copy stuff from nexterm, do planned vs current features, description, why were different, setup tutorial (docker, manual build), example images (live tutorial?), eventually website?)
 then all done for release!
 
 Minor bugs:
