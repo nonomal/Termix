@@ -17,6 +17,6 @@
 </p>
 
 # Description
-Termix is a SSH (other protocols planned, see [#planned-features](planned-features))
+Termix is an SSH (other protocols planned, see [Planned Features](#planned-features))
 
 # Planned Features
