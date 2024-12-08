@@ -17,6 +17,25 @@
 </p>
 
 # Description
-Termix is an SSH (other protocols planned, see [Planned Features](#planned-features))
+Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
+
+> [!WARNING]  
+> This app is in the VERY early stages of development. Expect bugs, data loss, and possibly even security issues!
 
 # Planned Features
+- [x] SSH
+- [ ] VNC
+- [ ] RDP
+- [ ] SMTP (build in file transfer)
+- [ ] Split Screen & Tabs
+- [ ] ChatGPT/Ollama Integration (for commands)
+- [ ] Login Screen
+
+# How Termix is Different
+Before developing Termix, I faced the issue of a server management panel that did not have every feature I liked. [Guacamole](https://guacamole.apache.org/) had poor copy/paste abilities and a poor UI. [Shellngn](https://shellngn.com/) was too expensive and all other alternatives had one major problem with them. I plan to develop the management panel of my dreams with even an AI integration for those pesky commands I always forget the syntax of.
+
+# Setup
+View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to self-host Termix.
+
+# License
+Distributed under the MIT license. See LICENSE for more information.
