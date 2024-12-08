@@ -1,4 +1,4 @@
-#### Repo Stats
+# Repo Stats
 ![GitHub Repo stars](https://img.shields.io/github/stars/LukeGus/Termix?style=flat&label=Stars)
 ![GitHub forks](https://img.shields.io/github/forks/LukeGus/Termix?style=flat&label=Forks)
 ![GitHub Release](https://img.shields.io/github/v/release/LukeGus/Termix?style=flat&label=Release)
@@ -15,3 +15,8 @@
   <a href="https://github.com/LukeGus/Termix">
     <img alt="Termimx Banner" src="./TermixLogo.png" style="width: 125px; height: auto;">  </a>
 </p>
+
+# Description
+Termix is a SSH (other protocols planned, see [#planned-features](planned-features))
+
+# Planned Features
