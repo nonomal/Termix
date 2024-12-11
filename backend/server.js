@@ -16,6 +16,7 @@ wss.on('connection', (ws) => {
     let stream = null;
     let currentCols = 80;
     let currentRows = 24;
+    let interval = null;
 
     const resizeTerminal = (cols, rows) => {
         if (stream && stream.setWindow) {
@@ -44,7 +45,7 @@ wss.on('connection', (ws) => {
             conn.on('ready', () => {
                 console.log('SSH Connection established');
 
-                const interval = setInterval(() => {
+                interval = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.ping();
                     } else {
@@ -90,7 +91,9 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         console.log('WebSocket closed');
-        clearInterval(interval);
+        if (interval) {
+            clearInterval(interval);
+        }
         if (conn) {
             conn.end();
         }

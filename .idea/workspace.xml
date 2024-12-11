@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Final updates (I hope for real this time)">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/server.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Fix web-socket timeout." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -137,7 +133,7 @@
       <workItem from="1733804654516" duration="339000" />
       <workItem from="1733805003742" duration="9000" />
       <workItem from="1733883751079" duration="757000" />
-      <workItem from="1733884522510" duration="2569000" />
+      <workItem from="1733884522510" duration="2933000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -403,7 +399,15 @@
       <option name="project" value="LOCAL" />
       <updated>1733886236040</updated>
     </task>
-    <option name="localTasksCounter" value="34" />
+    <task id="LOCAL-00034" summary="Fix web-socket timeout.">
+      <option name="closed" value="true" />
+      <created>1733887722496</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1733887722496</updated>
+    </task>
+    <option name="localTasksCounter" value="35" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -421,7 +425,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Nano zoom fix #16 (ssh-2-promise)" />
     <MESSAGE value="Full return back to old code with minor fixes" />
     <MESSAGE value="Terminal size fix #18 (rows &amp; cols fix)" />
     <MESSAGE value="Test ntfy build notification system" />
@@ -446,6 +449,7 @@
     <MESSAGE value="Final changes to release-1.0" />
     <MESSAGE value="Update name (need to fix logo)" />
     <MESSAGE value="Final updates (I hope for real this time)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Final updates (I hope for real this time)" />
+    <MESSAGE value="Fix web-socket timeout." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix web-socket timeout." />
   </component>
 </project>
