@@ -43,6 +43,15 @@ wss.on('connection', (ws) => {
         if (data?.host && data.port && data.username && data.password) {
             conn.on('ready', () => {
                 console.log('SSH Connection established');
+
+                const interval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.ping();
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 15000);
+
                 conn.shell({ term: 'xterm', cols: currentCols, rows: currentRows }, (error, newStream) => {
                     if (error) {
                         console.error(`SSH Shell Error: ${error}`);
@@ -81,6 +90,7 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         console.log('WebSocket closed');
+        clearInterval(interval);
         if (conn) {
             conn.end();
         }
