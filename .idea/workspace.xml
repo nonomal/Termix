@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Fix timeout on close.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="release-1.0" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {}
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/LukeGus/Termix&quot;,
+    &quot;accountId&quot;: &quot;f107d505-1915-4c73-a3f4-e0440737e1dc&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;636378de&quot;,
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2pojjnjB8kTL4lo1P2No1yvZp4c" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Shell Script.Node Server.js Start.executor&quot;: &quot;Run&quot;,
+    &quot;Shell Script.Run backend and frontend.executor&quot;: &quot;Run&quot;,
+    &quot;Shell Script.run_backend_frontend.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;release-1.0&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Luke/Documents/Personal Projects/Termix/frontend&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.run_start.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_frontend.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_node_backend.executor&quot;: &quot;Run&quot;,
+    &quot;npm.run_start_vite.executor&quot;: &quot;Run&quot;,
+    &quot;npm.start.executor&quot;: &quot;Run&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Luke\Documents\Personal Projects\Termix\frontend" />
+      <recent name="C:\Users\Luke\Documents\Personal Projects\Termix" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Luke\Documents\Personal Projects\Termix\frontend\src" />
+      <recent name="D:\Programming Projects\Termix\repo-images" />
+      <recent name="D:\Programming Projects\SSH-Project-JB\public" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Shell Script.run_backend_frontend">
+    <configuration name="run_backend_frontend" type="ShConfigurationType">
+      <option name="SCRIPT_TEXT" value="Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-vite&quot;; Start-Process &quot;powershell&quot; -ArgumentList &quot;-NoProfile&quot;, &quot;-Command npm run start-server&quot; " />
+      <option name="INDEPENDENT_SCRIPT_PATH" value="false" />
+      <option name="SCRIPT_PATH" value="$PROJECT_DIR$/../../../../../Windows/System32/WindowsPowerShell/v1.0/powershell.exe" />
+      <option name="SCRIPT_OPTIONS" value="" />
+      <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="false" />
+      <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$/frontend" />
+      <option name="INDEPENDENT_INTERPRETER_PATH" value="false" />
+      <option name="INTERPRETER_PATH" value="$PROJECT_DIR$/../../../../../Windows/System32/WindowsPowerShell/v1.0/powershell.exe" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="EXECUTE_IN_TERMINAL" value="false" />
+      <option name="EXECUTE_SCRIPT_FILE" value="false" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="run_start_frontend" type="js.build_tools.npm">
+      <package-json value="$PROJECT_DIR$/frontend/package.json" />
+      <command value="start" />
+      <node-interpreter value="project" />
+      <envs />
+      <EXTENSION ID="com.intellij.lang.javascript.buildTools.npm.rc.StartBrowserRunConfigurationExtension">
+        <browser name="a7bb68e0-33c0-4d6f-a81a-aac1fdb870c8" start="true" url="http://localhost:8080" />
+      </EXTENSION>
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Shell Script.run_backend_frontend" />
+      <item itemvalue="npm.run_start_frontend" />
+    </list>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-deb605915726-JavaScript-WS-243.22562.112" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="" />
+      <created>1733439468142</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1733439468142</updated>
+      <workItem from="1733439479708" duration="5489000" />
+      <workItem from="1733448523969" duration="3535000" />
+      <workItem from="1733549186397" duration="8748000" />
+      <workItem from="1733599078854" duration="1895000" />
+      <workItem from="1733601633451" duration="10190000" />
+      <workItem from="1733644355292" duration="59000" />
+      <workItem from="1733644430242" duration="42000" />
+      <workItem from="1733688686708" duration="3433000" />
+      <workItem from="1733804654516" duration="339000" />
+      <workItem from="1733805003742" duration="9000" />
+      <workItem from="1733883751079" duration="757000" />
+      <workItem from="1733884522510" duration="3958000" />
+      <workItem from="1734052874393" duration="34000" />
+    </task>
+    <task id="LOCAL-00001" summary="Nano zoom fix #11">
+      <option name="closed" value="true" />
+      <created>1733447944692</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1733447944692</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Nano zoom fix #11">
+      <option name="closed" value="true" />
+      <created>1733448864234</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1733448864234</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Nano zoom fix #11">
+      <option name="closed" value="true" />
+      <created>1733449234908</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1733449234908</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Nano zoom fix #12">
+      <option name="closed" value="true" />
+      <created>1733449331913</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1733449331913</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Nano zoom fix #13">
+      <option name="closed" value="true" />
+      <created>1733449760767</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1733449760767</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Nano zoom fix #14">
+      <option name="closed" value="true" />
+      <created>1733450304640</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1733450304640</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Nano zoom fix #15">
+      <option name="closed" value="true" />
+      <created>1733450681262</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1733450681262</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Nano zoom fix #16 (ssh-2-promise)">
+      <option name="closed" value="true" />
+      <created>1733451925922</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1733451925922</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Full return back to old code with minor fixes">
+      <option name="closed" value="true" />
+      <created>1733532896448</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1733532896448</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Terminal size fix #18 (rows &amp; cols fix)">
+      <option name="closed" value="true" />
+      <created>1733538097802</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1733538097802</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Test ntfy build notification system">
+      <option name="closed" value="true" />
+      <created>1733539381433</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1733539381433</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Silent resize cmds &amp; Auto resize terminal #1">
+      <option name="closed" value="true" />
+      <created>1733553128900</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1733553128900</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Silent resize cmds &amp; Auto resize terminal #2">
+      <option name="closed" value="true" />
+      <created>1733553902375</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1733553902375</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Docker build update">
+      <option name="closed" value="true" />
+      <created>1733555933987</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1733555933987</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Docker build update #2">
+      <option name="closed" value="true" />
+      <created>1733556269270</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1733556269270</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Docker build update #3">
+      <option name="closed" value="true" />
+      <created>1733556428424</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1733556428424</updated>
+    </task>
+    <task id="LOCAL-00017" summary="Docker build update #4 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733556699034</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1733556699034</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Docker build update #5 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733556917800</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1733556917800</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Docker build update #5 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733557286584</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557286584</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Docker build update #6 (cache and cleanup)">
+      <option name="closed" value="true" />
+      <created>1733557337662</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557337662</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Docker build update #7 (final)">
+      <option name="closed" value="true" />
+      <created>1733557558085</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557558085</updated>
+    </task>
+    <task id="LOCAL-00022" summary="Docker build update #8 (nevermind not finanl)">
+      <option name="closed" value="true" />
+      <created>1733557773727</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1733557773727</updated>
+    </task>
+    <task id="LOCAL-00023" summary="Docker build update #9 (nevermind not finanl)">
+      <option name="closed" value="true" />
+      <created>1733558138278</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1733558138278</updated>
+    </task>
+    <task id="LOCAL-00024" summary="Docker build update #10">
+      <option name="closed" value="true" />
+      <created>1733558347319</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1733558347319</updated>
+    </task>
+    <task id="LOCAL-00025" summary="Docker build update #10 (I hope final)">
+      <option name="closed" value="true" />
+      <created>1733558781194</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1733558781194</updated>
+    </task>
+    <task id="LOCAL-00026" summary="Docker build update #10 (actual final)">
+      <option name="closed" value="true" />
+      <created>1733558952696</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1733558952696</updated>
+    </task>
+    <task id="LOCAL-00027" summary="Release 1.0!!!!">
+      <option name="closed" value="true" />
+      <created>1733603759658</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1733603759658</updated>
+    </task>
+    <task id="LOCAL-00028" summary="Update README.md #4">
+      <option name="closed" value="true" />
+      <created>1733688870582</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1733688870582</updated>
+    </task>
+    <task id="LOCAL-00029" summary="Add images">
+      <option name="closed" value="true" />
+      <created>1733691729582</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1733691729582</updated>
+    </task>
+    <task id="LOCAL-00030" summary="Update image name">
+      <option name="closed" value="true" />
+      <created>1733691982293</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1733691982293</updated>
+    </task>
+    <task id="LOCAL-00031" summary="Final changes to release-1.0">
+      <option name="closed" value="true" />
+      <created>1733692181011</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1733692181011</updated>
+    </task>
+    <task id="LOCAL-00032" summary="Update name (need to fix logo)">
+      <option name="closed" value="true" />
+      <created>1733692962039</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1733692962039</updated>
+    </task>
+    <task id="LOCAL-00033" summary="Final updates (I hope for real this time)">
+      <option name="closed" value="true" />
+      <created>1733886236040</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1733886236040</updated>
+    </task>
+    <task id="LOCAL-00034" summary="Fix web-socket timeout.">
+      <option name="closed" value="true" />
+      <created>1733887722496</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1733887722496</updated>
+    </task>
+    <task id="LOCAL-00035" summary="Fix timeout on close.">
+      <option name="closed" value="true" />
+      <created>1733887980750</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1733887980750</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Terminal size fix #18 (rows &amp; cols fix)" />
+    <MESSAGE value="Test ntfy build notification system" />
+    <MESSAGE value="Silent resize cmds &amp; Auto resize terminal #1" />
+    <MESSAGE value="Silent resize cmds &amp; Auto resize terminal #2" />
+    <MESSAGE value="Docker build update" />
+    <MESSAGE value="Docker build update #2" />
+    <MESSAGE value="Docker build update #3" />
+    <MESSAGE value="Docker build update #4 (cache and cleanup)" />
+    <MESSAGE value="Docker build update #5 (cache and cleanup)" />
+    <MESSAGE value="Docker build update #6 (cache and cleanup)" />
+    <MESSAGE value="Docker build update #7 (final)" />
+    <MESSAGE value="Docker build update #8 (nevermind not finanl)" />
+    <MESSAGE value="Docker build update #9 (nevermind not finanl)" />
+    <MESSAGE value="Docker build update #10" />
+    <MESSAGE value="Docker build update #10 (I hope final)" />
+    <MESSAGE value="Docker build update #10 (actual final)" />
+    <MESSAGE value="Release 1.0!!!!" />
+    <MESSAGE value="Update README.md #4" />
+    <MESSAGE value="Add images" />
+    <MESSAGE value="Update image name" />
+    <MESSAGE value="Final changes to release-1.0" />
+    <MESSAGE value="Update name (need to fix logo)" />
+    <MESSAGE value="Final updates (I hope for real this time)" />
+    <MESSAGE value="Fix web-socket timeout." />
+    <MESSAGE value="Fix timeout on close." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix timeout on close." />
+  </component>
+</project>

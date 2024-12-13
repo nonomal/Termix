@@ -1,7 +1,7 @@
 // start.js
 const { spawn } = require('child_process');
 
-const child = spawn('node', ["\"D:/Programming Projects/SSH-Project-JB/backend/server.js\""], {
+const child = spawn('node', ["\"D:/Programming Projects/Termix/backend/server.js\""], {
     stdio: 'inherit', // this is key for interactivity
     shell: true, // use system shell
 });

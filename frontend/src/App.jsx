@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Terminal } from 'xterm';
+import { Terminal } from '@xterm/xterm';
 import 'xterm/css/xterm.css';
-import { FitAddon } from 'xterm-addon-fit';
+import { FitAddon } from '@xterm/addon-fit';
 import './App.css';
 
 const App = () => {
@@ -10,98 +10,109 @@ const App = () => {
   const fitAddon = useRef(null);
   const socket = useRef(null);
   const [host, setHost] = useState('');
+  const [port, setPort] = useState('22');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isSideBarHidden, setIsSideBarHidden] = useState(false);
 
   useEffect(() => {
-    console.log('Initializing terminal...');
     terminal.current = new Terminal({
       cursorBlink: true,
-      theme: { background: '#1e1e1e', foreground: '#ffffff' },
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#ffffff',
+      },
       macOptionIsMeta: true,
       allowProposedApi: true,
-      fontSize: 14,
+      scrollback: 5000,
     });
 
     fitAddon.current = new FitAddon();
     terminal.current.loadAddon(fitAddon.current);
 
-    if (terminalRef.current) {
-      terminal.current.open(terminalRef.current);
-      console.log('Terminal opened successfully.');
-    } else {
-      console.error('Terminal reference is not valid!');
-    }
+    terminal.current.open(terminalRef.current);
+    fitAddon.current.fit();
 
+    // Fit the terminal and send the size when needed
+    const fitAndNotifyResize = () => {
+      fitAddon.current.fit();
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        socket.current.send(JSON.stringify({
+          cols: terminal.current.cols,
+          rows: terminal.current.rows,
+        }));
+      }
+    };
+    window.addEventListener('resize', fitAndNotifyResize);
+
+    terminal.current.onResize(({ cols, rows }) => {
+      console.log(`Terminal resized to cols:${cols}, rows:${rows}`);
+      fitAndNotifyResize();
+    });
+
+    const handleConnectionEstablished = () => {
+      fitAndNotifyResize();
+    };
+
+    window.addEventListener('connection-established', handleConnectionEstablished);
+
+    // Monitor terminal data (activity)
     terminal.current.onData((data) => {
       if (socket.current && socket.current.readyState === WebSocket.OPEN) {
         socket.current.send(data);
       }
     });
 
-    const resizeTerminal = () => {
-      if (terminalRef.current) {
-        fitAddon.current.fit();
-        notifyServerOfResize();
-      }
-    };
-
-    const notifyServerOfResize = () => {
-      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        const { rows, cols } = terminal.current;
-        socket.current.send(
-            JSON.stringify({
-              type: 'resize',
-              rows,
-              cols,
-              height: terminalRef.current.offsetHeight,
-              width: terminalRef.current.offsetWidth,
-            })
-        );
-      }
-    };
-
-    resizeTerminal();
-    window.addEventListener('resize', resizeTerminal);
-
     return () => {
       terminal.current.dispose();
       if (socket.current) {
         socket.current.close();
       }
-      window.removeEventListener('resize', resizeTerminal);
+      window.removeEventListener('resize', fitAndNotifyResize);
     };
   }, []);
 
   const handleConnect = () => {
-    console.log('Connecting...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/`;
-    console.log(`WebSocket URL: ${wsUrl}`);
+    const wsUrl = `${protocol}//${window.location.host}/ws/`; // Use current host and "/ws/" endpoint
+
+    if (!host || !username || !password) {
+      terminal.current.writeln('Please fill in all fields.');
+      return;
+    }
 
     socket.current = new WebSocket(wsUrl);
 
     socket.current.onopen = () => {
-      console.log('WebSocket connection opened');
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
-      socket.current.send(JSON.stringify({ host, username, password }));
+      socket.current.send(
+          JSON.stringify({
+            host,
+            port,
+            username,
+            password,
+            rows: terminal.current.rows,
+            cols: terminal.current.cols
+          })
+      );
+
+      // Dispatch a custom event when connection is open
+      const event = new Event('connection-established');
+      window.dispatchEvent(event);
+
       setIsConnected(true);
     };
 
     socket.current.onmessage = (event) => {
-      console.log('Received message:', event.data);
       terminal.current.write(event.data);
     };
 
     socket.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
       terminal.current.writeln(`WebSocket error: ${error.message}`);
     };
 
     socket.current.onclose = () => {
-      console.log('WebSocket connection closed');
       terminal.current.writeln('Disconnected from WebSocket server.');
       setIsConnected(false);
     };
@@ -112,13 +123,33 @@ const App = () => {
   };
 
   const handleSideBarHiding = () => {
-    setIsSideBarHidden((prevState) => !prevState);
-    if (!isSideBarHidden) {
-      setTimeout(() => {
-        fitAddon.current.fit();
-        notifyServerOfResize();
-      }, 100);
-    }
+    setIsSideBarHidden((prevState) => {
+      const newState = !prevState;
+      if (newState) {
+        setTimeout(() => {
+          // Add a delay to ensure layout settles before resize action
+          fitAddon.current.fit();
+          if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+            socket.current.send(JSON.stringify({
+              cols: terminal.current.cols,
+              rows: terminal.current.rows,
+            }));
+          }
+        }, 100); // Delay of 100 milliseconds
+      } else {
+        setTimeout(() => {
+          // Refit terminal when showing sidebar as well
+          fitAddon.current.fit();
+          if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+            socket.current.send(JSON.stringify({
+              cols: terminal.current.cols,
+              rows: terminal.current.rows,
+            }));
+          }
+        }, 100); // Delay of 100 milliseconds
+      }
+      return newState;
+    });
   };
 
   return (
@@ -131,6 +162,12 @@ const App = () => {
                 placeholder="Host"
                 value={host}
                 onChange={(e) => handleInputChange(e, setHost)}
+            />
+            <input
+                type="text"
+                placeholder="Port"
+                value={port}
+                onChange={(e) => handleInputChange(e, setPort)}
             />
             <input
                 type="text"
@@ -152,7 +189,11 @@ const App = () => {
           <div ref={terminalRef} className="terminal-container"></div>
         </div>
 
-        <button className="hide-sidebar-button" onClick={handleSideBarHiding}>
+        {/* Hide button always positioned in the bottom-right corner */}
+        <button
+            className="hide-sidebar-button"
+            onClick={handleSideBarHiding}
+        >
           {isSideBarHidden ? '+' : '-'}
         </button>
       </div>

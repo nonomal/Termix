@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/SSH-Project-JB.iml" filepath="$PROJECT_DIR$/.idea/SSH-Project-JB.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Termix.iml" filepath="$PROJECT_DIR$/.idea/Termix.iml" />
     </modules>
   </component>
 </project>
