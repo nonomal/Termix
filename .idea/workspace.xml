@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Fix timeout on close.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Fix web-socket timeout." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -24,12 +21,12 @@
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {}
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/LukeGus/Termix&quot;,
-    &quot;accountId&quot;: &quot;f107d505-1915-4c73-a3f4-e0440737e1dc&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/LukeGus/Termix",
+    "accountId": "f107d505-1915-4c73-a3f4-e0440737e1dc"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;636378de&quot;,
   &quot;associatedIndex&quot;: 8
@@ -42,32 +39,32 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;Shell Script.Node Server.js Start.executor&quot;: &quot;Run&quot;,
-    &quot;Shell Script.Run backend and frontend.executor&quot;: &quot;Run&quot;,
-    &quot;Shell Script.run_backend_frontend.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;release-1.0&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Luke/Documents/Personal Projects/Termix/frontend&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;npm.run_start.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_frontend.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_node_backend.executor&quot;: &quot;Run&quot;,
-    &quot;npm.run_start_vite.executor&quot;: &quot;Run&quot;,
-    &quot;npm.start.executor&quot;: &quot;Run&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "Shell Script.Node Server.js Start.executor": "Run",
+    "Shell Script.Run backend and frontend.executor": "Run",
+    "Shell Script.run_backend_frontend.executor": "Run",
+    "git-widget-placeholder": "release-1.0",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/Luke/Documents/Personal Projects/Termix/frontend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.run_start.executor": "Run",
+    "npm.run_start_frontend.executor": "Run",
+    "npm.run_start_node_backend.executor": "Run",
+    "npm.run_start_vite.executor": "Run",
+    "npm.start.executor": "Run",
+    "settings.editor.selected.configurable": "ml.llm.LLMConfigurable",
+    "ts.external.directory.path": "D:\\Program Files (x86)\\Applications\\Jetbrains Webstorm\\WebStorm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\Luke\Documents\Personal Projects\Termix\frontend" />
@@ -106,8 +103,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Shell Script.run_backend_frontend" />
       <item itemvalue="npm.run_start_frontend" />
+      <item itemvalue="Shell Script.run_backend_frontend" />
     </list>
   </component>
   <component name="SharedIndexes">
@@ -136,8 +133,7 @@
       <workItem from="1733804654516" duration="339000" />
       <workItem from="1733805003742" duration="9000" />
       <workItem from="1733883751079" duration="757000" />
-      <workItem from="1733884522510" duration="3958000" />
-      <workItem from="1734052874393" duration="34000" />
+      <workItem from="1733884522510" duration="2933000" />
     </task>
     <task id="LOCAL-00001" summary="Nano zoom fix #11">
       <option name="closed" value="true" />
@@ -411,15 +407,7 @@
       <option name="project" value="LOCAL" />
       <updated>1733887722496</updated>
     </task>
-    <task id="LOCAL-00035" summary="Fix timeout on close.">
-      <option name="closed" value="true" />
-      <created>1733887980750</created>
-      <option name="number" value="00035" />
-      <option name="presentableId" value="LOCAL-00035" />
-      <option name="project" value="LOCAL" />
-      <updated>1733887980750</updated>
-    </task>
-    <option name="localTasksCounter" value="36" />
+    <option name="localTasksCounter" value="35" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -437,6 +425,7 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
+    <MESSAGE value="Full return back to old code with minor fixes" />
     <MESSAGE value="Terminal size fix #18 (rows &amp; cols fix)" />
     <MESSAGE value="Test ntfy build notification system" />
     <MESSAGE value="Silent resize cmds &amp; Auto resize terminal #1" />
@@ -461,7 +450,6 @@
     <MESSAGE value="Update name (need to fix logo)" />
     <MESSAGE value="Final updates (I hope for real this time)" />
     <MESSAGE value="Fix web-socket timeout." />
-    <MESSAGE value="Fix timeout on close." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fix timeout on close." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix web-socket timeout." />
   </component>
 </project>

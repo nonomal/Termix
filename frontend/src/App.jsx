@@ -82,7 +82,7 @@ const App = () => {
       return;
     }
 
-    socket.current = new WebSocket(wsUrl);
+    socket.current = new WebSocket("ws://localhost:8081");
 
     socket.current.onopen = () => {
       terminal.current.writeln(`Connected to WebSocket server at ${wsUrl}`);
