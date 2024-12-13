@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8497df64-d86b-4c98-ac58-c157d9d3fb1e" name="Changes" comment="Fix timeout on close.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="b4334dc3-7c1b-4d3b-8e6f-0aa81272fbd4" name="Changes" comment="Fix stupid error (forgot to change websocket to wsUrl)" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -106,8 +103,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Shell Script.run_backend_frontend" />
       <item itemvalue="npm.run_start_frontend" />
+      <item itemvalue="Shell Script.run_backend_frontend" />
     </list>
   </component>
   <component name="SharedIndexes">
