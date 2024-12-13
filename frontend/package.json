@@ -6,6 +6,8 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^14.4.3",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "express": "^4.21.1",
     "guacamole-common-js": "^1.5.0",
     "http-proxy-middleware": "^3.0.3",
@@ -24,7 +26,7 @@
   },
   "scripts": {
     "start-vite": "cross-env BROWSER=none WDS_SOCKET_PORT=0 vite --port 8080",
-    "start-server": "node 'D:/Programming Projects/SSH-Project/ssh-project/backend/server.js'",
+    "start-server": "node ./start.js",
     "start": "npm run start-vite && npm run start-server",
     "build": "vite build",
     "preview": "vite preview",

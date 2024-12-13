@@ -1,11 +1,2 @@
 Currently:
-Fix issue after nano where the input no longer goes down to the bottom.
-Fix issue where SSH randomly disconnects
-Post inital build.
-
-Overall Features:
-SSH/RDP(?)/VNC(?)
-Split Screen & Tabs
-ChatGPT/Ollama Stuff
-SMTP(?)
-Login Page
+Done for release!
