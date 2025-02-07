@@ -1,0 +1,144 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.sidebar {
+  display: flex;
+  flex-shrink: 1;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: 0.5em;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100vh;
+  padding: 2em;
+  width: 10em;
+  background-color: #323232;
+  font-size: 16px;
+}
+
+.topbar {
+  display: flex;
+  flex-shrink: 0;
+  flex-grow: 1;
+  flex-direction: row;
+  position: fixed;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding: 30px;
+  background-color: #323232;
+  top: 0;
+  left: 14em;
+  right: 0;
+  width: calc(100% - 14em);
+  min-height: 36px;
+  height: auto;
+  font-size: 16px;
+  gap: 0.5em;
+  overflow-x: auto;
+}
+
+.topbar button {
+  padding: 0.5em 1em;
+  background-color: #444;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topbar button.active-tab {
+  background-color: #1a1a1a;
+  border-bottom: 2px solid white;
+}
+
+.terminal-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+}
+
+.terminal-tab.active {
+  display: block;
+}
+
+.add-host {
+  display: flex;
+  flex-shrink: 1;
+  flex-grow: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 375px;
+  transform: translate(-50%, -50%);
+  gap: 0.5em;
+  padding: 1em;
+  z-index: 1;
+  background-color: #323232;
+  box-shadow: #1a1a1a 0 0 1em;
+  border-radius: 8px;
+}
+
+.add-host-close {
+  position: absolute;
+  top: -7px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.add-host h2 {
+  margin: 0.2em;
+}
+
+.add-host input {
+  margin-top: 0.1em;
+}
+
+.add-host button {
+  margin-top: 1em;
+}
+
+.add-host.hidden {
+  display: none;
+}
+
+.terminal-wrapper {
+  position: fixed;
+  top: 96px;
+  left: 14em;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: #1c1c1c;
+  text-align: left;
+}
+
+.terminal-container {
+  width: 100%;
+  height: 100%;
+  border: none;
+  text-align: left;
+}
