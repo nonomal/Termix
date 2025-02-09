@@ -9,7 +9,7 @@ RUN npm run build
 # Build backend
 FROM node:18-alpine AS backend-build
 WORKDIR /app/src/backend
-COPY ./src/backend ./src/backend
+COPY ./src/backend /app/src/backend
 
 # Configure nginx
 FROM nginx:alpine
