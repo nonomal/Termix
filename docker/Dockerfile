@@ -8,8 +8,8 @@ RUN npm run build
 
 # Build backend
 FROM node:18-alpine AS backend-build
-WORKDIR src/backend
-COPY ./ ./
+WORKDIR /app/src/backend  # Ensure the correct path here
+COPY ./src/backend ./src/backend  # Copy the correct backend files
 
 # Configure nginx
 FROM nginx:alpine
@@ -17,12 +17,12 @@ FROM nginx:alpine
 RUN apk add --no-cache nodejs npm
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
-COPY --from=backend-build src/backend /src/backend
-COPY --from=backend-build src/backend/entrypoint.sh /src/backend/entrypoint.sh
+COPY --from=backend-build /app/src/backend /src/backend
+COPY --from=backend-build /app/src/backend/entrypoint.sh /src/backend/entrypoint.sh
 
 # Configure start-up
-RUN chmod +x src/backend/entrypoint.sh
-ENTRYPOINT ["src/backend/entrypoint.sh"]
+RUN chmod +x /src/backend/entrypoint.sh
+ENTRYPOINT ["/src/backend/entrypoint.sh"]
 
 EXPOSE 8080
 EXPOSE 8081
