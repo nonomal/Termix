@@ -17,8 +17,8 @@ FROM nginx:alpine
 RUN apk add --no-cache nodejs npm
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
-COPY --from=backend-build /src/backend /src/backend
-COPY --from=backend-build /src/backend/entrypoint.sh /src/backend/entrypoint.sh
+COPY --from=backend-build src/backend /src/backend
+COPY --from=backend-build src/backend/entrypoint.sh /src/backend/entrypoint.sh
 
 # Configure start-up
 RUN chmod +x /src/backend/entrypoint.sh
