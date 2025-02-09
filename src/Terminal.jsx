@@ -68,10 +68,11 @@ export function NewTerminal({ hostConfig }) {
         terminal.write("\r\n*** Connecting to backend ***\r\n");
 
         // Create socket connection
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/`;
+        const isSecure = window.location.protocol === "https:";
+        const wsProtocol = isSecure ? "https" : "http";
+        const ioUrl = `${wsProtocol}://${window.location.host}/io/`;
 
-        const socket = io(wsUrl);
+        const socket = io(ioUrl);
 
         // Emit hostConfig to start SSH connection
         socket.on("connect", () => {
