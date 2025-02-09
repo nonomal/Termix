@@ -31,6 +31,14 @@ function App() {
         }
     };
 
+    const closeTab = (id) => {
+        const newTerminals = terminals.filter(t => t.id !== id);
+        setTerminals(newTerminals);
+        if (activeTab === id) {
+            setActiveTab(newTerminals[0]?.id || null);
+        }
+    };
+
     return (
         <>
             <div className="sidebar">
@@ -39,13 +47,15 @@ function App() {
             </div>
             <div className="topbar">
                 {terminals.map((terminal) => (
-                    <button
-                        key={terminal.id}
-                        onClick={() => setActiveTab(terminal.id)}
-                        className={activeTab === terminal.id ? "active-tab" : ""}
-                    >
-                        {terminal.title}
-                    </button>
+                    <div key={terminal.id} className="tab-item">
+                        <button
+                            onClick={() => setActiveTab(terminal.id)}
+                            className={activeTab === terminal.id ? "active-tab" : ""}
+                        >
+                            {terminal.title}
+                        </button>
+                        <button className="tab-close" onClick={() => closeTab(terminal.id)}>×</button>
+                    </div>
                 ))}
             </div>
             <div className="terminal-wrapper">
@@ -54,7 +64,7 @@ function App() {
                         key={terminal.id}
                         className={`terminal-tab ${terminal.id === activeTab ? "active" : ""}`}
                     >
-                        {terminal.hostConfig && <NewTerminal hostConfig={terminal.hostConfig} />}
+                        {terminal.hostConfig && <NewTerminal hostConfig={terminal.hostConfig}/>}
                     </div>
                 ))}
             </div>

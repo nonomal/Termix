@@ -1,4 +1,3 @@
-// Terminal.jsx
 import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -15,10 +14,15 @@ export function NewTerminal({ hostConfig }) {
         // Initialize terminal
         const terminal = new Terminal({
             cursorBlink: true,
-            cursorStyle: "block",
-            theme: { background: "#1a1a1a", foreground: "#ffffff", cursor: "#ffffff" },
+            theme: {
+                background: "#1a1a1a",
+                foreground: "#ffffff",
+                cursor: "#ffffff",
+            },
             fontSize: 14,
             scrollback: 1000,
+            rendererType: "canvas",
+            allowTransparency: true,
         });
 
         // Initialize FitAddon for auto-sizing
@@ -28,20 +32,11 @@ export function NewTerminal({ hostConfig }) {
         // Open terminal in the container
         terminal.open(terminalRef.current);
 
-        // Apply fit after terminal is fully initialized
-        setTimeout(() => {
-            fitAddon.fit();
-            resizeTerminal();
-        }, 100);
-
-        // Focus on terminal and reset layout
-        terminal.focus();
-
-        // Resize terminal to fit the container
+        // Resize function (Restoring your original logic)
         const resizeTerminal = () => {
             const terminalContainer = terminalRef.current;
             const sidebarWidth = 14 * 16; // Sidebar width in pixels
-            const topbarHeight = 96; // Topbar height in pixels
+            const topbarHeight = 64; // Topbar height in pixels
             const availableWidth = window.innerWidth - sidebarWidth;
             const availableHeight = window.innerHeight - topbarHeight;
 
@@ -51,42 +46,49 @@ export function NewTerminal({ hostConfig }) {
             fitAddon.fit();
             const { cols, rows } = terminal;
 
-            // Emit new terminal size to the backend
             if (socket) {
                 socket.emit("resize", { cols, rows });
                 console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
             }
         };
 
-        // Handle window resize events
+        // Ensure correct sizing on start
+        setTimeout(() => {
+            fitAddon.fit();
+            resizeTerminal();
+        }, 50); // Small delay to ensure proper initialization
+
+        // Focus on terminal after initialization
+        terminal.focus();
+
+        // Listen for window resize events
         window.addEventListener("resize", resizeTerminal);
 
         // Write initial connection message
         terminal.write("\r\n*** Connecting to backend ***\r\n");
 
-        // Create the socket connection with the provided hostConfig
-        const socket = io("http://localhost:8081");
+        // Create socket connection
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/`;
 
-        // Emit the hostConfig to the server to start SSH connection
-        fitAddon.fit();
-        const { cols, rows } = terminal;
-        socket.emit("connectToHost", cols, rows, hostConfig);
+        const socket = io(wsUrl);
 
-        // Handle socket connection events
+        // Emit hostConfig to start SSH connection
         socket.on("connect", () => {
+            fitAddon.fit();
+            resizeTerminal(); // Ensure proper size on connection
+            const { cols, rows } = terminal;
+            socket.emit("connectToHost", cols, rows, hostConfig);
             terminal.write("\r\n*** Connected to backend ***\r\n");
 
-            // Send keystrokes to the backend
             terminal.onKey((key) => {
                 socket.emit("data", key.key);
             });
 
-            // Display output from the backend
             socket.on("data", (data) => {
                 terminal.write(data);
             });
 
-            // Handle disconnection
             socket.on("disconnect", () => {
                 terminal.write("\r\n*** Disconnected from backend ***\r\n");
             });
@@ -98,7 +100,7 @@ export function NewTerminal({ hostConfig }) {
             window.removeEventListener("resize", resizeTerminal);
             socket.disconnect();
         };
-    }, [hostConfig]); // Re-run effect when hostConfig changes
+    }, [hostConfig]);
 
     return (
         <div

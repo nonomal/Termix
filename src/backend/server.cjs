@@ -13,19 +13,9 @@ const io = socketIo(server, {
 io.on("connection", (socket) => {
     console.log("New socket connection established");
 
+    let stream = null;
     let currentCols = 80;
     let currentRows = 24;
-    let stream = null;
-
-    socket.on("resize", ({ cols, rows }) => {
-        console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
-        currentCols = cols;
-        currentRows = rows;
-        if (stream && stream.setWindow) {
-            stream.setWindow(rows, cols, rows * 100, cols * 100);
-            console.log(`SSH terminal resized to: cols=${cols}, rows=${rows}`);
-        }
-    });
 
     socket.on("connectToHost", (cols, rows, hostConfig) => {
         if (!hostConfig || !hostConfig.ip || !hostConfig.user || !hostConfig.password || !hostConfig.port) {
@@ -36,19 +26,13 @@ io.on("connection", (socket) => {
         console.log("Received hostConfig:", hostConfig);
         const { ip, port, user, password } = hostConfig;
 
-        if (!ip || !port || !user || !password) {
-            socket.emit("data", "\r\n*** Missing required connection data ***\r\n");
-            return;
-        }
-
-        console.log("Preparing to connect to host:", hostConfig);
         const conn = new SSHClient();
-
         conn
             .on("ready", function () {
                 console.log("SSH connection established");
                 socket.emit("data", "\r\n*** SSH CONNECTION ESTABLISHED ***\r\n");
-                conn.shell(function (err, newStream) {
+
+                conn.shell({ term: "xterm-256color" }, function (err, newStream) {
                     if (err) {
                         console.error("Error opening SSH shell:", err);
                         return socket.emit(
@@ -58,20 +42,35 @@ io.on("connection", (socket) => {
                     }
                     stream = newStream;
 
-                    stream.setWindow(currentRows, currentCols, currentRows * 100, currentCols * 100);
+                    // Set initial terminal size
+                    stream.setWindow(rows, cols, rows * 100, cols * 100);
+                    console.log(`Initial terminal size: cols=${cols}, rows=${rows}`);
 
+                    // Pipe SSH output to client
+                    stream.on("data", function (data) {
+                        socket.emit("data", data.toString("binary"));
+                    });
+
+                    stream.on("close", function () {
+                        console.log("SSH stream closed");
+                        conn.end();
+                    });
+
+                    // Send keystrokes from terminal to SSH
                     socket.on("data", function (data) {
                         stream.write(data);
                     });
 
-                    stream
-                        .on("data", function (d) {
-                            socket.emit("data", d.toString("binary"));
-                        })
-                        .on("close", function () {
-                            console.log("SSH stream closed");
-                            conn.end();
-                        });
+                    // Resize SSH terminal when client resizes
+                    socket.on("resize", ({ cols, rows }) => {
+                        if (stream && stream.setWindow) {
+                            stream.setWindow(rows, cols, rows * 100, cols * 100);
+                            console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
+                        }
+                    });
+
+                    // Auto-send initial terminal size to backend
+                    socket.emit("resize", { cols, rows });
                 });
             })
             .on("close", function () {
