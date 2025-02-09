@@ -21,8 +21,8 @@ COPY --from=backend-build src/backend /src/backend
 COPY --from=backend-build src/backend/entrypoint.sh /src/backend/entrypoint.sh
 
 # Configure start-up
-RUN chmod +x /src/backend/entrypoint.sh
-ENTRYPOINT ["/src/backend/entrypoint.sh"]
+RUN chmod +x src/backend/entrypoint.sh
+ENTRYPOINT ["src/backend/entrypoint.sh"]
 
 EXPOSE 8080
 EXPOSE 8081
