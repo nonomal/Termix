@@ -1,32 +1,33 @@
-# Build frontend
-FROM node:18-alpine AS frontend-build
+# Build everything in one stage
+FROM node:18-alpine
+
+# Install nginx and dependencies
+RUN apk add --no-cache nginx npm
+
+# Set working directory
 WORKDIR /app
+
+# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
+
+# Copy the entire project (frontend and backend)
 COPY ./ ./
+
+# Build the frontend
 RUN npm run build
 
-# Build backend and configure nginx
-FROM node:18-alpine AS build
-WORKDIR /app
-
-# Copy backend code
-COPY ./src/backend /app/src/backend
-
-# Install nginx, nodejs, and npm
-RUN apk add --no-cache nginx nodejs npm
-
-# Copy nginx configuration
+# Configure nginx
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 
-# Copy the built frontend files
-COPY --from=frontend-build /app/dist /usr/share/nginx/html
+# Copy built frontend to nginx's web directory
+COPY ./dist /usr/share/nginx/html
 
-# Copy the backend files
-COPY --from=build /app/src/backend /src/backend
-COPY --from=build /app/src/backend/entrypoint.sh /src/backend/entrypoint.sh
+# Set up backend directory and entrypoint script
+COPY ./src/backend /src/backend
+COPY ./src/backend/entrypoint.sh /src/backend/entrypoint.sh
 
-# Set up start-up
+# Make entrypoint script executable
 RUN chmod +x /src/backend/entrypoint.sh
 
 # Expose necessary ports
