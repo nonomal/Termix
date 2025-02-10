@@ -7,8 +7,9 @@ const io = socketIo(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"],
-        transports: ["polling", "websocket"],
-    },
+        allowedHeaders: ["Content-Type", "Accept"],
+        credentials: false
+    }
 });
 
 io.on("connection", (socket) => {
@@ -96,6 +97,6 @@ io.on("connection", (socket) => {
     });
 });
 
-server.listen(8081, () => {
+server.listen(8081, '0.0.0.0', () => {
     console.log("Server is running on port 8081");
 });
