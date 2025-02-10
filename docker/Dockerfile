@@ -23,16 +23,10 @@ COPY docker/nginx.conf /etc/nginx/nginx.conf
 # Copy built frontend to nginx's web directory
 COPY ./dist /usr/share/nginx/html
 
-# Set up backend directory and entrypoint script
-COPY ./src/backend /src/backend
-COPY ./src/backend/entrypoint.sh /src/backend/entrypoint.sh
-
-# Make entrypoint script executable
-RUN chmod +x /src/backend/entrypoint.sh
-
 # Expose necessary ports
 EXPOSE 8080
 EXPOSE 8081
 
 # Use entrypoint.sh to run both the backend and nginx
-ENTRYPOINT ["/src/backend/entrypoint.sh"]
+RUN chmod +x /app/src/backend/entrypoint.sh
+ENTRYPOINT ["/app/src/backend/entrypoint.sh"]
