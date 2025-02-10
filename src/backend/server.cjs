@@ -14,8 +14,6 @@ io.on("connection", (socket) => {
     console.log("New socket connection established");
 
     let stream = null;
-    let currentCols = 80;
-    let currentRows = 24;
 
     socket.on("connectToHost", (cols, rows, hostConfig) => {
         if (!hostConfig || !hostConfig.ip || !hostConfig.user || !hostConfig.password || !hostConfig.port) {
