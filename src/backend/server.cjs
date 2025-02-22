@@ -8,7 +8,8 @@ const io = socketIo(server, {
         origin: "*", // Allow all origins
         methods: ["*"], // Allow all methods
         allowedHeaders: ["*"], // Allow all headers
-    }
+    },
+    allowEIO3: true
 });
 
 io.on("connection", (socket) => {
