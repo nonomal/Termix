@@ -70,10 +70,10 @@ export function NewTerminal({ hostConfig }) {
 
         // Create socket connection
         const isSecure = window.location.protocol === "https:";
-        let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:8081/socket.io/`;
+        let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:${window.location.port}/socket.io/`;
 
         if (window.location.hostname === "localhost") {
-            ioUrl = "http://192.210.197.55:8000/socket.io/";
+            ioUrl = "http://localhost:8081";
         }
 
         const socket = io(ioUrl);
