@@ -69,8 +69,10 @@ export function NewTerminal({ hostConfig }) {
         terminal.write("\r\n*** Connecting to backend ***\r\n");
 
         // Create socket connection
-        const isSecure = window.location.protocol === "https:";
-        let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:${window.location.port}/socket.io/`;
+        //const isSecure = window.location.protocol === "https:";
+        //let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:${window.location.port}/socket.io/`;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let ioUrl = `${protocol}//${window.location.hostname}:${window.location.port}/socket.io/`;
 
         if (window.location.hostname === "localhost") {
             ioUrl = "http://localhost:8081";
