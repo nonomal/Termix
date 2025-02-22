@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 
 export function NewTerminal({ hostConfig }) {
     const terminalRef = useRef(null);
+    const socketRef = useRef(null);
 
     useEffect(() => {
         if (!hostConfig || !terminalRef.current) return;
@@ -46,8 +47,8 @@ export function NewTerminal({ hostConfig }) {
             fitAddon.fit();
             const { cols, rows } = terminal;
 
-            if (socket) {
-                socket.emit("resize", { cols, rows });
+            if (socketRef.current) {
+                socketRef.current.emit("resize", { cols, rows });
                 console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
             }
         };
@@ -71,31 +72,36 @@ export function NewTerminal({ hostConfig }) {
         const isSecure = window.location.protocol === "https:";
         let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:8081/socket.io/`;
 
-        if(window.location.hostname === "localhost") {
+        if (window.location.hostname === "localhost") {
             ioUrl = "http://localhost:8081";
         }
 
         const socket = io(ioUrl);
+        socketRef.current = socket;
 
-        // Emit hostConfig to start SSH connection
+        socket.off("connect");
+        socket.off("data");
+        socket.off("disconnect");
+
         socket.on("connect", () => {
             fitAddon.fit();
             resizeTerminal(); // Ensure proper size on connection
             const { cols, rows } = terminal;
             socket.emit("connectToHost", cols, rows, hostConfig);
             terminal.write("\r\n*** Connected to backend ***\r\n");
+        });
 
-            terminal.onKey((key) => {
-                socket.emit("data", key.key);
-            });
+        socket.on("data", (data) => {
+            terminal.write(data);
+        });
 
-            socket.on("data", (data) => {
-                terminal.write(data);
-            });
+        socket.on("disconnect", () => {
+            terminal.write("\r\n*** Disconnected from backend ***\r\n");
+        });
 
-            socket.on("disconnect", () => {
-                terminal.write("\r\n*** Disconnected from backend ***\r\n");
-            });
+        // Capture and send keystrokes
+        terminal.onKey(({ key }) => {
+            socket.emit("data", key);
         });
 
         // Cleanup on component unmount
