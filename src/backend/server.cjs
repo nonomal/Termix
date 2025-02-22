@@ -6,9 +6,7 @@ const server = http.createServer();
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"],
-        allowedHeaders: ["Content-Type", "Accept"],
-        credentials: false
+        methods: ["GET", "POST"]
     }
 });
 
