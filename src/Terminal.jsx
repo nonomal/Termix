@@ -16,7 +16,7 @@ export function NewTerminal({ hostConfig }) {
         const terminal = new Terminal({
             cursorBlink: true,
             theme: {
-                background: "#1a1a1a",
+                background: "#0f0f0f",
                 foreground: "#ffffff",
                 cursor: "#ffffff",
             },
@@ -33,7 +33,7 @@ export function NewTerminal({ hostConfig }) {
         // Open terminal in the container
         terminal.open(terminalRef.current);
 
-        // Resize function (Restoring your original logic)
+        // Resize function
         const resizeTerminal = () => {
             const terminalContainer = terminalRef.current;
             const sidebarWidth = 14 * 16; // Sidebar width in pixels
@@ -68,9 +68,6 @@ export function NewTerminal({ hostConfig }) {
         // Write initial connection message
         terminal.write("\r\n*** Connecting to backend ***\r\n");
 
-        // Create socket connection
-        //const isSecure = window.location.protocol === "https:";
-        //let ioUrl = `${isSecure ? "https" : "http"}://${window.location.hostname}:${window.location.port}/socket.io/`;
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let ioUrl = `${protocol}//${window.location.hostname}:${window.location.port}/socket.io/`;
 
@@ -106,6 +103,11 @@ export function NewTerminal({ hostConfig }) {
             socket.emit("data", key);
         });
 
+        // Handle socket errors
+        socket.on("connect_error", (err) => {
+            terminal.write(`\r\n*** Error: ${err.message} ***\r\n`);
+        });
+
         // Cleanup on component unmount
         return () => {
             terminal.dispose();
@@ -117,13 +119,7 @@ export function NewTerminal({ hostConfig }) {
     return (
         <div
             ref={terminalRef}
-            style={{
-                width: "100%",
-                height: "100%",
-                minHeight: "400px",
-                overflow: "hidden",
-                textAlign: "left",
-            }}
+            className="w-full h-full min-h-[400px] overflow-hidden text-left"
         />
     );
 }
