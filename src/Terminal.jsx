@@ -36,9 +36,8 @@ export function NewTerminal({ hostConfig }) {
         // Resize function
         const resizeTerminal = () => {
             const terminalContainer = terminalRef.current;
-            const sidebarWidth = 14 * 16; // Sidebar width in pixels
-            const topbarHeight = 64; // Topbar height in pixels
-            const availableWidth = window.innerWidth - sidebarWidth;
+            const topbarHeight = 65;
+            const availableWidth = window.innerWidth;
             const availableHeight = window.innerHeight - topbarHeight;
 
             terminalContainer.style.width = `${availableWidth}px`;

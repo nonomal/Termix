@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NewTerminal } from "./Terminal.jsx";
-import AddHostModal from './AddHostModal.jsx';
-import {Button, ButtonGroup} from '@mui/joy';
-import { CssVarsProvider } from '@mui/joy';
-import theme from './theme';
+import AddHostModal from "./AddHostModal.jsx";
+import { Button } from "@mui/joy";
+import { CssVarsProvider } from "@mui/joy";
+import theme from "./theme";
+import TabList from "./TabList.jsx";
+import Launchpad from "./Launchpad.jsx";
+import TermixIcon from "./images/termix_icon.png";
+import RocketIcon from './images/launchpad_rocket.png';
 
 function App() {
     const [isAddHostHidden, setIsAddHostHidden] = useState(true);
@@ -15,8 +19,24 @@ function App() {
         ip: "",
         user: "",
         password: "",
-        port: 22
+        port: 22,
     });
+    const [isLaunchpadOpen, setIsLaunchpadOpen] = useState(false);
+
+    // Toggle Launchpad when "L" key is pressed
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.ctrlKey && e.key === "l") {
+                e.preventDefault();
+                setIsLaunchpadOpen((prev) => !prev);
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, []);
 
     const handleAddHost = () => {
         if (form.ip && form.user && form.password && form.port) {
@@ -41,7 +61,7 @@ function App() {
     };
 
     const closeTab = (id) => {
-        const newTerminals = terminals.filter(t => t.id !== id);
+        const newTerminals = terminals.filter((t) => t.id !== id);
         setTerminals(newTerminals);
         if (activeTab === id) {
             setActiveTab(newTerminals[0]?.id || null);
@@ -51,66 +71,78 @@ function App() {
     return (
         <CssVarsProvider theme={theme}>
             <div className="flex h-screen bg-neutral-900 overflow-hidden">
-                {/* Sidebar */}
-                <div className="w-64 bg-neutral-800 text-white p-6 flex flex-col justify-between fixed left-0 top-0 bottom-0">
-                    <div className="flex flex-col items-center">
-                        <h2 className="text-2xl font-bold mb-8">Termix</h2>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Topbar */}
+                    <div className="bg-neutral-800 text-white p-4 flex items-center justify-between gap-4 min-h-[65px]">
+                        {/* Left: Title */}
+                        <div className="bg-neutral-700 flex justify-center items-center gap-2 p-3 rounded-lg h-[52px]">
+                            <img
+                                src={TermixIcon}
+                                alt="Termix Icon"
+                                className="w-[30px] h-[30px]"
+                            />
+                            <h2 className="text-lg font-bold ml-[-2px]">Termix</h2>
+                        </div>
+
+                        {/* Middle: Tabs with scroll */}
+                        <div className="flex-1 bg-neutral-700 rounded-lg overflow-hidden h-[52px] flex items-center">
+                            <div
+                                className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-neutral-500 scrollbar-track-neutral-700 h-[52px] scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar-h-1"
+                                style={{ whiteSpace: "nowrap" }}
+                            >
+                                <TabList
+                                    terminals={terminals}
+                                    activeTab={activeTab}
+                                    setActiveTab={setActiveTab}
+                                    closeTab={closeTab}
+                                    theme={theme}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Open Launchpad Button */}
+                        <Button
+                            onClick={() => setIsLaunchpadOpen(true)}
+                            sx={{
+                                backgroundColor: theme.palette.neutral[700],
+                                "&:hover": { backgroundColor: theme.palette.neutral[300] },
+                                flexShrink: 0,
+                                height: "52px",
+                                width: "52px",
+                                padding: 0, // To ensure no padding around the image
+                            }}
+                        >
+                            <img
+                                src={RocketIcon}
+                                alt="L"
+                                style={{
+                                    width: "70%",
+                                    height: "70",
+                                    objectFit: "contain",
+                                }}
+                            />
+                        </Button>
+
+                        {/* Right: Create Host Button */}
                         <Button
                             onClick={() => setIsAddHostHidden(false)}
                             sx={{
-                                backgroundColor: theme.palette.neutral[500],
-                                '&:hover': {
-                                    backgroundColor: theme.palette.neutral[900],
-                                },
+                                backgroundColor: theme.palette.neutral[700],
+                                "&:hover": { backgroundColor: theme.palette.neutral[300] },
+                                flexShrink: 0,
+                                height: "52px",
+                                width: "52px",
+                                fontSize: "3.5rem",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                lineHeight: "normal",
+                                paddingTop: "2px",
+                                verticalAlign: "middle",
                             }}
                         >
-                            Create Host
+                            +
                         </Button>
-                    </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col ml-64 overflow-hidden">
-                    {/* Topbar */}
-                    <div className="bg-neutral-800 text-white p-4 flex justify-between items-center space-x-2 overflow-x-auto whitespace-nowrap min-h-[64px]">
-                        <div className="flex items-center gap-2">
-                            {terminals.map((terminal, index) => (
-                                <div key={terminal.id} className="flex items-center gap-2">
-                                    {/* Tab Button Group */}
-                                    <ButtonGroup>
-                                        <Button
-                                            onClick={() => setActiveTab(terminal.id)}
-                                            sx={{
-                                                backgroundColor: terminal.id === activeTab ? theme.palette.neutral[500] : theme.palette.neutral[900],
-                                                color: theme.palette.text.primary,
-                                                '&:hover': {
-                                                    backgroundColor: theme.palette.neutral[300],
-                                                },
-                                            }}
-                                        >
-                                            {terminal.title}
-                                        </Button>
-                                        <Button
-                                            onClick={() => closeTab(terminal.id)}
-                                            sx={{
-                                                backgroundColor: theme.palette.neutral[700],
-                                                color: theme.palette.text.primary,
-                                                '&:hover': {
-                                                    backgroundColor: theme.palette.neutral[300],
-                                                },
-                                            }}
-                                        >
-                                            ×
-                                        </Button>
-                                    </ButtonGroup>
-
-                                    {/* Separator (except after the last tab) */}
-                                    {index !== terminals.length - 1 && (
-                                        <div className="w-px h-6 bg-gray-600"></div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Terminal Views */}
@@ -118,7 +150,9 @@ function App() {
                         {terminals.map((terminal) => (
                             <div
                                 key={terminal.id}
-                                className={`absolute top-0 left-0 right-0 bottom-0 ${terminal.id === activeTab ? "block" : "hidden"}`}
+                                className={`absolute top-0 left-0 right-0 bottom-0 ${
+                                    terminal.id === activeTab ? "block" : "hidden"
+                                }`}
                             >
                                 <NewTerminal hostConfig={terminal.hostConfig} />
                             </div>
@@ -126,7 +160,6 @@ function App() {
                     </div>
                 </div>
 
-                {/* Add Host Modal */}
                 <AddHostModal
                     isHidden={isAddHostHidden}
                     form={form}
@@ -134,6 +167,11 @@ function App() {
                     handleAddHost={handleAddHost}
                     setIsAddHostHidden={setIsAddHostHidden}
                 />
+
+                {/* Launchpad Component */}
+                {isLaunchpadOpen && (
+                    <Launchpad onClose={() => setIsLaunchpadOpen(false)} />
+                )}
             </div>
         </CssVarsProvider>
     );
