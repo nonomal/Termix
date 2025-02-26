@@ -16,7 +16,7 @@ export function NewTerminal({ hostConfig }) {
         const terminal = new Terminal({
             cursorBlink: true,
             theme: {
-                background: "#0f0f0f",
+                background: "#242424",
                 foreground: "#ffffff",
                 cursor: "#ffffff",
             },
@@ -36,19 +36,21 @@ export function NewTerminal({ hostConfig }) {
         // Resize function
         const resizeTerminal = () => {
             const terminalContainer = terminalRef.current;
-            const topbarHeight = 65;
-            const availableWidth = window.innerWidth;
-            const availableHeight = window.innerHeight - topbarHeight;
+            const parentContainer = terminalContainer?.parentElement;
 
-            terminalContainer.style.width = `${availableWidth}px`;
-            terminalContainer.style.height = `${availableHeight}px`;
+            if (!parentContainer) return;
+
+            const parentWidth = parentContainer.clientWidth;
+            const parentHeight = parentContainer.clientHeight;
+
+            terminalContainer.style.width = `${parentWidth}px`;
+            terminalContainer.style.height = `${parentHeight}px`;
 
             fitAddon.fit();
             const { cols, rows } = terminal;
 
             if (socketRef.current) {
                 socketRef.current.emit("resize", { cols, rows });
-                console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
             }
         };
 
@@ -118,7 +120,7 @@ export function NewTerminal({ hostConfig }) {
     return (
         <div
             ref={terminalRef}
-            className="w-full h-full min-h-[400px] overflow-hidden text-left"
+            className="w-full h-full overflow-hidden text-left"
         />
     );
 }
