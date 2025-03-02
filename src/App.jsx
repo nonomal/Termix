@@ -22,6 +22,7 @@ function App() {
         port: 22,
     });
     const [isLaunchpadOpen, setIsLaunchpadOpen] = useState(false);
+    const [splitTabIds, setSplitTabIds] = useState([]);
 
     // Handle keypress for opening launchpad
     useEffect(() => {
@@ -50,8 +51,7 @@ function App() {
                     password: form.password,
                     port: Number(form.port),
                 },
-                isSplit: false,
-                terminalRef: null, // Reference to the terminal instance
+                terminalRef: null,
             };
             setTerminals([...terminals, newTerminal]);
             setActiveTab(nextId);
@@ -67,6 +67,7 @@ function App() {
     const closeTab = (id) => {
         const newTerminals = terminals.filter((t) => t.id !== id);
         setTerminals(newTerminals);
+        setSplitTabIds(prev => prev.filter(tabId => tabId !== id));
         if (activeTab === id) {
             setActiveTab(newTerminals[0]?.id || null);
         }
@@ -74,21 +75,29 @@ function App() {
 
     // Toggle split for a specific tab
     const toggleSplit = (id) => {
-        setTerminals(terminals.map(t =>
-            t.id === id ? { ...t, isSplit: !t.isSplit } : t
-        ));
+        setSplitTabIds(prev => {
+            if (prev.includes(id)) {
+                return prev.filter(tabId => tabId !== id);
+            } else {
+                if (prev.length >= 1) return prev; // Limit to 1 split
+                return [...prev, id, activeTab].filter((tabId, index, self) => self.indexOf(tabId) === index);
+            }
+        });
     };
 
-    // Get the split terminals
-    const splitTerminals = terminals.filter(t => t.isSplit);
-    const mainTerminal = terminals.find(t => t.id === activeTab);
+    // Get grid layout class based on split count
+    const getGridLayout = (count) => {
+        if (count === 1) return 'grid-cols-1';
+        if (count === 2) return 'grid-cols-2';
+        return 'grid-cols-1';
+    };
 
     return (
         <CssVarsProvider theme={theme}>
             <div className="flex h-screen bg-neutral-900 overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Topbar */}
-                    <div className="bg-neutral-800 text-white p-4 flex items-center justify-between gap-4 min-h-[75px] max-h-[75px]">
+                    <div className="bg-neutral-800 text-white p-4 flex items-center justify-between gap-4 min-h-[75px] max-h-[75px] shadow-xl border-b-5 border-neutral-700">
                         <div className="bg-neutral-700 flex justify-center items-center gap-2 p-3 rounded-lg h-[52px]">
                             <img src={TermixIcon} alt="Termix Icon" className="w-[30px] h-[30px]" />
                             <h2 className="text-lg font-bold ml-[-2px]">Termix</h2>
@@ -102,6 +111,7 @@ function App() {
                                     setActiveTab={setActiveTab}
                                     closeTab={closeTab}
                                     toggleSplit={toggleSplit}
+                                    splitTabIds={splitTabIds}
                                     theme={theme}
                                 />
                             </div>
@@ -144,35 +154,39 @@ function App() {
 
                     {/* Terminal Views */}
                     <div className="flex-1 relative p-4">
-                        {splitTerminals.length > 0 ? (
-                            <div className={`grid ${splitTerminals.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-4 h-full`}>
-                                {splitTerminals.map((terminal) => (
-                                    <div key={terminal.id} className="bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 h-full">
-                                        <NewTerminal
-                                            hostConfig={terminal.hostConfig}
-                                            ref={(ref) => {
-                                                if (ref && !terminal.terminalRef) {
-                                                    // Store the terminal instance reference
-                                                    setTerminals(prev => prev.map(t =>
-                                                        t.id === terminal.id ? { ...t, terminalRef: ref } : t
-                                                    ));
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                ))}
+                        {splitTabIds.length > 0 ? (
+                            <div className={`grid gap-4 h-full ${getGridLayout(splitTabIds.length)}`}>
+                                {splitTabIds.map(id => {
+                                    const terminal = terminals.find(t => t.id === id);
+                                    return terminal ? (
+                                        <div key={terminal.id} className="bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 h-full">
+                                            <NewTerminal
+                                                key={terminal.id}
+                                                hostConfig={terminal.hostConfig}
+                                                ref={(ref) => {
+                                                    if (ref && !terminal.terminalRef) {
+                                                        setTerminals(prev => prev.map(t =>
+                                                            t.id === terminal.id ? { ...t, terminalRef: ref } : t
+                                                        ));
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    ) : null;
+                                })}
                             </div>
                         ) : (
                             <div className="absolute top-4 left-4 right-4 bottom-4">
-                                {mainTerminal && (
+                                {terminals.find(t => t.id === activeTab) && (
                                     <div className="bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 h-full">
                                         <NewTerminal
-                                            hostConfig={mainTerminal.hostConfig}
+                                            key={activeTab}
+                                            hostConfig={terminals.find(t => t.id === activeTab).hostConfig}
                                             ref={(ref) => {
-                                                if (ref && !mainTerminal.terminalRef) {
-                                                    // Store the terminal instance reference
+                                                const terminal = terminals.find(t => t.id === activeTab);
+                                                if (ref && terminal && !terminal.terminalRef) {
                                                     setTerminals(prev => prev.map(t =>
-                                                        t.id === mainTerminal.id ? { ...t, terminalRef: ref } : t
+                                                        t.id === activeTab ? { ...t, terminalRef: ref } : t
                                                     ));
                                                 }
                                             }}
@@ -184,7 +198,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* Modal for adding a host */}
+                {/* Modals */}
                 <AddHostModal
                     isHidden={isAddHostHidden}
                     form={form}
@@ -192,8 +206,6 @@ function App() {
                     handleAddHost={handleAddHost}
                     setIsAddHostHidden={setIsAddHostHidden}
                 />
-
-                {/* Launchpad Component */}
                 {isLaunchpadOpen && <Launchpad onClose={() => setIsLaunchpadOpen(false)} />}
             </div>
         </CssVarsProvider>
