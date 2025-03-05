@@ -17,28 +17,21 @@ const theme = extendTheme({
                     900: '#0f0f0f',
                 },
                 background: {
-                    default: '#212121', // Dark background to contrast white text
-                    paper: '#333333', // Slightly lighter paper background for depth
+                    primary: '#3d3d3d',
+                    terminal: '#262626',
+                    paper: '#555555',
                 },
                 text: {
-                    primary: '#ffffff', // White text for readability
-                    secondary: '#b0b0b0', // Light gray for secondary text
+                    primary: '#f7f7f7',
+                    secondary: '#a7a7a7',
                 },
-                primary: {
-                    main: '#ff4081', // Bright pink for the primary accent color
-                },
-                secondary: {
-                    main: '#00bcd4', // A fresh cyan-blue for secondary accents
-                },
-                error: {
-                    main: '#e53935', // Strong red for error
-                },
-                warning: {
-                    main: '#ff9800', // Vibrant yellow-orange for warning
-                },
-                success: {
-                    main: '#4caf50', // Fresh green for success
-                },
+                general: {
+                    primary: '#6e6e6e',
+                    secondary: '#a7a7a7',
+                    tertiary: '#3d3d3d',
+                    disabled: '#262626',
+                    dark: '#0f0f0f',
+                }
             },
         },
     },

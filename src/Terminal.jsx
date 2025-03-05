@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import io from "socket.io-client";
 import PropTypes from "prop-types";
+import theme from "./theme";
 
 export function NewTerminal({ hostConfig }) {
     const terminalRef = useRef(null);
@@ -16,9 +17,9 @@ export function NewTerminal({ hostConfig }) {
         const terminal = new Terminal({
             cursorBlink: true,
             theme: {
-                background: "#242424",
-                foreground: "#ffffff",
-                cursor: "#ffffff",
+                background: theme.palette.background.terminal,
+                foreground: theme.palette.text.primary,
+                cursor: theme.palette.text.primary,
             },
             fontSize: 14,
             scrollback: 1000,

@@ -9,8 +9,8 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
             <Modal open={!isHidden} onClose={() => setIsAddHostHidden(true)}>
                 <ModalDialog
                     sx={{
-                        backgroundColor: theme.palette.neutral[700],
-                        borderColor: theme.palette.neutral[100],
+                        backgroundColor: theme.palette.general.tertiary,
+                        borderColor: theme.palette.general.secondary,
                         color: theme.palette.text.primary,
                         padding: 3,
                         borderRadius: 10,
@@ -31,7 +31,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         required={false}
                                         sx={{
-                                            backgroundColor: theme.palette.neutral[500],
+                                            backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
@@ -43,7 +43,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         onChange={(e) => setForm({ ...form, ip: e.target.value })}
                                         required
                                         sx={{
-                                            backgroundColor: theme.palette.neutral[500],
+                                            backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
@@ -55,7 +55,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         onChange={(e) => setForm({ ...form, user: e.target.value })}
                                         required
                                         sx={{
-                                            backgroundColor: theme.palette.neutral[500],
+                                            backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
@@ -68,7 +68,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                                         required
                                         sx={{
-                                            backgroundColor: theme.palette.neutral[500],
+                                            backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
@@ -83,7 +83,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         required
                                         error={form.port < 1 || form.port > 65535 ? "Port must be between 1 and 65535" : ""}
                                         sx={{
-                                            backgroundColor: theme.palette.neutral[500],
+                                            backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
@@ -91,9 +91,9 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                 <Button
                                     type="submit"
                                     sx={{
-                                        backgroundColor: theme.palette.neutral[500],
+                                        backgroundColor: theme.palette.general.primary,
                                         '&:hover': {
-                                            backgroundColor: theme.palette.neutral[900],
+                                            backgroundColor: theme.palette.general.disabled,
                                         },
                                     }}
                                 >

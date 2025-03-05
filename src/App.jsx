@@ -24,7 +24,6 @@ function App() {
     const [isLaunchpadOpen, setIsLaunchpadOpen] = useState(false);
     const [splitTabIds, setSplitTabIds] = useState([]);
 
-    // Handle keypress for opening launchpad
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.ctrlKey && e.key === "l") {
@@ -39,7 +38,6 @@ function App() {
         };
     }, []);
 
-    // Handle adding a host
     const handleAddHost = () => {
         if (form.ip && form.user && form.password && form.port) {
             const newTerminal = {
@@ -63,7 +61,6 @@ function App() {
         }
     };
 
-    // Close a terminal tab
     const closeTab = (id) => {
         const newTerminals = terminals.filter((t) => t.id !== id);
         setTerminals(newTerminals);
@@ -72,20 +69,23 @@ function App() {
         }
     };
 
-    // Toggle split for a terminal tab
     const toggleSplit = (id) => {
-        if (splitTabIds.length >= 3) return; // Prevent more than 2 tabs from splitting
+        if (splitTabIds.includes(id)) {
+            setSplitTabIds((prev) => prev.filter((splitId) => splitId !== id));
+            return;
+        }
+
+        if (splitTabIds.length >= 3) return;
 
         setSplitTabIds((prev) =>
             prev.includes(id) ? prev.filter((splitId) => splitId !== id) : [...prev, id]
         );
-
-        if (splitTabIds.includes(id)) {
-            setSplitTabIds((prev) => prev.filter((splitId) => splitId !== id));
-        }
     };
 
-    // Determine the layout based on the number of split tabs
+    const handleSetActiveTab = (tabId) => {
+        setActiveTab(tabId);
+    };
+
     const getLayoutStyle = () => {
         if (splitTabIds.length === 1) {
             // Horizontal split (2 tabs: left-right)
@@ -104,9 +104,9 @@ function App() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Topbar */}
                     <div className="bg-neutral-800 text-white p-4 flex items-center justify-between gap-4 min-h-[75px] max-h-[75px] shadow-xl border-b-5 border-neutral-700">
-                        <div className="bg-neutral-700 flex justify-center items-center gap-2 p-3 rounded-lg h-[52px]">
-                            <img src={TermixIcon} alt="Termix Icon" className="w-[30px] h-[30px]" />
-                            <h2 className="text-lg font-bold ml-[-2px]">Termix</h2>
+                        <div className="bg-neutral-700 flex justify-center items-center gap-1 p-2 rounded-lg h-[52px]">
+                            <img src={TermixIcon} alt="Termix Icon" className="w-[25px] h-[25px] object-contain" />
+                            <h2 className="text-lg font-bold">Termix</h2>
                         </div>
 
                         <div className="flex-1 bg-neutral-700 rounded-lg overflow-hidden h-[52px] flex items-center">
@@ -114,7 +114,7 @@ function App() {
                                 <TabList
                                     terminals={terminals}
                                     activeTab={activeTab}
-                                    setActiveTab={setActiveTab}
+                                    setActiveTab={handleSetActiveTab}
                                     closeTab={closeTab}
                                     toggleSplit={toggleSplit}
                                     splitTabIds={splitTabIds}
@@ -127,8 +127,8 @@ function App() {
                         <Button
                             onClick={() => setIsLaunchpadOpen(true)}
                             sx={{
-                                backgroundColor: theme.palette.neutral[700],
-                                "&:hover": { backgroundColor: theme.palette.neutral[300] },
+                                backgroundColor: theme.palette.general.tertiary,
+                                "&:hover": { backgroundColor: theme.palette.general.secondary },
                                 flexShrink: 0,
                                 height: "52px",
                                 width: "52px",
@@ -142,8 +142,8 @@ function App() {
                         <Button
                             onClick={() => setIsAddHostHidden(false)}
                             sx={{
-                                backgroundColor: theme.palette.neutral[700],
-                                "&:hover": { backgroundColor: theme.palette.neutral[300] },
+                                backgroundColor: theme.palette.general.tertiary,
+                                "&:hover": { backgroundColor: theme.palette.general.secondary },
                                 flexShrink: 0,
                                 height: "52px",
                                 width: "52px",
@@ -163,7 +163,16 @@ function App() {
                         {terminals.map((terminal) => (
                             <div
                                 key={terminal.id}
-                                className={`bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 ${splitTabIds.includes(terminal.id) || activeTab === terminal.id ? "block" : "hidden"} flex-1`}
+                                className={`bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 ${
+                                    splitTabIds.includes(terminal.id) || activeTab === terminal.id ? "block" : "hidden"
+                                } flex-1`}
+                                style={{
+                                    order: splitTabIds.includes(terminal.id)
+                                        ? splitTabIds.indexOf(terminal.id) + 1
+                                        : activeTab === terminal.id
+                                            ? 0
+                                            : undefined
+                                }}
                             >
                                 <NewTerminal
                                     key={terminal.id}
@@ -172,9 +181,7 @@ function App() {
                                         if (ref && !terminal.terminalRef) {
                                             setTerminals((prev) =>
                                                 prev.map((t) =>
-                                                    t.id === terminal.id
-                                                        ? { ...t, terminalRef: ref }
-                                                        : t
+                                                    t.id === terminal.id ? { ...t, terminalRef: ref } : t
                                                 )
                                             );
                                         }

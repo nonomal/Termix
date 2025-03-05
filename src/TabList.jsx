@@ -10,22 +10,21 @@ function TabList({ terminals, activeTab, setActiveTab, closeTab, toggleSplit, sp
                 const isActive = terminal.id === activeTab;
                 const isSplit = splitTabIds.includes(terminal.id);
 
-                // Disable split screen button for the active tab (before and after splitting)
                 const isSplitButtonDisabled = isActive && !isSplitScreenActive || splitTabIds.length >= 3 && !isSplit;
 
                 return (
                     <div key={terminal.id} className={index < terminals.length - 1 ? "mr-[0.5rem]" : ""}>
                         <ButtonGroup>
-                            {/* Set active tab button */}
+                            {/* Set Active Tab Button */}
                             <Button
                                 onClick={() => setActiveTab(terminal.id)}
-                                disabled={isSplit} // Disabled for split screen tabs
+                                disabled={isSplit}
                                 sx={{
                                     backgroundColor:
-                                        isActive ? theme.palette.neutral[500] : theme.palette.neutral[800],
+                                        isActive ? theme.palette.general.primary : theme.palette.general.disabled,
                                     color: theme.palette.text.primary,
-                                    "&:hover": { backgroundColor: theme.palette.neutral[300] },
-                                    ":disabled": { backgroundColor: theme.palette.neutral[800] },
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
+                                    ":disabled": { backgroundColor: theme.palette.general.disabled },
                                     borderTopLeftRadius: "4px",
                                     borderBottomLeftRadius: "4px",
                                     height: "40px",
@@ -36,17 +35,17 @@ function TabList({ terminals, activeTab, setActiveTab, closeTab, toggleSplit, sp
                             >
                                 {terminal.title}
                             </Button>
-                            {/* Split screen button */}
+                            {/* Split Screen Button */}
                             <Button
                                 onClick={() => toggleSplit(terminal.id)}
-                                disabled={isSplitButtonDisabled || isActive} // Disable for the active tab (before and after split)
+                                disabled={isSplitButtonDisabled || isActive}
                                 sx={{
                                     backgroundColor: isSplit
-                                        ? theme.palette.neutral[500]  // Split tabs get color 700
-                                        : theme.palette.neutral[700], // Active tab has disabled color
+                                        ? theme.palette.general.primary
+                                        : theme.palette.general.tertiary,
                                     color: theme.palette.text.primary,
-                                    ":disabled": { backgroundColor: theme.palette.neutral[800] },
-                                    "&:hover": { backgroundColor: theme.palette.neutral[300] },
+                                    ":disabled": { backgroundColor: theme.palette.general.disabled },
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
                                     borderTopRightRadius: "4px",
                                     borderBottomRightRadius: "4px",
                                     height: "40px",
@@ -56,15 +55,15 @@ function TabList({ terminals, activeTab, setActiveTab, closeTab, toggleSplit, sp
                             >
                                 /
                             </Button>
-                            {/* Close tab button */}
+                            {/* Close Tab Button */}
                             <Button
                                 onClick={() => closeTab(terminal.id)}
                                 disabled={isSplitScreenActive && isActive || isSplit}
                                 sx={{
-                                    backgroundColor: theme.palette.neutral[700],
+                                    backgroundColor: theme.palette.general.tertiary,
                                     color: theme.palette.text.primary,
-                                    "&:hover": { backgroundColor: theme.palette.neutral[300] },
-                                    ":disabled": { backgroundColor: theme.palette.neutral[800] },
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
+                                    ":disabled": { backgroundColor: theme.palette.general.disabled },
                                     borderTopRightRadius: "4px",
                                     borderBottomRightRadius: "4px",
                                     height: "40px",
