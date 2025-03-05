@@ -70,14 +70,12 @@ export function NewTerminal({ hostConfig }) {
         // Write initial connection message
         terminal.write("\r\n*** Connecting to backend ***\r\n");
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let ioUrl = `${protocol}//${window.location.hostname}:${window.location.port}/socket.io/`;
-
-        if (window.location.hostname === "localhost") {
-            ioUrl = "http://localhost:8081";
-        }
-
-        const socket = io(ioUrl);
+        const socket = io(window.location.hostname === "localhost"
+            ? 'http://localhost:8081'
+            : '/', {
+            path: '/socket.io',
+            transports: ['websocket', 'polling']
+        });
         socketRef.current = socket;
 
         socket.off("connect");

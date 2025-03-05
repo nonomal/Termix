@@ -1,32 +1,39 @@
-# Build everything in one stage
-FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
-
-# Install nginx and dependencies
-RUN apk add --no-cache nginx npm
-
-# Set working directory
+# Stage 1: Build frontend
+FROM --platform=$BUILDPLATFORM node:18-alpine AS frontend-builder
 WORKDIR /app
-
-# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
-
-# Copy the entire project (frontend and backend)
-COPY ./ ./
-
-# Build the frontend
+COPY . .
 RUN npm run build
+
+# Stage 2: Build backend
+FROM --platform=$BUILDPLATFORM node:18-alpine AS backend-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY src/backend/ ./src/backend/
+
+# Stage 3: Final production image
+FROM node:18-alpine
+RUN apk add --no-cache nginx
 
 # Configure nginx
 COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
-# Copy built frontend to nginx's web directory
-COPY ./dist /usr/share/nginx/html
+# Copy backend
+COPY --from=backend-builder /app/node_modules ./node_modules
+COPY --from=backend-builder /app/src/backend ./src/backend
 
-# Expose necessary ports
-EXPOSE 8080
-EXPOSE 8081
+# Create separate directories for nginx and node
+RUN mkdir -p /var/log/nginx && \
+    mkdir -p /var/lib/nginx && \
+    chown -R nginx:nginx /var/log/nginx /var/lib/nginx
 
-# Use entrypoint.sh to run both the backend and nginx
-RUN chmod +x /app/src/backend/entrypoint.sh
-ENTRYPOINT ["/app/src/backend/entrypoint.sh"]
+# Expose ports
+EXPOSE 8080 8081
+
+# Use a start script to run both services
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+CMD ["/entrypoint.sh"]
