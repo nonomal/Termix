@@ -14,6 +14,8 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                         color: theme.palette.text.primary,
                         padding: 3,
                         borderRadius: 10,
+                        overflowX: 'hidden',
+                        overflowY: 'auto',
                     }}>
                     <DialogTitle>Add Host</DialogTitle>
                     <DialogContent>

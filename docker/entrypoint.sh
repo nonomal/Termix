@@ -4,7 +4,7 @@
 nginx -g "daemon off;" &
 
 # Start Node.js backend
-node src/backend/index.js
+node src/backend/server.cjs
 
 # Keep container running
 wait
