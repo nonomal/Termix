@@ -67,29 +67,35 @@ function App() {
     const closeTab = (id) => {
         const newTerminals = terminals.filter((t) => t.id !== id);
         setTerminals(newTerminals);
-        setSplitTabIds(prev => prev.filter(tabId => tabId !== id));
         if (activeTab === id) {
             setActiveTab(newTerminals[0]?.id || null);
         }
     };
 
-    // Toggle split for a specific tab
+    // Toggle split for a terminal tab
     const toggleSplit = (id) => {
-        setSplitTabIds(prev => {
-            if (prev.includes(id)) {
-                return prev.filter(tabId => tabId !== id);
-            } else {
-                if (prev.length >= 1) return prev; // Limit to 1 split
-                return [...prev, id, activeTab].filter((tabId, index, self) => self.indexOf(tabId) === index);
-            }
-        });
+        if (splitTabIds.length >= 3) return; // Prevent more than 2 tabs from splitting
+
+        setSplitTabIds((prev) =>
+            prev.includes(id) ? prev.filter((splitId) => splitId !== id) : [...prev, id]
+        );
+
+        if (splitTabIds.includes(id)) {
+            setSplitTabIds((prev) => prev.filter((splitId) => splitId !== id));
+        }
     };
 
-    // Get grid layout class based on split count
-    const getGridLayout = (count) => {
-        if (count === 1) return 'grid-cols-1';
-        if (count === 2) return 'grid-cols-2';
-        return 'grid-cols-1';
+    // Determine the layout based on the number of split tabs
+    const getLayoutStyle = () => {
+        if (splitTabIds.length === 1) {
+            // Horizontal split (2 tabs: left-right)
+            return "flex flex-row h-full gap-4";
+        } else if (splitTabIds.length > 1) {
+            // 2x2 Grid layout (4 tabs max), with evenly spaced rows
+            return "grid grid-cols-2 grid-rows-2 gap-4 h-full overflow-hidden";
+        }
+        // No split, main tab takes the entire screen
+        return "flex flex-col h-full";
     };
 
     return (
@@ -153,48 +159,29 @@ function App() {
                     </div>
 
                     {/* Terminal Views */}
-                    <div className="flex-1 relative p-4">
-                        {splitTabIds.length > 0 ? (
-                            <div className={`grid gap-4 h-full ${getGridLayout(splitTabIds.length)}`}>
-                                {splitTabIds.map(id => {
-                                    const terminal = terminals.find(t => t.id === id);
-                                    return terminal ? (
-                                        <div key={terminal.id} className="bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 h-full">
-                                            <NewTerminal
-                                                key={terminal.id}
-                                                hostConfig={terminal.hostConfig}
-                                                ref={(ref) => {
-                                                    if (ref && !terminal.terminalRef) {
-                                                        setTerminals(prev => prev.map(t =>
-                                                            t.id === terminal.id ? { ...t, terminalRef: ref } : t
-                                                        ));
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    ) : null;
-                                })}
+                    <div className={`relative p-4 ${getLayoutStyle()}`}>
+                        {terminals.map((terminal) => (
+                            <div
+                                key={terminal.id}
+                                className={`bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 ${splitTabIds.includes(terminal.id) || activeTab === terminal.id ? "block" : "hidden"} flex-1`}
+                            >
+                                <NewTerminal
+                                    key={terminal.id}
+                                    hostConfig={terminal.hostConfig}
+                                    ref={(ref) => {
+                                        if (ref && !terminal.terminalRef) {
+                                            setTerminals((prev) =>
+                                                prev.map((t) =>
+                                                    t.id === terminal.id
+                                                        ? { ...t, terminalRef: ref }
+                                                        : t
+                                                )
+                                            );
+                                        }
+                                    }}
+                                />
                             </div>
-                        ) : (
-                            <div className="absolute top-4 left-4 right-4 bottom-4">
-                                {terminals.find(t => t.id === activeTab) && (
-                                    <div className="bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 h-full">
-                                        <NewTerminal
-                                            key={activeTab}
-                                            hostConfig={terminals.find(t => t.id === activeTab).hostConfig}
-                                            ref={(ref) => {
-                                                const terminal = terminals.find(t => t.id === activeTab);
-                                                if (ref && terminal && !terminal.terminalRef) {
-                                                    setTerminals(prev => prev.map(t =>
-                                                        t.id === activeTab ? { ...t, terminalRef: ref } : t
-                                                    ));
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        ))}
                     </div>
                 </div>
 
