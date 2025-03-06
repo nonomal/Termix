@@ -38,6 +38,47 @@ function App() {
         };
     }, []);
 
+    useEffect(() => {
+        terminals.forEach((terminal) => {
+            if (
+                (terminal.id === activeTab || splitTabIds.includes(terminal.id)) &&
+                terminal.terminalRef?.resizeTerminal
+            ) {
+                terminal.terminalRef.resizeTerminal();
+            }
+        });
+    }, [splitTabIds, activeTab, terminals]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            terminals.forEach((terminal) => {
+                if (
+                    (terminal.id === activeTab || splitTabIds.includes(terminal.id)) &&
+                    terminal.terminalRef?.resizeTerminal
+                ) {
+                    terminal.terminalRef.resizeTerminal();
+                }
+            });
+        };
+
+        window.addEventListener("resize", handleResize);
+
+        return () => {
+            window.removeEventListener("resize", handleResize);
+        };
+    }, [splitTabIds, activeTab, terminals]);
+
+    useEffect(() => {
+        terminals.forEach((terminal) => {
+            if (
+                (terminal.id === activeTab || splitTabIds.includes(terminal.id)) &&
+                terminal.terminalRef?.resizeTerminal
+            ) {
+                terminal.terminalRef.resizeTerminal();
+            }
+        });
+    }, [splitTabIds]);
+
     const handleAddHost = () => {
         if (form.ip && form.user && form.password && form.port) {
             const newTerminal = {
@@ -88,13 +129,10 @@ function App() {
 
     const getLayoutStyle = () => {
         if (splitTabIds.length === 1) {
-            // Horizontal split (2 tabs: left-right)
             return "flex flex-row h-full gap-4";
         } else if (splitTabIds.length > 1) {
-            // 2x2 Grid layout (4 tabs max), with evenly spaced rows
             return "grid grid-cols-2 grid-rows-2 gap-4 h-full overflow-hidden";
         }
-        // No split, main tab takes the entire screen
         return "flex flex-col h-full";
     };
 
@@ -177,6 +215,7 @@ function App() {
                                 <NewTerminal
                                     key={terminal.id}
                                     hostConfig={terminal.hostConfig}
+                                    isVisible={activeTab === terminal.id || splitTabIds.includes(terminal.id)}
                                     ref={(ref) => {
                                         if (ref && !terminal.terminalRef) {
                                             setTerminals((prev) =>

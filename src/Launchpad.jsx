@@ -56,7 +56,10 @@ function Launchpad({ onClose }) {
                 >
                     <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4">Launchpad</h2>
-                        <p className="mb-4">W.I.P. Feature</p>
+                        <p className="mb-4">A one-stop shop for adding hosts, apps (AI, notes, etc.), and all new features to come! Coming to you in a future update. Stay tuned!</p>
+                        <p className="mb-4">
+                            Can also be opened using <code className="bg-gray-500 px-1 rounded">Ctrl + L</code>
+                        </p>
                         <Button
                             type="submit"
                             onClick={onClose}

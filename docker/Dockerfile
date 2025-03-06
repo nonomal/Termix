@@ -33,7 +33,7 @@ RUN mkdir -p /var/log/nginx && \
 # Expose ports
 EXPOSE 8080 8081
 
-# Use a start script to run both services
+# Use a entrypoint script to run all services
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 CMD ["/entrypoint.sh"]

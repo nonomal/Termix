@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useImperativeHandle, useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -6,15 +6,48 @@ import io from "socket.io-client";
 import PropTypes from "prop-types";
 import theme from "./theme";
 
-export function NewTerminal({ hostConfig }) {
+export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
     const terminalRef = useRef(null);
     const socketRef = useRef(null);
+    const fitAddon = useRef(new FitAddon());
+    const terminalInstance = useRef(null);
+
+    const resizeTerminal = () => {
+        const terminalContainer = terminalRef.current;
+        const parentContainer = terminalContainer?.parentElement;
+
+        if (!parentContainer || !isVisible) return;
+
+        // Force a reflow to ensure the container's dimensions are up-to-date
+        void parentContainer.offsetHeight;
+
+        // Use a small delay to ensure the DOM has fully updated
+        setTimeout(() => {
+            const parentWidth = parentContainer.clientWidth;
+            const parentHeight = parentContainer.clientHeight;
+
+            terminalContainer.style.width = `${parentWidth}px`;
+            terminalContainer.style.height = `${parentHeight}px`;
+
+            // Fit the terminal to the container
+            fitAddon.current.fit();
+
+            // Notify the backend of the new terminal size
+            if (socketRef.current && terminalInstance.current) {
+                const { cols, rows } = terminalInstance.current;
+                socketRef.current.emit("resize", { cols, rows });
+            }
+        }, 10); // Small delay to ensure proper DOM updates
+    };
+
+    useImperativeHandle(ref, () => ({
+        resizeTerminal: resizeTerminal,
+    }));
 
     useEffect(() => {
         if (!hostConfig || !terminalRef.current) return;
 
-        // Initialize terminal
-        const terminal = new Terminal({
+        terminalInstance.current = new Terminal({
             cursorBlink: true,
             theme: {
                 background: theme.palette.background.terminal,
@@ -27,104 +60,76 @@ export function NewTerminal({ hostConfig }) {
             allowTransparency: true,
         });
 
-        // Initialize FitAddon for auto-sizing
-        const fitAddon = new FitAddon();
-        terminal.loadAddon(fitAddon);
+        terminalInstance.current.loadAddon(fitAddon.current);
 
-        // Open terminal in the container
-        terminal.open(terminalRef.current);
+        terminalInstance.current.open(terminalRef.current);
 
-        // Resize function
-        const resizeTerminal = () => {
-            const terminalContainer = terminalRef.current;
-            const parentContainer = terminalContainer?.parentElement;
-
-            if (!parentContainer) return;
-
-            const parentWidth = parentContainer.clientWidth;
-            const parentHeight = parentContainer.clientHeight;
-
-            terminalContainer.style.width = `${parentWidth}px`;
-            terminalContainer.style.height = `${parentHeight}px`;
-
-            fitAddon.fit();
-            const { cols, rows } = terminal;
-
-            if (socketRef.current) {
-                socketRef.current.emit("resize", { cols, rows });
-            }
-        };
-
-        // Ensure correct sizing on start
         setTimeout(() => {
-            fitAddon.fit();
+            fitAddon.current.fit();
             resizeTerminal();
-        }, 50); // Small delay to ensure proper initialization
+            terminalInstance.current.focus();
+        }, 50);
 
-        // Focus on terminal after initialization
-        terminal.focus();
+        terminalInstance.current.write("\r\n*** Connecting to backend ***\r\n");
 
-        // Listen for window resize events
-        window.addEventListener("resize", resizeTerminal);
-
-        // Write initial connection message
-        terminal.write("\r\n*** Connecting to backend ***\r\n");
-
-        const socket = io(window.location.hostname === "localhost"
-            ? 'http://localhost:8081'
-            : '/', {
-            path: '/socket.io',
-            transports: ['websocket', 'polling']
-        });
+        const socket = io(
+            window.location.hostname === "localhost"
+                ? "http://localhost:8081"
+                : "/",
+            {
+                path: "/socket.io",
+                transports: ["websocket", "polling"],
+            }
+        );
         socketRef.current = socket;
 
-        socket.off("connect");
-        socket.off("data");
-        socket.off("disconnect");
-
         socket.on("connect", () => {
-            fitAddon.fit();
-            resizeTerminal(); // Ensure proper size on connection
-            const { cols, rows } = terminal;
+            fitAddon.current.fit();
+            resizeTerminal();
+            const { cols, rows } = terminalInstance.current;
             socket.emit("connectToHost", cols, rows, hostConfig);
-            terminal.write("\r\n*** Connected to backend ***\r\n");
+            terminalInstance.current.write("\r\n*** Connected to backend ***\r\n");
         });
 
         socket.on("data", (data) => {
-            terminal.write(data);
+            terminalInstance.current.write(data);
         });
 
         socket.on("disconnect", () => {
-            terminal.write("\r\n*** Disconnected from backend ***\r\n");
+            terminalInstance.current.write("\r\n*** Disconnected from backend ***\r\n");
         });
 
-        // Capture and send keystrokes
-        terminal.onKey(({ key }) => {
+        terminalInstance.current.onKey(({ key }) => {
             socket.emit("data", key);
         });
 
-        // Handle socket errors
         socket.on("connect_error", (err) => {
-            terminal.write(`\r\n*** Error: ${err.message} ***\r\n`);
+            terminalInstance.current.write(`\r\n*** Error: ${err.message} ***\r\n`);
         });
 
-        // Cleanup on component unmount
         return () => {
-            terminal.dispose();
-            window.removeEventListener("resize", resizeTerminal);
+            terminalInstance.current.dispose();
             socket.disconnect();
         };
     }, [hostConfig]);
+
+    useEffect(() => {
+        if (isVisible) {
+            resizeTerminal();
+        }
+    }, [isVisible]);
 
     return (
         <div
             ref={terminalRef}
             className="w-full h-full overflow-hidden text-left"
+            style={{ display: isVisible ? "block" : "none" }}
         />
     );
-}
+});
 
-// Prop validation using PropTypes
+NewTerminal.displayName = "NewTerminal";
+
 NewTerminal.propTypes = {
     hostConfig: PropTypes.shape({
         ip: PropTypes.string.isRequired,
@@ -132,4 +137,5 @@ NewTerminal.propTypes = {
         password: PropTypes.string.isRequired,
         port: PropTypes.string.isRequired,
     }).isRequired,
+    isVisible: PropTypes.bool.isRequired,
 };

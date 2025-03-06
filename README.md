@@ -16,30 +16,28 @@
     <img alt="Termimx Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
 </p>
 
-# Description
-Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
+# Overview
+Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) server management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
 
 > [!WARNING]  
-> This app is in the VERY early stages of development. Expect bugs, data loss, and possibly even security issues!
+> This app is in the VERY early stages of development. Expect bugs, data loss, and unexplainable issues! For that reason, I recommend you securely tunnel your connection through a VPN.
+
+# Features
+- SSH (password auth only)
+- Split Screen (Up to 4) & Tab System
 
 # Planned Features
-- [x] SSH
-- [ ] VNC
-- [ ] RDP
-- [ ] SMTP (build in file transfer)
-- [ ] Split Screen & Tabs
-- [ ] ChatGPT/Ollama Integration (for commands)
-- [ ] Login Screen
-
-# How Termix is Different
-Before developing Termix, I faced the issue of a server management panel that did not have every feature I liked. [Guacamole](https://guacamole.apache.org/) had poor copy/paste abilities and a poor UI. [Shellngn](https://shellngn.com/) was too expensive and all other alternatives had one major problem with them. I plan to develop the management panel of my dreams with even an AI integration for those pesky commands I always forget the syntax of.
+- Key Auth for SSH
+- VNC
+- RDP
+- SFTP (build in file transfer)
+- ChatGPT/Ollama Integration (for commands)
+- Login Screen
+- User Management
+- Apps (like notes, AI, etc)
 
 # Installation
-View the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix. You can also use these links to go directly to guide. [Docker](https://github.com/LukeGus/Termix/wiki/Docker) or [Manual](https://github.com/LukeGus/Termix/wiki/Manual).
-
-# Known Bugs
-### Please create an [Issue](https://github.com/LukeGus/Termix/issues) if you find any problems!
-Start session button stays connected even if SSH fails to connect.
+Visit the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix. You can also use these links to go directly to guide. [Docker](https://github.com/LukeGus/Termix/wiki/Docker) or [Manual](https://github.com/LukeGus/Termix/wiki/Manual).
 
 # Show-off
 
