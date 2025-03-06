@@ -18,13 +18,13 @@ io.on("connection", (socket) => {
     let stream = null;
 
     socket.on("connectToHost", (cols, rows, hostConfig) => {
-        if (!hostConfig || !hostConfig.ip || !hostConfig.user || !hostConfig.password || !hostConfig.port) {
+        if (!hostConfig || !hostConfig.ip || !hostConfig.user || (!hostConfig.password && !hostConfig.rsaKey) || !hostConfig.port) {
             console.error("Invalid hostConfig received:", hostConfig);
             return;
         }
 
         console.log("Received hostConfig:", hostConfig);
-        const { ip, port, user, password } = hostConfig;
+        const { ip, port, user, password, rsaKey } = hostConfig;
 
         const conn = new SSHClient();
         conn
@@ -89,6 +89,7 @@ io.on("connection", (socket) => {
                 port: port,
                 username: user,
                 password: password,
+                privateKey: rsaKey ? Buffer.from(rsaKey) : undefined,
             });
     });
 

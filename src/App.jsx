@@ -80,14 +80,15 @@ function App() {
     }, [splitTabIds]);
 
     const handleAddHost = () => {
-        if (form.ip && form.user && form.password && form.port) {
+        if (form.ip && form.user && ((form.authMethod === 'password' && form.password) || (form.authMethod === 'rsaKey' && form.rsaKey)) && form.port) {
             const newTerminal = {
                 id: nextId,
                 title: form.name || form.ip,
                 hostConfig: {
                     ip: form.ip,
                     user: form.user,
-                    password: form.password,
+                    password: form.authMethod === 'password' ? form.password : undefined,
+                    rsaKey: form.authMethod === 'rsaKey' ? form.rsaKey : undefined,
                     port: Number(form.port),
                 },
                 terminalRef: null,
@@ -96,7 +97,7 @@ function App() {
             setActiveTab(nextId);
             setNextId(nextId + 1);
             setIsAddHostHidden(true);
-            setForm({ name: "", ip: "", user: "", password: "", port: 22 });
+            setForm({ name: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "password" });
         } else {
             alert("Please fill out all fields.");
         }
@@ -133,7 +134,7 @@ function App() {
         } else if (splitTabIds.length > 1) {
             return "grid grid-cols-2 grid-rows-2 gap-4 h-full overflow-hidden";
         }
-        return "flex flex-col h-full";
+        return "flex flex-col h-full gap-4";
     };
 
     return (

@@ -13,21 +13,20 @@
 <br />
 <p align="center">
   <a href="https://github.com/LukeGus/Termix">
-    <img alt="Termimx Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
+    <img alt="Termix Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
 </p>
 
 # Overview
 Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) server management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
 
 > [!WARNING]  
-> This app is in the VERY early stages of development. Expect bugs, data loss, and unexplainable issues! For that reason, I recommend you securely tunnel your connection through a VPN.
+> This app is in the VERY early stages of development. Expect bugs, data loss, and unexplainable issues! For that reason, I recommend you securely tunnel your connection to Termix through a VPN.
 
 # Features
-- SSH (password auth only)
+- SSH
 - Split Screen (Up to 4) & Tab System
 
 # Planned Features
-- Key Auth for SSH
 - VNC
 - RDP
 - SFTP (build in file transfer)
