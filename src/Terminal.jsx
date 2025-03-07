@@ -21,7 +21,7 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         void parentContainer.offsetHeight;
 
         const parentWidth = parentContainer.clientWidth;
-        const parentHeight = parentContainer.clientHeight - 16;
+        const parentHeight = parentContainer.clientHeight;
 
         terminalContainer.style.width = `${parentWidth}px`;
         terminalContainer.style.height = `${parentHeight}px`;

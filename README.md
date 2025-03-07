@@ -16,6 +16,8 @@
     <img alt="Termix Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
 </p>
 
+![Discord](https://img.shields.io/discord/1347374268253470720?style=for-the-badge&label=DISCORD&link=https%3A%2F%2Fdiscord.gg%2FjVQGdvHDrf)
+
 # Overview
 Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) server management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
 

@@ -131,7 +131,7 @@ function App() {
 
     const getLayoutStyle = () => {
         if (splitTabIds.length === 1) {
-            return "flex flex-row h-full gap-4";
+            return "grid grid-cols-2 h-full gap-4";
         } else if (splitTabIds.length > 1) {
             return "grid grid-cols-2 grid-rows-2 gap-4 h-full overflow-hidden";
         }
