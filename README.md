@@ -2,6 +2,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/LukeGus/Termix?style=flat&label=Stars)
 ![GitHub forks](https://img.shields.io/github/forks/LukeGus/Termix?style=flat&label=Forks)
 ![GitHub Release](https://img.shields.io/github/v/release/LukeGus/Termix?style=flat&label=Release)
+<a href="https://discord.gg/jVQGdvHDrf"><img alt="Discord" src="https://img.shields.io/discord/1347374268253470720"></a>
 #### Top Technologies
 [![React Badge](https://img.shields.io/badge/-React-61DBFB?style=flat-square&labelColor=black&logo=react&logoColor=61DBFB)](#)
 [![Javascript Badge](https://img.shields.io/badge/-Javascript-F0DB4F?style=flat-square&labelColor=black&logo=javascript&logoColor=F0DB4F)](#)
@@ -15,8 +16,6 @@
   <a href="https://github.com/LukeGus/Termix">
     <img alt="Termix Banner" src=./repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
 </p>
-
-![Discord](https://img.shields.io/discord/1347374268253470720?style=for-the-badge&label=DISCORD&link=https%3A%2F%2Fdiscord.gg%2FjVQGdvHDrf)
 
 # Overview
 Termix is an open-source forever free self-hosted SSH (other protocols planned, see [Planned Features](#planned-features)) server management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
