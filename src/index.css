@@ -8,3 +8,12 @@
   background-color: #4a5568;
   margin: 0 8px;
 }
+
+.terminal-container {
+  min-height: 0;
+}
+
+.terminal-container > div {
+  flex: 1;
+  min-height: 0;
+}

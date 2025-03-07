@@ -6,6 +6,7 @@ import { CssVarsProvider } from "@mui/joy";
 import theme from "./theme";
 import TabList from "./TabList.jsx";
 import Launchpad from "./Launchpad.jsx";
+import { Debounce } from './Utils';
 import TermixIcon from "./images/termix_icon.png";
 import RocketIcon from './images/launchpad_rocket.png';
 
@@ -50,7 +51,7 @@ function App() {
     }, [splitTabIds, activeTab, terminals]);
 
     useEffect(() => {
-        const handleResize = () => {
+        const handleResize = Debounce(() => {
             terminals.forEach((terminal) => {
                 if (
                     (terminal.id === activeTab || splitTabIds.includes(terminal.id)) &&
@@ -59,7 +60,7 @@ function App() {
                     terminal.terminalRef.resizeTerminal();
                 }
             });
-        };
+        }, 100);
 
         window.addEventListener("resize", handleResize);
 
@@ -97,7 +98,7 @@ function App() {
             setActiveTab(nextId);
             setNextId(nextId + 1);
             setIsAddHostHidden(true);
-            setForm({ name: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "password" });
+            setForm({ name: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "Select Auth" });
         } else {
             alert("Please fill out all fields.");
         }
@@ -198,7 +199,7 @@ function App() {
                     </div>
 
                     {/* Terminal Views */}
-                    <div className={`relative p-4 ${getLayoutStyle()}`}>
+                    <div className={`relative p-4 terminal-container ${getLayoutStyle()}`}>
                         {terminals.map((terminal) => (
                             <div
                                 key={terminal.id}

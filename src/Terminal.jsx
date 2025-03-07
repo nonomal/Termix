@@ -18,26 +18,20 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
 
         if (!parentContainer || !isVisible) return;
 
-        // Force a reflow to ensure the container's dimensions are up-to-date
         void parentContainer.offsetHeight;
 
-        // Use a small delay to ensure the DOM has fully updated
-        setTimeout(() => {
-            const parentWidth = parentContainer.clientWidth;
-            const parentHeight = parentContainer.clientHeight;
+        const parentWidth = parentContainer.clientWidth;
+        const parentHeight = parentContainer.clientHeight - 16;
 
-            terminalContainer.style.width = `${parentWidth}px`;
-            terminalContainer.style.height = `${parentHeight}px`;
+        terminalContainer.style.width = `${parentWidth}px`;
+        terminalContainer.style.height = `${parentHeight}px`;
 
-            // Fit the terminal to the container
-            fitAddon.current.fit();
+        fitAddon.current.fit();
 
-            // Notify the backend of the new terminal size
-            if (socketRef.current && terminalInstance.current) {
-                const { cols, rows } = terminalInstance.current;
-                socketRef.current.emit("resize", { cols, rows });
-            }
-        }, 10); // Small delay to ensure proper DOM updates
+        if (socketRef.current && terminalInstance.current) {
+            const { cols, rows } = terminalInstance.current;
+            socketRef.current.emit("resize", { cols, rows });
+        }
     };
 
     useImperativeHandle(ref, () => ({
@@ -61,7 +55,6 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         });
 
         terminalInstance.current.loadAddon(fitAddon.current);
-
         terminalInstance.current.open(terminalRef.current);
 
         setTimeout(() => {
@@ -118,6 +111,21 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
             resizeTerminal();
         }
     }, [isVisible]);
+
+    useEffect(() => {
+        const terminalContainer = terminalRef.current;
+        if (!terminalContainer) return;
+
+        const observer = new ResizeObserver(() => {
+            resizeTerminal();
+        });
+
+        observer.observe(terminalContainer);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, []);
 
     return (
         <div
