@@ -28,6 +28,7 @@ Termix is an open-source forever free self-hosted SSH (other protocols planned, 
 - Split Screen (Up to 4) & Tab System
 
 # Planned Features
+- Database to Store Connection Details
 - VNC
 - RDP
 - SFTP (build in file transfer)
