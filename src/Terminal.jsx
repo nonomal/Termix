@@ -16,22 +16,21 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         const terminalContainer = terminalRef.current;
         const parentContainer = terminalContainer?.parentElement;
 
-        if (!parentContainer || !isVisible) return;
+        if (!parentContainer || parentContainer.clientWidth === 0) return;
 
-        void parentContainer.offsetHeight;
-
-        const parentWidth = parentContainer.clientWidth;
-        const parentHeight = parentContainer.clientHeight;
+        const parentWidth = parentContainer.clientWidth - 10;
+        const parentHeight = parentContainer.clientHeight - 10;
 
         terminalContainer.style.width = `${parentWidth}px`;
         terminalContainer.style.height = `${parentHeight}px`;
 
-        fitAddon.current.fit();
-
-        if (socketRef.current && terminalInstance.current) {
-            const { cols, rows } = terminalInstance.current;
-            socketRef.current.emit("resize", { cols, rows });
-        }
+        requestAnimationFrame(() => {
+            fitAddon.current.fit();
+            if (socketRef.current && terminalInstance.current) {
+                const { cols, rows } = terminalInstance.current;
+                socketRef.current.emit("resize", { cols, rows });
+            }
+        });
     };
 
     useImperativeHandle(ref, () => ({
@@ -50,8 +49,7 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
             },
             fontSize: 14,
             scrollback: 1000,
-            rendererType: "canvas",
-            allowTransparency: true,
+            ignoreBracketedPasteMode: true,
         });
 
         terminalInstance.current.loadAddon(fitAddon.current);
@@ -62,8 +60,6 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
             resizeTerminal();
             terminalInstance.current.focus();
         }, 50);
-
-        terminalInstance.current.write("\r\n*** Connecting to backend ***\r\n");
 
         const socket = io(
             window.location.hostname === "localhost"
@@ -81,23 +77,52 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
             resizeTerminal();
             const { cols, rows } = terminalInstance.current;
             socket.emit("connectToHost", cols, rows, hostConfig);
-            terminalInstance.current.write("\r\n*** Connected to backend ***\r\n");
         });
 
         socket.on("data", (data) => {
-            terminalInstance.current.write(data);
+            const decoder = new TextDecoder("utf-8");
+            terminalInstance.current.write(decoder.decode(new Uint8Array(data)));
         });
 
-        socket.on("disconnect", () => {
-            terminalInstance.current.write("\r\n*** Disconnected from backend ***\r\n");
+        let isPasting = false;
+
+        terminalInstance.current.onData((data) => {
+            socketRef.current.emit("data", data);
         });
 
-        terminalInstance.current.onKey(({ key }) => {
-            socket.emit("data", key);
+        terminalInstance.current.attachCustomKeyEventHandler((event) => {
+            console.log("Event caled");
+            if (isPasting) return;
+
+            isPasting = true;
+            setTimeout(() => {
+                isPasting = false;
+            }, 200);
+
+            if ((event.ctrlKey || event.metaKey) && event.key === "v") {
+                event.preventDefault();
+
+                navigator.clipboard.readText().then((text) => {
+                    socketRef.current.emit("data", text);
+                }).catch((err) => {
+                    console.error("Failed to read clipboard contents:", err);
+                });
+                return false;
+            }
+            return true;
         });
 
-        socket.on("connect_error", (err) => {
-            terminalInstance.current.write(`\r\n*** Error: ${err.message} ***\r\n`);
+        terminalInstance.current.onKey(({ domEvent }) => {
+            if (domEvent.key === "c" && (domEvent.ctrlKey || domEvent.metaKey)) {
+                const selection = terminalInstance.current.getSelection();
+                if (selection) {
+                    navigator.clipboard.writeText(selection);
+                }
+            }
+        });
+
+        socket.on("error", (err) => {
+            terminalInstance.current.write(`\r\n*** Error: ${err} ***\r\n`);
         });
 
         return () => {
@@ -107,20 +132,21 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
     }, [hostConfig]);
 
     useEffect(() => {
-        if (isVisible) {
-            resizeTerminal();
-        }
+        resizeTerminal();
     }, [isVisible]);
 
     useEffect(() => {
         const terminalContainer = terminalRef.current;
         if (!terminalContainer) return;
 
+        const parentContainer = terminalContainer.parentElement;
+        if (!parentContainer) return;
+
         const observer = new ResizeObserver(() => {
             resizeTerminal();
         });
 
-        observer.observe(terminalContainer);
+        observer.observe(parentContainer);
 
         return () => {
             observer.disconnect();
@@ -131,7 +157,13 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         <div
             ref={terminalRef}
             className="w-full h-full overflow-hidden text-left"
-            style={{ display: isVisible ? "block" : "none" }}
+            style={{
+                visibility: isVisible ? 'visible' : 'hidden',
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                transform: 'translateY(5px) translateX(5px)',
+            }}
         />
     );
 });

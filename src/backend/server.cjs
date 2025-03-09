@@ -23,32 +23,37 @@ io.on("connection", (socket) => {
             return;
         }
 
-        console.log("Received hostConfig:", hostConfig);
+        // Redact only sensitive info for logging
+        const safeHostConfig = {
+            ip: hostConfig.ip,
+            port: hostConfig.port,
+            user: hostConfig.user,
+            password: hostConfig.password ? '***REDACTED***' : undefined,
+            rsaKey: hostConfig.rsaKey ? '***REDACTED***' : undefined,
+        };
+
+        console.log("Received hostConfig:", safeHostConfig);
         const { ip, port, user, password, rsaKey } = hostConfig;
 
         const conn = new SSHClient();
         conn
             .on("ready", function () {
                 console.log("SSH connection established");
-                socket.emit("data", "\r\n*** SSH CONNECTION ESTABLISHED ***\r\n");
 
                 conn.shell({ term: "xterm-256color" }, function (err, newStream) {
                     if (err) {
-                        console.error("Error opening SSH shell:", err);
-                        return socket.emit(
-                            "data",
-                            "\r\n*** SSH SHELL ERROR: " + err.message + " ***\r\n"
-                        );
+                        console.error("Error:", err.message);
+                        socket.emit("error", err.message);
+                        return;
                     }
                     stream = newStream;
 
                     // Set initial terminal size
                     stream.setWindow(rows, cols, rows * 100, cols * 100);
-                    console.log(`Initial terminal size: cols=${cols}, rows=${rows}`);
 
                     // Pipe SSH output to client
                     stream.on("data", function (data) {
-                        socket.emit("data", data.toString("binary"));
+                        socket.emit("data", data);
                     });
 
                     stream.on("close", function () {
@@ -65,7 +70,6 @@ io.on("connection", (socket) => {
                     socket.on("resize", ({ cols, rows }) => {
                         if (stream && stream.setWindow) {
                             stream.setWindow(rows, cols, rows * 100, cols * 100);
-                            console.log(`Terminal resized: cols=${cols}, rows=${rows}`);
                         }
                     });
 
@@ -75,14 +79,11 @@ io.on("connection", (socket) => {
             })
             .on("close", function () {
                 console.log("SSH connection closed");
-                socket.emit("data", "\r\n*** SSH CONNECTION CLOSED ***\r\n");
+                socket.emit("error", "SSH connection closed");
             })
             .on("error", function (err) {
-                console.error("SSH connection error:", err);
-                socket.emit(
-                    "data",
-                    "\r\n*** SSH CONNECTION ERROR: " + err.message + " ***\r\n"
-                );
+                console.error("Error:", err.message);
+                socket.emit("error", err.message);
             })
             .connect({
                 host: ip,

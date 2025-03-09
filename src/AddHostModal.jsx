@@ -31,15 +31,22 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
         <CssVarsProvider theme={theme}>
             <Modal open={!isHidden} onClose={() => setIsAddHostHidden(true)}>
                 <ModalDialog
+                    layout="center"
                     sx={{
                         backgroundColor: theme.palette.general.tertiary,
                         borderColor: theme.palette.general.secondary,
                         color: theme.palette.text.primary,
                         padding: 3,
                         borderRadius: 10,
-                        overflowX: 'hidden',
-                        overflowY: 'auto',
-                    }}>
+                        width: "auto",
+                        maxWidth: "90vw",
+                        minWidth: "fit-content",
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}
+                >
                     <DialogTitle>Add Host</DialogTitle>
                     <DialogContent>
                         <form
@@ -48,53 +55,48 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                 if (isFormValid()) handleAddHost();
                             }}
                         >
-                            <Stack spacing={2}>
+                            <Stack spacing={2} sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
                                 <FormControl>
                                     <FormLabel>Host Name</FormLabel>
                                     <Input
                                         value={form.name}
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                        required={false}
                                         sx={{
                                             backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
                                 </FormControl>
-                                <FormControl>
+                                <FormControl error={!form.ip}>
                                     <FormLabel>Host IP</FormLabel>
                                     <Input
                                         value={form.ip}
                                         onChange={(e) => setForm({ ...form, ip: e.target.value })}
                                         required
-                                        error={!form.ip ? "Please provide an IP address" : ""}
                                         sx={{
                                             backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
                                 </FormControl>
-                                <FormControl>
+                                <FormControl error={!form.user}>
                                     <FormLabel>Host User</FormLabel>
                                     <Input
                                         value={form.user}
                                         onChange={(e) => setForm({ ...form, user: e.target.value })}
                                         required
-                                        error={form.user ? "" : "Please provide a username"}
                                         sx={{
                                             backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
                                         }}
                                     />
                                 </FormControl>
-                                <FormControl>
+                                <FormControl error={!form.authMethod || form.authMethod === 'Select Auth'}>
                                     <FormLabel>Authentication Method</FormLabel>
                                     <Select
-                                        value={form.authMethod}
+                                        value={form.authMethod || 'Select Auth'}
                                         onChange={(e, newValue) => setForm({ ...form, authMethod: newValue })}
                                         required
-                                        displayEmpty
-                                        error={!form.authMethod || form.authMethod === 'Select Auth'}
                                         sx={{
                                             backgroundColor: !form.authMethod || form.authMethod === 'Select Auth' ? theme.palette.general.tertiary : theme.palette.general.primary,
                                             color: theme.palette.text.primary,
@@ -103,7 +105,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                             },
                                         }}
                                     >
-                                        <Option value="" disabled>
+                                        <Option value="Select Auth" disabled>
                                             Select Auth
                                         </Option>
                                         <Option value="password">Password</Option>
@@ -111,14 +113,13 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                     </Select>
                                 </FormControl>
                                 {form.authMethod === 'password' && (
-                                    <FormControl>
+                                    <FormControl error={!form.password}>
                                         <FormLabel>Host Password</FormLabel>
                                         <Input
                                             type="password"
                                             value={form.password}
                                             onChange={(e) => setForm({ ...form, password: e.target.value })}
                                             required
-                                            error={form.password ? "" : "Please provide a password"}
                                             sx={{
                                                 backgroundColor: theme.palette.general.primary,
                                                 color: theme.palette.text.primary,
@@ -127,13 +128,12 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                     </FormControl>
                                 )}
                                 {form.authMethod === 'rsaKey' && (
-                                    <FormControl>
+                                    <FormControl error={!form.rsaKey}>
                                         <FormLabel>RSA Key</FormLabel>
                                         <Input
                                             type="file"
                                             onChange={handleFileChange}
                                             required
-                                            error={!form.rsaKey ? "Please upload a valid RSA private key file" : ""}
                                             sx={{
                                                 backgroundColor: theme.palette.general.primary,
                                                 color: theme.palette.text.primary,
@@ -146,7 +146,7 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         />
                                     </FormControl>
                                 )}
-                                <FormControl>
+                                <FormControl error={form.port < 1 || form.port > 65535}>
                                     <FormLabel>Host Port</FormLabel>
                                     <Input
                                         value={form.port}
@@ -154,7 +154,6 @@ const AddHostModal = ({ isHidden, form, setForm, handleAddHost, setIsAddHostHidd
                                         min={1}
                                         max={65535}
                                         required
-                                        error={form.port < 1 || form.port > 65535 ? "Port must be between 1 and 65535" : ""}
                                         sx={{
                                             backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
