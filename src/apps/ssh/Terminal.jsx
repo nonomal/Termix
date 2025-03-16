@@ -4,9 +4,9 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import io from "socket.io-client";
 import PropTypes from "prop-types";
-import theme from "./theme";
+import theme from "../../theme.js";
 
-export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
+export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidden }, ref) => {
     const terminalRef = useRef(null);
     const socketRef = useRef(null);
     const fitAddon = useRef(new FitAddon());
@@ -55,29 +55,60 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         terminalInstance.current.loadAddon(fitAddon.current);
         terminalInstance.current.open(terminalRef.current);
 
-        setTimeout(() => {
-            fitAddon.current.fit();
-            resizeTerminal();
-            terminalInstance.current.focus();
-        }, 50);
-
         const socket = io(
             window.location.hostname === "localhost"
                 ? "http://localhost:8081"
                 : "/",
             {
-                path: "/socket.io",
+                path: "/ssh.io/socket.io",
                 transports: ["websocket", "polling"],
             }
         );
         socketRef.current = socket;
 
+        socket.on("connect_error", (error) => {
+            terminalInstance.current.write(`\r\n*** Socket connection error: ${error.message} ***\r\n`);
+        });
+
+        socket.on("connect_timeout", () => {
+            terminalInstance.current.write(`\r\n*** Socket connection timeout ***\r\n`);
+        });
+
+        socket.on("error", (err) => {
+            const isAuthError = err.toLowerCase().includes("authentication") || err.toLowerCase().includes("auth");
+            if (isAuthError && !hostConfig.password?.trim() && !hostConfig.rsaKey?.trim() && !authModalShown) {
+                authModalShown = true;
+                setIsNoAuthHidden(false);
+            }
+            terminalInstance.current.write(`\r\n*** Error: ${err} ***\r\n`);
+        });
+
         socket.on("connect", () => {
             fitAddon.current.fit();
             resizeTerminal();
             const { cols, rows } = terminalInstance.current;
-            socket.emit("connectToHost", cols, rows, hostConfig);
+
+            if (!hostConfig.password?.trim() && !hostConfig.rsaKey?.trim()) {
+                setIsNoAuthHidden(false);
+                return;
+            }
+
+            const sshConfig = {
+                ip: hostConfig.ip,
+                user: hostConfig.user,
+                port: Number(hostConfig.port) || 22,
+                password: hostConfig.password?.trim(),
+                rsaKey: hostConfig.rsaKey?.trim()
+            };
+
+            socket.emit("connectToHost", cols, rows, sshConfig);
         });
+
+        setTimeout(() => {
+            fitAddon.current.fit();
+            resizeTerminal();
+            terminalInstance.current.focus();
+        }, 50);
 
         socket.on("data", (data) => {
             const decoder = new TextDecoder("utf-8");
@@ -91,24 +122,41 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
         });
 
         terminalInstance.current.attachCustomKeyEventHandler((event) => {
-            console.log("Event caled");
-            if (isPasting) return;
-
-            isPasting = true;
-            setTimeout(() => {
-                isPasting = false;
-            }, 200);
-
             if ((event.ctrlKey || event.metaKey) && event.key === "v") {
+                if (isPasting) return false;
+                isPasting = true;
+
                 event.preventDefault();
 
                 navigator.clipboard.readText().then((text) => {
-                    socketRef.current.emit("data", text);
+                    text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+                    const lines = text.split("\n");
+
+                    if (socketRef.current) {
+                        let index = 0;
+
+                        const sendLine = () => {
+                            if (index < lines.length) {
+                                socketRef.current.emit("data", lines[index] + "\r");
+                                index++;
+                                setTimeout(sendLine, 10);
+                            } else {
+                                isPasting = false;
+                            }
+                        };
+
+                        sendLine();
+                    } else {
+                        isPasting = false;
+                    }
                 }).catch((err) => {
                     console.error("Failed to read clipboard contents:", err);
+                    isPasting = false;
                 });
+
                 return false;
             }
+
             return true;
         });
 
@@ -121,13 +169,25 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible }, ref) => {
             }
         });
 
-        socket.on("error", (err) => {
-            terminalInstance.current.write(`\r\n*** Error: ${err} ***\r\n`);
+        let authModalShown = false;
+
+        socket.on("noAuthRequired", () => {
+            if (!hostConfig.password?.trim() && !hostConfig.rsaKey?.trim() && !authModalShown) {
+                authModalShown = true;
+                setIsNoAuthHidden(false);
+            }
         });
 
         return () => {
-            terminalInstance.current.dispose();
-            socket.disconnect();
+            if (terminalInstance.current) {
+                terminalInstance.current.dispose();
+                terminalInstance.current = null;
+            }
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            authModalShown = false;
         };
     }, [hostConfig]);
 
@@ -174,8 +234,10 @@ NewTerminal.propTypes = {
     hostConfig: PropTypes.shape({
         ip: PropTypes.string.isRequired,
         user: PropTypes.string.isRequired,
-        password: PropTypes.string.isRequired,
-        port: PropTypes.string.isRequired,
+        password: PropTypes.string,
+        rsaKey: PropTypes.string,
+        port: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     }).isRequired,
     isVisible: PropTypes.bool.isRequired,
+    setIsNoAuthHidden: PropTypes.func.isRequired,
 };

@@ -1,30 +1,75 @@
-import { useState, useEffect } from "react";
-import { NewTerminal } from "./Terminal.jsx";
-import AddHostModal from "./AddHostModal.jsx";
+import { useState, useEffect, useRef } from "react";
+import { NewTerminal } from "./apps/ssh/Terminal.jsx";
+import { User } from "./apps/user/User.jsx";
+import AddHostModal from "./modals/AddHostModal.jsx";
+import LoginUserModal from "./modals/LoginUserModal.jsx";
 import { Button } from "@mui/joy";
 import { CssVarsProvider } from "@mui/joy";
 import theme from "./theme";
-import TabList from "./TabList.jsx";
-import Launchpad from "./Launchpad.jsx";
-import { Debounce } from './Utils';
+import TabList from "./ui/TabList.jsx";
+import Launchpad from "./apps/Launchpad.jsx";
+import { Debounce } from './other/Utils.jsx';
 import TermixIcon from "./images/termix_icon.png";
 import RocketIcon from './images/launchpad_rocket.png';
+import ProfileIcon from './images/profile_icon.png';
+import CreateUserModal from "./modals/CreateUserModal.jsx";
+import ProfileModal from "./modals/ProfileModal.jsx";
+import ErrorModal from "./modals/ErrorModal.jsx";
+import EditHostModal from "./modals/EditHostModal.jsx";
+import NoAuthenticationModal from "./modals/NoAuthenticationModal.jsx";
 
 function App() {
     const [isAddHostHidden, setIsAddHostHidden] = useState(true);
+    const [isLoginUserHidden, setIsLoginUserHidden] = useState(true);
+    const [isCreateUserHidden, setIsCreateUserHidden] = useState(true);
+    const [isProfileHidden, setIsProfileHidden] = useState(true);
+    const [isErrorHidden, setIsErrorHidden] = useState(true);
+    const [errorMessage, setErrorMessage] = useState('');
     const [terminals, setTerminals] = useState([]);
+    const userRef = useRef(null);
     const [activeTab, setActiveTab] = useState(null);
     const [nextId, setNextId] = useState(1);
-    const [form, setForm] = useState({
+    const [addHostForm, setAddHostForm] = useState({
         name: "",
+        folder: "",
         ip: "",
         user: "",
         password: "",
         port: 22,
         authMethod: "Select Auth",
+        rememberHost: false,
+        storePassword: true,
+    });
+    const [editHostForm, setEditHostForm] = useState({
+        name: "",
+        folder: "",
+        ip: "",
+        user: "",
+        password: "",
+        port: 22,
+        authMethod: "Select Auth",
+        rememberHost: true,
+        storePassword: true,
+    });
+    const [isNoAuthHidden, setIsNoAuthHidden] = useState(true);
+    const [authForm, setAuthForm] = useState({
+        password: "",
+        rsaKey: "",
+    });
+    const [loginUserForm, setLoginUserForm] = useState({
+        username: "",
+        password: "",
+    });
+    const [createUserForm, setCreateUserForm] = useState({
+        username: "",
+        password: "",
     });
     const [isLaunchpadOpen, setIsLaunchpadOpen] = useState(false);
     const [splitTabIds, setSplitTabIds] = useState([]);
+    const [isEditHostHidden, setIsEditHostHidden] = useState(true);
+    const [currentHostConfig, setCurrentHostConfig] = useState(null);
+    const [isLoggingIn, setIsLoggingIn] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -81,27 +126,347 @@ function App() {
         });
     }, [splitTabIds]);
 
+    useEffect(() => {
+        const sessionToken = localStorage.getItem('sessionToken');
+        let isComponentMounted = true;
+        let isLoginInProgress = false;
+
+        if (userRef.current?.getUser()) {
+            setIsLoggingIn(false);
+            setIsLoginUserHidden(true);
+            return;
+        }
+
+        if (!sessionToken) {
+            setIsLoggingIn(false);
+            setIsLoginUserHidden(false);
+            return;
+        }
+
+        setIsLoggingIn(true);
+        let loginAttempts = 0;
+        const maxAttempts = 50;
+        let attemptLoginInterval;
+        
+        const loginTimeout = setTimeout(() => {
+            if (isComponentMounted) {
+                clearInterval(attemptLoginInterval);
+                if (!userRef.current?.getUser()) {
+                    localStorage.removeItem('sessionToken');
+                    setIsLoginUserHidden(false);
+                    setIsLoggingIn(false);
+                    setErrorMessage('Login timed out. Please try again.');
+                    setIsErrorHidden(false);
+                }
+            }
+        }, 10000);
+
+        const attemptLogin = () => {
+            if (!isComponentMounted || isLoginInProgress) return;
+            
+            if (loginAttempts >= maxAttempts || userRef.current?.getUser()) {
+                clearTimeout(loginTimeout);
+                clearInterval(attemptLoginInterval);
+                
+                if (!userRef.current?.getUser()) {
+                    localStorage.removeItem('sessionToken');
+                    setIsLoginUserHidden(false);
+                    setIsLoggingIn(false);
+                    setErrorMessage('Login timed out. Please try again.');
+                    setIsErrorHidden(false);
+                }
+                return;
+            }
+
+            if (userRef.current) {
+                isLoginInProgress = true;
+                userRef.current.loginUser({
+                    sessionToken,
+                    onSuccess: () => {
+                        if (isComponentMounted) {
+                            clearTimeout(loginTimeout);
+                            clearInterval(attemptLoginInterval);
+                            setIsLoginUserHidden(true);
+                            setIsLoggingIn(false);
+                            setIsErrorHidden(true);
+                        }
+                        isLoginInProgress = false;
+                    },
+                    onFailure: (error) => {
+                        if (isComponentMounted) {
+                            if (!userRef.current?.getUser()) {
+                                clearTimeout(loginTimeout);
+                                clearInterval(attemptLoginInterval);
+                                localStorage.removeItem('sessionToken');
+                                setErrorMessage(`Auto-login failed: ${error}`);
+                                setIsErrorHidden(false);
+                                setIsLoginUserHidden(false);
+                                setIsLoggingIn(false);
+                            }
+                        }
+                        isLoginInProgress = false;
+                    },
+                });
+            }
+            loginAttempts++;
+        };
+
+        attemptLoginInterval = setInterval(attemptLogin, 100);
+        attemptLogin();
+
+        return () => {
+            isComponentMounted = false;
+            clearTimeout(loginTimeout);
+            clearInterval(attemptLoginInterval);
+        };
+    }, []);
+
     const handleAddHost = () => {
-        if (form.ip && form.user && ((form.authMethod === 'password' && form.password) || (form.authMethod === 'rsaKey' && form.rsaKey)) && form.port) {
-            const newTerminal = {
-                id: nextId,
-                title: form.name || form.ip,
-                hostConfig: {
-                    ip: form.ip,
-                    user: form.user,
-                    password: form.authMethod === 'password' ? form.password : undefined,
-                    rsaKey: form.authMethod === 'rsaKey' ? form.rsaKey : undefined,
-                    port: String(form.port),
-                },
-                terminalRef: null,
-            };
-            setTerminals([...terminals, newTerminal]);
-            setActiveTab(nextId);
-            setNextId(nextId + 1);
+        if (addHostForm.ip && addHostForm.user && addHostForm.port) {
+            if (!addHostForm.rememberHost) {
+                connectToHost();
+                setIsAddHostHidden(true);
+                return;
+            }
+
+            if (addHostForm.authMethod === 'Select Auth') {
+                alert("Please select an authentication method.");
+                return;
+            }
+            if (addHostForm.authMethod === 'password' && !addHostForm.password) {
+                setIsNoAuthHidden(false);
+                return;
+            }
+            if (addHostForm.authMethod === 'rsaKey' && !addHostForm.rsaKey) {
+                setIsNoAuthHidden(false);
+                return;
+            }
+
+            connectToHost();
+            if (!addHostForm.storePassword) {
+                addHostForm.password = '';
+            }
+            handleSaveHost();
             setIsAddHostHidden(true);
-            setForm({ name: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "Select Auth" });
         } else {
-            alert("Please fill out all fields.");
+            alert("Please fill out all required fields (IP, User, Port).");
+        }
+    };
+
+    const connectToHost = () => {
+        const hostConfig = {
+            name: addHostForm.name || '',
+            folder: addHostForm.folder || '',
+            ip: addHostForm.ip,
+            user: addHostForm.user,
+            port: String(addHostForm.port),
+            password: addHostForm.rememberHost && addHostForm.authMethod === 'password' ? addHostForm.password : undefined,
+            rsaKey: addHostForm.rememberHost && addHostForm.authMethod === 'rsaKey' ? addHostForm.rsaKey : undefined,
+        };
+
+        const newTerminal = {
+            id: nextId,
+            title: hostConfig.name || hostConfig.ip,
+            hostConfig,
+            terminalRef: null,
+        };
+        setTerminals([...terminals, newTerminal]);
+        setActiveTab(nextId);
+        setNextId(nextId + 1);
+        setIsAddHostHidden(true);
+        setAddHostForm({ name: "", folder: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "Select Auth", rememberHost: false, storePassword: true });
+    }
+
+    const handleAuthSubmit = (form) => {
+        const updatedTerminals = terminals.map((terminal) => {
+            if (terminal.id === activeTab) {
+                return {
+                    ...terminal,
+                    hostConfig: {
+                        ...terminal.hostConfig,
+                        password: form.password,
+                        rsaKey: form.rsaKey
+                    }
+                };
+            }
+            return terminal;
+        });
+        setTerminals(updatedTerminals);
+        setIsNoAuthHidden(true);
+    };
+
+    const connectToHostWithConfig = (hostConfig) => {
+        if (!hostConfig || typeof hostConfig !== 'object') {
+            return;
+        }
+
+        if (!hostConfig.ip || !hostConfig.user) {
+            return;
+        }
+
+        const cleanHostConfig = {
+            name: hostConfig.name || '',
+            folder: hostConfig.folder || '',
+            ip: hostConfig.ip.trim(),
+            user: hostConfig.user.trim(),
+            port: hostConfig.port || '22',
+            password: hostConfig.password?.trim(),
+            rsaKey: hostConfig.rsaKey?.trim(),
+        };
+
+        const newTerminal = {
+            id: nextId,
+            title: cleanHostConfig.name || cleanHostConfig.ip,
+            hostConfig: cleanHostConfig,
+            terminalRef: null,
+        };
+        setTerminals([...terminals, newTerminal]);
+        setActiveTab(nextId);
+        setNextId(nextId + 1);
+        setIsLaunchpadOpen(false);
+    }
+
+    const handleSaveHost = () => {
+        let hostConfig = {
+            name: addHostForm.name || addHostForm.ip,
+            folder: addHostForm.folder,
+            ip: addHostForm.ip,
+            user: addHostForm.user,
+            password: addHostForm.authMethod === 'password' ? addHostForm.password : undefined,
+            rsaKey: addHostForm.authMethod === 'rsaKey' ? addHostForm.rsaKey : undefined,
+            port: String(addHostForm.port),
+        }
+        if (userRef.current) {
+            userRef.current.saveHost({
+                hostConfig,
+            });
+        }
+    }
+
+    const handleLoginUser = ({ username, password, sessionToken, onSuccess, onFailure }) => {
+        if (userRef.current) {
+            if (sessionToken) {
+                userRef.current.loginUser({
+                    sessionToken,
+                    onSuccess: () => {
+                        setIsLoginUserHidden(true);
+                        setIsLoggingIn(false);
+                        if (onSuccess) onSuccess();
+                    },
+                    onFailure: (error) => {
+                        localStorage.removeItem('sessionToken');
+                        setIsLoginUserHidden(false);
+                        setIsLoggingIn(false);
+                        if (onFailure) onFailure(error);
+                    },
+                });
+            } else {
+                userRef.current.loginUser({
+                    username,
+                    password,
+                    onSuccess: () => {
+                        setIsLoginUserHidden(true);
+                        setIsLoggingIn(false);
+                        if (onSuccess) onSuccess();
+                    },
+                    onFailure: (error) => {
+                        setIsLoginUserHidden(false);
+                        setIsLoggingIn(false);
+                        if (onFailure) onFailure(error);
+                    },
+                });
+            }
+        }
+    };
+
+    const handleGuestLogin = () => {
+        if (userRef.current) {
+            userRef.current.loginAsGuest();
+        }
+    }
+
+    const handleCreateUser = ({ username, password, onSuccess, onFailure }) => {
+        if (userRef.current) {
+            userRef.current.createUser({
+                username,
+                password,
+                onSuccess,
+                onFailure,
+            });
+        }
+    };
+
+    const handleDeleteUser = ({ onSuccess, onFailure }) => {
+        if (userRef.current) {
+            userRef.current.deleteUser({
+                onSuccess,
+                onFailure,
+            });
+        }
+    };
+
+    const handleLogoutUser = () => {
+        if (userRef.current) {
+            userRef.current.logoutUser();
+            window.location.reload();
+        }
+    };
+
+    const getUser = () => {
+        if (userRef.current) {
+            return userRef.current.getUser();
+        }
+    }
+
+    const getHosts = () => {
+        if (userRef.current) {
+            return userRef.current.getAllHosts();
+        }
+    }
+
+    const deleteHost = (hostConfig) => {
+        if (userRef.current) {
+            userRef.current.deleteHost({
+                hostId: hostConfig._id,
+            });
+        }
+    };
+
+    const updateEditHostForm = (hostConfig) => {
+        if (hostConfig) {
+            setCurrentHostConfig(hostConfig);
+            setIsEditHostHidden(false);
+        } else {
+            console.error("hostConfig is null");
+        }
+    };
+
+    const handleEditHost = async (oldConfig, newConfig = null) => {
+        try {
+            if (newConfig) {
+                if (isEditing) return;
+                setIsEditing(true);
+                
+                try {
+                    await userRef.current.editHost({
+                        oldHostConfig: oldConfig,
+                        newHostConfig: newConfig,
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                } finally {
+                    setIsEditing(false);
+                    setIsEditHostHidden(true);
+                }
+                return;
+            }
+
+            updateEditHostForm(oldConfig);
+        } catch (error) {
+            console.error('Edit failed:', error);
+            setErrorMessage(`Edit failed: ${error}`);
+            setIsErrorHidden(false);
+            setIsEditing(false);
         }
     };
 
@@ -164,85 +529,236 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Launchpad Button */}
-                        <Button
-                            onClick={() => setIsLaunchpadOpen(true)}
-                            sx={{
-                                backgroundColor: theme.palette.general.tertiary,
-                                "&:hover": { backgroundColor: theme.palette.general.secondary },
-                                flexShrink: 0,
-                                height: "52px",
-                                width: "52px",
-                                padding: 0,
-                            }}
-                        >
-                            <img src={RocketIcon} alt="Launchpad" style={{ width: "70%", height: "70", objectFit: "contain" }} />
-                        </Button>
+                        {/* Action Buttons */}
+                        <div className="flex gap-4">
+                            {/* Launchpad Button */}
+                            <Button
+                                disabled={isLoggingIn || !userRef.current?.getUser()}
+                                onClick={() => setIsLaunchpadOpen(true)}
+                                sx={{
+                                    backgroundColor: theme.palette.general.tertiary,
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
+                                    flexShrink: 0,
+                                    height: "52px",
+                                    width: "52px",
+                                    padding: 0,
+                                    opacity: (!userRef.current?.getUser() || isLoggingIn) ? 0.3 : 1,
+                                    cursor: (!userRef.current?.getUser() || isLoggingIn) ? 'not-allowed' : 'pointer',
+                                    "&:disabled": {
+                                        opacity: 0.3,
+                                        backgroundColor: theme.palette.general.tertiary,
+                                    }
+                                }}
+                            >
+                                <img src={RocketIcon} alt="Launchpad" style={{ width: "70%", height: "70%", objectFit: "contain" }} />
+                            </Button>
 
-                        {/* Add Host Button */}
-                        <Button
-                            onClick={() => setIsAddHostHidden(false)}
-                            sx={{
-                                backgroundColor: theme.palette.general.tertiary,
-                                "&:hover": { backgroundColor: theme.palette.general.secondary },
-                                flexShrink: 0,
-                                height: "52px",
-                                width: "52px",
-                                fontSize: "3.5rem",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                paddingTop: "2px",
-                            }}
-                        >
-                            +
-                        </Button>
+                            {/* Add Host Button */}
+                            <Button
+                                disabled={isLoggingIn || !userRef.current?.getUser()}
+                                onClick={() => setIsAddHostHidden(false)}
+                                sx={{
+                                    backgroundColor: theme.palette.general.tertiary,
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
+                                    flexShrink: 0,
+                                    height: "52px",
+                                    width: "52px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    padding: 0,
+                                    opacity: (!userRef.current?.getUser() || isLoggingIn) ? 0.3 : 1,
+                                    cursor: (!userRef.current?.getUser() || isLoggingIn) ? 'not-allowed' : 'pointer',
+                                    "&:disabled": {
+                                        opacity: 0.3,
+                                        backgroundColor: theme.palette.general.tertiary,
+                                    },
+                                    fontSize: "4rem",
+                                    fontWeight: "600",
+                                    lineHeight: "0",
+                                    paddingBottom: "8px",
+                                }}
+                            >
+                                +
+                            </Button>
+
+                            {/* Profile Button */}
+                            <Button
+                                disabled={isLoggingIn}
+                                onClick={() => userRef.current?.getUser() ? setIsProfileHidden(false) : setIsLoginUserHidden(false)}
+                                sx={{
+                                    backgroundColor: theme.palette.general.tertiary,
+                                    "&:hover": { backgroundColor: theme.palette.general.secondary },
+                                    flexShrink: 0,
+                                    height: "52px",
+                                    width: "52px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    padding: 0,
+                                    opacity: isLoggingIn ? 0.3 : 1,
+                                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
+                                    "&:disabled": {
+                                        opacity: 0.3,
+                                        backgroundColor: theme.palette.general.tertiary,
+                                    }
+                                }}
+                            >
+                                <img
+                                    src={ProfileIcon}
+                                    alt="Profile"
+                                    style={{ width: "70%", height: "70%", objectFit: "contain" }}
+                                />
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Terminal Views */}
                     <div className={`relative p-4 terminal-container ${getLayoutStyle()}`}>
-                        {terminals.map((terminal) => (
-                            <div
-                                key={terminal.id}
-                                className={`bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 ${
-                                    splitTabIds.includes(terminal.id) || activeTab === terminal.id ? "block" : "hidden"
-                                } flex-1`}
-                                style={{
-                                    order: splitTabIds.includes(terminal.id)
-                                        ? splitTabIds.indexOf(terminal.id) + 1
-                                        : activeTab === terminal.id
-                                            ? 0
-                                            : undefined
-                                }}
-                            >
-                                <NewTerminal
+                        {userRef.current?.getUser() ? (
+                            terminals.map((terminal) => (
+                                <div
                                     key={terminal.id}
-                                    hostConfig={terminal.hostConfig}
-                                    isVisible={activeTab === terminal.id || splitTabIds.includes(terminal.id)}
-                                    ref={(ref) => {
-                                        if (ref && !terminal.terminalRef) {
-                                            setTerminals((prev) =>
-                                                prev.map((t) =>
-                                                    t.id === terminal.id ? { ...t, terminalRef: ref } : t
-                                                )
-                                            );
-                                        }
+                                    className={`bg-neutral-800 rounded-lg overflow-hidden shadow-xl border-5 border-neutral-700 ${
+                                        splitTabIds.includes(terminal.id) || activeTab === terminal.id ? "block" : "hidden"
+                                    } flex-1`}
+                                    style={{
+                                        order: splitTabIds.includes(terminal.id)
+                                            ? splitTabIds.indexOf(terminal.id)
+                                            : 0,
                                     }}
-                                />
+                                >
+                                    <NewTerminal
+                                        key={terminal.id}
+                                        hostConfig={terminal.hostConfig}
+                                        isVisible={activeTab === terminal.id || splitTabIds.includes(terminal.id)}
+                                        setIsNoAuthHidden={setIsNoAuthHidden}
+                                        ref={(ref) => {
+                                            terminal.terminalRef = ref;
+                                        }}
+                                    />
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="text-center text-neutral-400">
+                                    <h2 className="text-2xl font-bold mb-4">Welcome to Termix</h2>
+                                    <p>{isLoggingIn ? "Checking login status..." : "Please login to start managing your SSH connections"}</p>
+                                </div>
                             </div>
-                        ))}
+                        )}
+                        <NoAuthenticationModal
+                            isHidden={isNoAuthHidden}
+                            form={authForm}
+                            setForm={setAuthForm}
+                            setIsNoAuthHidden={setIsNoAuthHidden}
+                            handleAuthSubmit={handleAuthSubmit}
+                        />
                     </div>
-                </div>
 
-                {/* Modals */}
-                <AddHostModal
-                    isHidden={isAddHostHidden}
-                    form={form}
-                    setForm={setForm}
-                    handleAddHost={handleAddHost}
-                    setIsAddHostHidden={setIsAddHostHidden}
-                />
-                {isLaunchpadOpen && <Launchpad onClose={() => setIsLaunchpadOpen(false)} />}
+                    {/* Modals */}
+                    {userRef.current?.getUser() && (
+                        <>
+                            <AddHostModal
+                                isHidden={isAddHostHidden}
+                                form={addHostForm}
+                                setForm={setAddHostForm}
+                                handleAddHost={handleAddHost}
+                                setIsAddHostHidden={setIsAddHostHidden}
+                            />
+                            <EditHostModal
+                                isHidden={isEditHostHidden}
+                                form={editHostForm}
+                                setForm={setEditHostForm}
+                                handleEditHost={handleEditHost}
+                                setIsEditHostHidden={setIsEditHostHidden}
+                                hostConfig={currentHostConfig}
+                            />
+                            <ProfileModal
+                                isHidden={isProfileHidden}
+                                getUser={getUser}
+                                handleDeleteUser={handleDeleteUser}
+                                handleLogoutUser={handleLogoutUser}
+                                setIsProfileHidden={setIsProfileHidden}
+                            />
+                            {isLaunchpadOpen && (
+                                <Launchpad
+                                    onClose={() => setIsLaunchpadOpen(false)}
+                                    getHosts={getHosts}
+                                    connectToHost={connectToHostWithConfig}
+                                    isAddHostHidden={isAddHostHidden}
+                                    setIsAddHostHidden={setIsAddHostHidden}
+                                    isEditHostHidden={isEditHostHidden}
+                                    isErrorHidden={isErrorHidden}
+                                    deleteHost={deleteHost}
+                                    editHost={handleEditHost}
+                                    shareHost={(hostId, username) => userRef.current?.shareHost(hostId, username)}
+                                    userRef={userRef}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    <ErrorModal
+                        isHidden={isErrorHidden}
+                        errorMessage={errorMessage}
+                        setIsErrorHidden={setIsErrorHidden}
+                    />
+
+                    <LoginUserModal
+                        isHidden={isLoginUserHidden}
+                        form={loginUserForm}
+                        setForm={setLoginUserForm}
+                        handleLoginUser={handleLoginUser}
+                        handleGuestLogin={handleGuestLogin}
+                        setIsLoginUserHidden={setIsLoginUserHidden}
+                        setIsCreateUserHidden={setIsCreateUserHidden}
+                    />
+
+                    <CreateUserModal
+                        isHidden={isCreateUserHidden}
+                        form={createUserForm}
+                        setForm={setCreateUserForm}
+                        handleCreateUser={handleCreateUser}
+                        setIsCreateUserHidden={setIsCreateUserHidden}
+                        setIsLoginUserHidden={setIsLoginUserHidden}
+                    />
+
+                    {/* User component */}
+                    <User
+                        ref={userRef}
+                        onLoginSuccess={() => {
+                            setIsLoginUserHidden(true);
+                            setIsLoggingIn(false);
+                            setIsErrorHidden(true);
+                        }}
+                        onCreateSuccess={() => {
+                            setIsCreateUserHidden(true);
+                            handleLoginUser({ 
+                                username: createUserForm.username, 
+                                password: createUserForm.password,
+                                onSuccess: () => {
+                                    setIsLoginUserHidden(true);
+                                    setIsLoggingIn(false);
+                                    setIsErrorHidden(true);
+                                },
+                                onFailure: (error) => {
+                                    setErrorMessage(`Login failed: ${error}`);
+                                    setIsErrorHidden(false);
+                                }
+                            });
+                        }}
+                        onDeleteSuccess={() => {
+                            setIsProfileHidden(true);
+                            window.location.reload();
+                        }}
+                        onFailure={(error) => {
+                            setErrorMessage(`Action failed: ${error}`);
+                            setIsErrorHidden(false);
+                            setIsLoggingIn(false);
+                        }}
+                    />
+                </div>
             </div>
         </CssVarsProvider>
     );
