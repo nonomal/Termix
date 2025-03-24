@@ -149,6 +149,27 @@ export const User = forwardRef(({ onLoginSuccess, onCreateSuccess, onDeleteSucce
         if (!currentUser.current) return onFailure("Not authenticated");
 
         try {
+            const existingHosts = await getAllHosts();
+
+            const duplicateNameHost = existingHosts.find(host => 
+                host.config.name && 
+                host.config.name.toLowerCase() === hostConfig.hostConfig.name.toLowerCase()
+            );
+            
+            if (duplicateNameHost) {
+                return onFailure("A host with this name already exists. Please choose a different name.");
+            }
+
+            if (!hostConfig.hostConfig.name) {
+                const duplicateIpHost = existingHosts.find(host => 
+                    host.config.ip.toLowerCase() === hostConfig.hostConfig.ip.toLowerCase()
+                );
+                
+                if (duplicateIpHost) {
+                    return onFailure("A host with this IP already exists. Please provide a unique name.");
+                }
+            }
+
             const response = await new Promise((resolve) => {
                 socketRef.current.emit("saveHostConfig", {
                     userId: currentUser.current.id,
@@ -186,7 +207,7 @@ export const User = forwardRef(({ onLoginSuccess, onCreateSuccess, onDeleteSucce
                         user: host.config.user || '',
                         port: host.config.port || '22',
                         password: host.config.password || '',
-                        rsaKey: host.config.rsaKey || '',
+                        sshKey: host.config.sshKey || '',
                     } : {}
                 })).filter(host => host.config && host.config.ip && host.config.user);
             } else {
@@ -222,7 +243,18 @@ export const User = forwardRef(({ onLoginSuccess, onCreateSuccess, onDeleteSucce
         if (!currentUser.current) return onFailure("Not authenticated");
 
         try {
-            console.log('Editing host with configs:', { oldHostConfig, newHostConfig });
+            const existingHosts = await getAllHosts();
+
+            const duplicateNameHost = existingHosts.find(host => 
+                host.config.name && 
+                host.config.name.toLowerCase() === newHostConfig.name.toLowerCase() &&
+                host.config.ip.toLowerCase() !== oldHostConfig.ip.toLowerCase()
+            );
+            
+            if (duplicateNameHost) {
+                return onFailure("A host with this name already exists. Please choose a different name.");
+            }
+
             const response = await new Promise((resolve) => {
                 socketRef.current.emit("editHost", {
                     userId: currentUser.current.id,

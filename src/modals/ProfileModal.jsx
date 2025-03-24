@@ -71,6 +71,10 @@ export default function ProfileModal({
                     >
                         Delete Account
                     </Button>
+
+                    <div className="text-center text-xs text-gray-400">
+                        v0.2.1
+                    </div>
                 </div>
             </div>
         </Modal>

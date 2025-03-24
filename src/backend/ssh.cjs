@@ -10,7 +10,10 @@ const io = socketIo(server, {
         methods: ["GET", "POST"],
         credentials: true
     },
-    allowEIO3: true
+    allowEIO3: true,
+    pingInterval: 2500,
+    pingTimeout: 5000,
+    maxHttpBufferSize: 1e7,
 });
 
 const logger = {
@@ -32,7 +35,7 @@ io.on("connection", (socket) => {
             return;
         }
 
-        if (!hostConfig.password && !hostConfig.rsaKey) {
+        if (!hostConfig.password && !hostConfig.sshKey) {
             logger.error("No authentication provided");
             socket.emit("error", "Authentication required");
             return;
@@ -42,18 +45,18 @@ io.on("connection", (socket) => {
             ip: hostConfig.ip,
             port: hostConfig.port,
             user: hostConfig.user,
-            authType: hostConfig.password ? 'password' : 'public key',
+            authType: hostConfig.password ? 'password' : 'key',
         };
 
         logger.info("Connecting with config:", safeHostConfig);
-        const { ip, port, user, password, rsaKey } = hostConfig;
+        const { ip, port, user, password, sshKey, } = hostConfig;
 
         const conn = new SSHClient();
         conn
             .on("ready", function () {
                 logger.info("SSH connection established");
 
-                conn.shell({ term: "xterm-256color" }, function (err, newStream) {
+                conn.shell({ term: "xterm-256color", keepaliveInterval: 30000 }, function (err, newStream) {
                     if (err) {
                         logger.error("Shell error:", err.message);
                         socket.emit("error", err.message);
@@ -93,12 +96,22 @@ io.on("connection", (socket) => {
                 logger.error("Error:", err.message);
                 socket.emit("error", err.message);
             })
+            .on("ping", function () {
+                socket.emit("ping");
+            })
             .connect({
                 host: ip,
                 port: port,
                 username: user,
-                password: password,
-                privateKey: rsaKey ? Buffer.from(rsaKey) : undefined,
+                password: password || undefined,
+                privateKey: sshKey ? Buffer.from(sshKey) : undefined,
+                algorithms: {
+                    kex: ['curve25519-sha256', 'curve25519-sha256@libssh.org', 'ecdh-sha2-nistp256'],
+                    serverHostKey: ['ssh-ed25519', 'ecdsa-sha2-nistp256']
+                },
+                keepaliveInterval: 10000,
+                keepaliveCountMax: 5,
+                readyTimeout: 5000,
             });
     });
 

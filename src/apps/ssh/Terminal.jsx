@@ -6,7 +6,7 @@ import io from "socket.io-client";
 import PropTypes from "prop-types";
 import theme from "../../theme.js";
 
-export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidden }, ref) => {
+export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidden, setErrorMessage, setIsErrorHidden }, ref) => {
     const terminalRef = useRef(null);
     const socketRef = useRef(null);
     const fitAddon = useRef(new FitAddon());
@@ -18,8 +18,8 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
 
         if (!parentContainer || parentContainer.clientWidth === 0) return;
 
-        const parentWidth = parentContainer.clientWidth - 10;
-        const parentHeight = parentContainer.clientHeight - 10;
+        const parentWidth = parentContainer.clientWidth - 8;
+        const parentHeight = parentContainer.clientHeight - 12;
 
         terminalContainer.style.width = `${parentWidth}px`;
         terminalContainer.style.height = `${parentHeight}px`;
@@ -50,6 +50,9 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
             fontSize: 14,
             scrollback: 1000,
             ignoreBracketedPasteMode: true,
+            letterSpacing: 0,
+            lineHeight: 1,
+            padding: 2,
         });
 
         terminalInstance.current.loadAddon(fitAddon.current);
@@ -62,21 +65,28 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
             {
                 path: "/ssh.io/socket.io",
                 transports: ["websocket", "polling"],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
+                timeout: 20000,
             }
         );
         socketRef.current = socket;
 
         socket.on("connect_error", (error) => {
             terminalInstance.current.write(`\r\n*** Socket connection error: ${error.message} ***\r\n`);
+            console.error("Socket connection error:", error);
         });
 
         socket.on("connect_timeout", () => {
             terminalInstance.current.write(`\r\n*** Socket connection timeout ***\r\n`);
+            console.error("Socket connection timeout");
         });
 
         socket.on("error", (err) => {
+            console.error("SSH connection error:", err);
             const isAuthError = err.toLowerCase().includes("authentication") || err.toLowerCase().includes("auth");
-            if (isAuthError && !hostConfig.password?.trim() && !hostConfig.rsaKey?.trim() && !authModalShown) {
+            if (isAuthError && !hostConfig.password?.trim() && !hostConfig.sshKey?.trim() && !authModalShown) {
                 authModalShown = true;
                 setIsNoAuthHidden(false);
             }
@@ -88,7 +98,7 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
             resizeTerminal();
             const { cols, rows } = terminalInstance.current;
 
-            if (!hostConfig.password?.trim() && !hostConfig.rsaKey?.trim()) {
+            if (!hostConfig.password?.trim() && !hostConfig.sshKey?.trim()) {
                 setIsNoAuthHidden(false);
                 return;
             }
@@ -98,16 +108,19 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
                 user: hostConfig.user,
                 port: Number(hostConfig.port) || 22,
                 password: hostConfig.password?.trim(),
-                rsaKey: hostConfig.rsaKey?.trim()
+                sshKey: hostConfig.sshKey?.trim(),
+                rsaKey: hostConfig.sshKey?.trim() || hostConfig.rsaKey?.trim(),
             };
 
             socket.emit("connectToHost", cols, rows, sshConfig);
         });
 
         setTimeout(() => {
-            fitAddon.current.fit();
-            resizeTerminal();
-            terminalInstance.current.focus();
+            if (terminalInstance.current) {
+                fitAddon.current.fit();
+                resizeTerminal();
+                terminalInstance.current.focus();
+            }
         }, 50);
 
         socket.on("data", (data) => {
@@ -117,68 +130,85 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
 
         let isPasting = false;
 
-        terminalInstance.current.onData((data) => {
-            socketRef.current.emit("data", data);
-        });
-
-        terminalInstance.current.attachCustomKeyEventHandler((event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "v") {
-                if (isPasting) return false;
-                isPasting = true;
-
-                event.preventDefault();
-
-                navigator.clipboard.readText().then((text) => {
-                    text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-                    const lines = text.split("\n");
-
-                    if (socketRef.current) {
-                        let index = 0;
-
-                        const sendLine = () => {
-                            if (index < lines.length) {
-                                socketRef.current.emit("data", lines[index] + "\r");
-                                index++;
-                                setTimeout(sendLine, 10);
-                            } else {
-                                isPasting = false;
-                            }
-                        };
-
-                        sendLine();
-                    } else {
-                        isPasting = false;
-                    }
-                }).catch((err) => {
-                    console.error("Failed to read clipboard contents:", err);
-                    isPasting = false;
-                });
-
-                return false;
-            }
-
-            return true;
-        });
-
-        terminalInstance.current.onKey(({ domEvent }) => {
-            if (domEvent.key === "c" && (domEvent.ctrlKey || domEvent.metaKey)) {
-                const selection = terminalInstance.current.getSelection();
-                if (selection) {
-                    navigator.clipboard.writeText(selection);
+        if (terminalInstance.current) {
+            terminalInstance.current.onData((data) => {
+                if (socketRef.current && socketRef.current.connected) {
+                    socketRef.current.emit("data", data);
                 }
-            }
-        });
+            });
+
+            terminalInstance.current.attachCustomKeyEventHandler((event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "v") {
+                    if (isPasting) return false;
+                    isPasting = true;
+
+                    event.preventDefault();
+                    navigator.clipboard.readText().then(text => {
+                        if (text && socketRef.current?.connected) {
+                            const processedText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\r");
+                            socketRef.current.emit("data", processedText);
+                        }
+                    }).catch(() => {
+                        setErrorMessage("Paste failed: Clipboard access denied. Instead, use Control Shift V.");
+                        setIsErrorHidden(false);
+                    }).finally(() => {
+                        setTimeout(() => {
+                            isPasting = false;
+                        }, 300);
+                    });
+                    return false;
+                }
+                return true;
+            });
+
+            terminalInstance.current.onKey(({ domEvent }) => {
+                if (domEvent.key === "c" && (domEvent.ctrlKey || domEvent.metaKey)) {
+                    const selection = terminalInstance.current.getSelection();
+                    if (selection) {
+                        navigator.clipboard.writeText(selection);
+                    }
+                }
+            });
+        }
 
         let authModalShown = false;
 
         socket.on("noAuthRequired", () => {
-            if (!hostConfig.password?.trim() && !hostConfig.rsaKey?.trim() && !authModalShown) {
+            if (!hostConfig.password?.trim() && !hostConfig.sshKey?.trim() && !authModalShown) {
                 authModalShown = true;
                 setIsNoAuthHidden(false);
             }
         });
 
+        socket.on("disconnect", (reason) => {
+            if (terminalInstance.current) {
+                terminalInstance.current.write(`\r\n*** Socket disconnected: ${reason} ***\r\n`);
+            }
+        });
+
+        socket.on("reconnect", (attemptNumber) => {
+            if (terminalInstance.current) {
+                terminalInstance.current.write(`\r\n*** Socket reconnected after ${attemptNumber} attempts ***\r\n`);
+            }
+        });
+
+        socket.on("reconnect_error", (error) => {
+            console.error("Socket reconnect error:", error);
+            if (terminalInstance.current) {
+                terminalInstance.current.write(`\r\n*** Socket reconnect error: ${error.message} ***\r\n`);
+            }
+        });
+
+        const pingInterval = setInterval(() => {
+            if (socketRef.current && socketRef.current.connected) {
+                socketRef.current.emit("ping");
+            }
+        }, 5000);
+
+        socketRef.current.on("pong", () => {});
+
         return () => {
+            clearInterval(pingInterval);
             if (terminalInstance.current) {
                 terminalInstance.current.dispose();
                 terminalInstance.current = null;
@@ -202,14 +232,21 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
         const parentContainer = terminalContainer.parentElement;
         if (!parentContainer) return;
 
-        const observer = new ResizeObserver(() => {
+        const resizeObserver = new ResizeObserver(() => {
             resizeTerminal();
         });
 
-        observer.observe(parentContainer);
+        resizeObserver.observe(parentContainer);
+
+        const handleWindowResize = () => {
+            resizeTerminal();
+        };
+        
+        window.addEventListener('resize', handleWindowResize);
 
         return () => {
-            observer.disconnect();
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', handleWindowResize);
         };
     }, []);
 
@@ -222,7 +259,7 @@ export const NewTerminal = forwardRef(({ hostConfig, isVisible, setIsNoAuthHidde
                 position: 'absolute',
                 width: '100%',
                 height: '100%',
-                transform: 'translateY(5px) translateX(5px)',
+                transform: 'translateY(2px) translateX(3px)',
             }}
         />
     );
@@ -235,9 +272,12 @@ NewTerminal.propTypes = {
         ip: PropTypes.string.isRequired,
         user: PropTypes.string.isRequired,
         password: PropTypes.string,
+        sshKey: PropTypes.string,
         rsaKey: PropTypes.string,
         port: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     }).isRequired,
     isVisible: PropTypes.bool.isRequired,
     setIsNoAuthHidden: PropTypes.func.isRequired,
+    setErrorMessage: PropTypes.func.isRequired,
+    setIsErrorHidden: PropTypes.func.isRequired,
 };

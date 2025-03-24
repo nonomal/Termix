@@ -1,61 +1,107 @@
 # Stage 1: Build frontend
-FROM --platform=$BUILDPLATFORM node:18 AS frontend-builder
+FROM node:18-alpine AS frontend-builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --force && \
+    npm cache clean --force
 COPY . .
 RUN npm run build
 
 # Stage 2: Build backend
-FROM --platform=$BUILDPLATFORM node:18 AS backend-builder
+FROM node:18-alpine AS backend-builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production --force && \
+    npm cache clean --force
 COPY src/backend/ ./src/backend/
 
-# Stage 3: Final production image
-FROM mongo:5
-# Install Node.js
-RUN apt-get update && apt-get install -y \
-    curl \
-    nginx \
-    python3 \
-    build-essential \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Stage 3: Build bcrypt for Ubuntu
+FROM ubuntu:focal AS bcrypt-builder
+ENV DEBIAN_FRONTEND=noninteractive \
+    NODE_VERSION=18.x
+WORKDIR /app
+COPY package*.json ./
+RUN rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock* && \
+    apt-get clean && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        make \
+        g++ \
+        wget \
+        ca-certificates \
+        gnupg && \
+    wget -qO- https://deb.nodesource.com/setup_${NODE_VERSION} | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    npm ci --only=production bcrypt --force && \
+    npm cache clean --force && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/*
 
-# Configure nginx
+# Final stage
+FROM ubuntu:focal
+ENV DEBIAN_FRONTEND=noninteractive \
+    NODE_VERSION=18.x \
+    MONGO_VERSION=4.4.24 \
+    MONGO_URL=mongodb://localhost:27017/termix \
+    MONGODB_DATA_DIR=/data/db \
+    MONGODB_LOG_DIR=/var/log/mongodb \
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Create users first
+RUN groupadd -r mongodb && useradd -r -g mongodb mongodb \
+    && groupadd -r node && useradd -r -g node -m node
+
+# Install all dependencies in one layer
+RUN rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock* && \
+    apt-get clean && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        gosu \
+        nginx-light \
+        wget && \
+    # Add MongoDB 4.4 repository
+    wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list && \
+    # Add MongoDB 5.0 repository
+    wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list && \
+    # Add NodeJS repository
+    wget -qO- https://deb.nodesource.com/setup_${NODE_VERSION} | bash - && \
+    apt-get update && \
+    # Install MongoDB 4.4 and 5.0 packages
+    apt-get install -y --no-install-recommends \
+        nodejs \
+        mongodb-org-server=${MONGO_VERSION} \
+        mongodb-org-shell=${MONGO_VERSION} \
+        mongodb-org-server=5.0.21 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/* && \
+    mkdir -p /data/db /var/log/mongodb /var/run/mongodb && \
+    chown -R mongodb:mongodb /data/db /var/log/mongodb /var/run/mongodb && \
+    chmod 755 /data/db /var/log/mongodb /var/run/mongodb
+
+# Setup nginx and frontend
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+RUN chown -R www-data:www-data /usr/share/nginx/html
 
 # Setup backend
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --only=production --ignore-scripts --force && \
+    npm cache clean --force && \
+    rm -rf /tmp/*
+COPY --from=bcrypt-builder /app/node_modules/bcrypt /app/node_modules/bcrypt
 COPY --from=backend-builder /app/src/backend ./src/backend
+RUN chown -R node:node /app
 
-# Create directories for MongoDB and nginx
-RUN mkdir -p /data/db && \
-    mkdir -p /var/log/nginx && \
-    mkdir -p /var/lib/nginx && \
-    mkdir -p /var/log/mongodb && \
-    chown -R mongodb:mongodb /data/db /var/log/mongodb && \
-    chown -R www-data:www-data /var/log/nginx /var/lib/nginx
-
-# Set environment variables
-ENV MONGO_URL=mongodb://localhost:27017/termix \
-    MONGODB_DATA_DIR=/data/db \
-    MONGODB_LOG_DIR=/var/log/mongodb
-
-# Create volume for MongoDB data
 VOLUME ["/data/db"]
-
-# Expose ports
 EXPOSE 8080 8081 8082 27017
 
-# Use a entrypoint script to run all services
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 CMD ["/entrypoint.sh"]

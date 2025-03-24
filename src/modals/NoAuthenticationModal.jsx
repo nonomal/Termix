@@ -15,7 +15,7 @@ import {
     Option,
 } from '@mui/joy';
 import theme from '/src/theme';
-import { useState, useEffect } from 'react';
+import {useEffect, useState} from 'react';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
@@ -26,23 +26,91 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
         if (!form.authMethod) {
             setForm(prev => ({
                 ...prev,
-                authMethod: 'Select Auth'
+                authMethod: 'Select Auth',
+                password: '',
+                sshKey: '',
+                keyType: '',
             }));
         }
     }, []);
 
     const isFormValid = () => {
         if (!form.authMethod || form.authMethod === 'Select Auth') return false;
-        if (form.authMethod === 'rsaKey' && !form.rsaKey) return false;
+        if (form.authMethod === 'sshKey' && !form.sshKey) return false;
         if (form.authMethod === 'password' && !form.password) return false;
         return true;
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        if (isFormValid()) {
-            handleAuthSubmit(form);
-            setForm({ authMethod: 'Select Auth', password: '', rsaKey: '' });
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        try {
+            if(isFormValid()) {
+                const formData = {
+                    authMethod: form.authMethod,
+                    password: form.authMethod === 'password' ? form.password : '',
+                    sshKey: form.authMethod === 'sshKey' ? form.sshKey : '',
+                    keyType: form.authMethod === 'sshKey' ? form.keyType : '',
+                };
+
+                handleAuthSubmit(formData);
+
+                setForm(prev => ({
+                    ...prev,
+                    authMethod: 'Select Auth',
+                    password: '',
+                    sshKey: '',
+                    keyType: '',
+                }));
+            }
+        } catch (error) {
+            console.error("Authentication form error:", error);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        const supportedKeyTypes = {
+            'id_rsa': 'RSA',
+            'id_ed25519': 'ED25519',
+            'id_ecdsa': 'ECDSA',
+            'id_dsa': 'DSA',
+            '.pem': 'PEM',
+            '.key': 'KEY',
+            '.ppk': 'PPK'
+        };
+
+        const isValidKeyFile = Object.keys(supportedKeyTypes).some(ext => 
+            file.name.toLowerCase().includes(ext) || file.name.endsWith('.pub')
+        );
+
+        if (isValidKeyFile) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const keyContent = event.target.result;
+                let keyType = 'UNKNOWN';
+
+                if (keyContent.includes('BEGIN RSA PRIVATE KEY') || keyContent.includes('BEGIN RSA PUBLIC KEY')) {
+                    keyType = 'RSA';
+                } else if (keyContent.includes('BEGIN OPENSSH PRIVATE KEY') && keyContent.includes('ssh-ed25519')) {
+                    keyType = 'ED25519';
+                } else if (keyContent.includes('BEGIN EC PRIVATE KEY') || keyContent.includes('BEGIN EC PUBLIC KEY')) {
+                    keyType = 'ECDSA';
+                } else if (keyContent.includes('BEGIN DSA PRIVATE KEY')) {
+                    keyType = 'DSA';
+                }
+
+                setForm({ 
+                    ...form, 
+                    sshKey: keyContent,
+                    keyType: keyType,
+                    authMethod: 'sshKey'
+                });
+            };
+            reader.readAsText(file);
+        } else {
+            alert('Please upload a valid SSH key file (RSA, ED25519, ECDSA, DSA, PEM, or PPK format).');
         }
     };
 
@@ -85,7 +153,13 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
                                     <FormLabel>Authentication Method</FormLabel>
                                     <Select
                                         value={form.authMethod || 'Select Auth'}
-                                        onChange={(e, val) => setForm(prev => ({ ...prev, authMethod: val, password: '', rsaKey: '' }))}
+                                        onChange={(e, val) => setForm(prev => ({ 
+                                            ...prev, 
+                                            authMethod: val, 
+                                            password: '', 
+                                            sshKey: '',
+                                            keyType: '',
+                                        }))}
                                         sx={{
                                             backgroundColor: theme.palette.general.primary,
                                             color: theme.palette.text.primary,
@@ -93,7 +167,7 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
                                     >
                                         <Option value="Select Auth" disabled>Select Auth</Option>
                                         <Option value="password">Password</Option>
-                                        <Option value="rsaKey">Public Key</Option>
+                                        <Option value="sshKey">SSH Key</Option >
                                     </Select>
                                 </FormControl>
 
@@ -102,9 +176,9 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
                                         <FormLabel>Password</FormLabel>
                                         <div style={{ display: 'flex', alignItems: 'center' }}>
                                             <Input
-                                                type={showPassword ? 'text' : 'password'}
+                                                type={showPassword ? "text" : "password"}
                                                 value={form.password || ''}
-                                                onChange={(e) => setForm(prev => ({ ...prev, password: e.target.value }))}
+                                                onChange={(e) => setForm({...form, password: e.target.value})}
                                                 sx={{
                                                     backgroundColor: theme.palette.general.primary,
                                                     color: theme.palette.text.primary,
@@ -115,7 +189,10 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
                                                 onClick={() => setShowPassword(!showPassword)}
                                                 sx={{
                                                     color: theme.palette.text.primary,
-                                                    marginLeft: 1
+                                                    marginLeft: 1,
+                                                    '&:disabled': {
+                                                        opacity: 0.5,
+                                                    },
                                                 }}
                                             >
                                                 {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -124,41 +201,34 @@ const NoAuthenticationModal = ({ isHidden, form, setForm, setIsNoAuthHidden, han
                                     </FormControl>
                                 )}
 
-                                {form.authMethod === 'rsaKey' && (
-                                    <FormControl error={!form.rsaKey}>
-                                        <FormLabel>Public Key</FormLabel>
-                                        <Button
-                                            component="label"
-                                            sx={{
-                                                backgroundColor: theme.palette.general.primary,
-                                                color: theme.palette.text.primary,
-                                                width: '100%',
-                                                display: 'flex',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                height: '40px',
-                                                '&:hover': {
-                                                    backgroundColor: theme.palette.general.disabled,
-                                                },
-                                            }}
-                                        >
-                                            {form.rsaKey ? 'Change Public Key File' : 'Upload Public Key File'}
-                                            <Input
-                                                type="file"
-                                                onChange={(e) => {
-                                                    const file = e.target.files[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onload = (event) => {
-                                                            setForm({ ...form, rsaKey: event.target.result });
-                                                        };
-                                                        reader.readAsText(file);
-                                                    }
+                                {form.authMethod === 'sshKey' && (
+                                    <Stack spacing={2}>
+                                        <FormControl error={!form.sshKey}>
+                                            <FormLabel>SSH Key</FormLabel>
+                                            <Button
+                                                component="label"
+                                                sx={{
+                                                    backgroundColor: theme.palette.general.primary,
+                                                    color: theme.palette.text.primary,
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    height: '40px',
+                                                    '&:hover': {
+                                                        backgroundColor: theme.palette.general.disabled,
+                                                    },
                                                 }}
-                                                sx={{ display: 'none' }}
-                                            />
-                                        </Button>
-                                    </FormControl>
+                                            >
+                                                {form.sshKey ? `Change ${form.keyType || 'SSH'} Key File` : 'Upload SSH Key File'}
+                                                <Input
+                                                    type="file"
+                                                    onChange={handleFileChange}
+                                                    sx={{ display: 'none' }}
+                                                />
+                                            </Button>
+                                        </FormControl>
+                                    </Stack>
                                 )}
 
                                 <Button

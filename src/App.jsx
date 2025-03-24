@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { NewTerminal } from "./apps/ssh/Terminal.jsx";
 import { User } from "./apps/user/User.jsx";
 import AddHostModal from "./modals/AddHostModal.jsx";
-import LoginUserModal from "./modals/LoginUserModal.jsx";
+import AuthModal from "./modals/AuthModal.jsx";
 import { Button } from "@mui/joy";
 import { CssVarsProvider } from "@mui/joy";
 import theme from "./theme";
@@ -12,16 +12,15 @@ import { Debounce } from './other/Utils.jsx';
 import TermixIcon from "./images/termix_icon.png";
 import RocketIcon from './images/launchpad_rocket.png';
 import ProfileIcon from './images/profile_icon.png';
-import CreateUserModal from "./modals/CreateUserModal.jsx";
 import ProfileModal from "./modals/ProfileModal.jsx";
 import ErrorModal from "./modals/ErrorModal.jsx";
 import EditHostModal from "./modals/EditHostModal.jsx";
 import NoAuthenticationModal from "./modals/NoAuthenticationModal.jsx";
+import eventBus from "./other/eventBus.jsx";
 
 function App() {
     const [isAddHostHidden, setIsAddHostHidden] = useState(true);
-    const [isLoginUserHidden, setIsLoginUserHidden] = useState(true);
-    const [isCreateUserHidden, setIsCreateUserHidden] = useState(true);
+    const [isAuthModalHidden, setIsAuthModalHidden] = useState(true);
     const [isProfileHidden, setIsProfileHidden] = useState(true);
     const [isErrorHidden, setIsErrorHidden] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
@@ -35,10 +34,17 @@ function App() {
         ip: "",
         user: "",
         password: "",
+        sshKey: "",
         port: 22,
         authMethod: "Select Auth",
-        rememberHost: false,
+        rememberHost: true,
         storePassword: true,
+        connectionType: "ssh",
+        rdpDomain: "",
+        rdpWindowsAuthentication: true,
+        rdpConsole: false,
+        vncScaling: "100%",
+        vncQuality: "High"
     });
     const [editHostForm, setEditHostForm] = useState({
         name: "",
@@ -46,6 +52,7 @@ function App() {
         ip: "",
         user: "",
         password: "",
+        sshKey: "",
         port: 22,
         authMethod: "Select Auth",
         rememberHost: true,
@@ -53,23 +60,23 @@ function App() {
     });
     const [isNoAuthHidden, setIsNoAuthHidden] = useState(true);
     const [authForm, setAuthForm] = useState({
-        password: "",
-        rsaKey: "",
+        username: '',
+        password: '',
+        confirmPassword: ''
     });
-    const [loginUserForm, setLoginUserForm] = useState({
-        username: "",
-        password: "",
-    });
-    const [createUserForm, setCreateUserForm] = useState({
-        username: "",
-        password: "",
-    });
+    const [noAuthenticationForm, setNoAuthenticationForm] = useState({
+        authMethod: 'Select Auth',
+        password: '',
+        sshKey: '',
+        keyType: '',
+    })
     const [isLaunchpadOpen, setIsLaunchpadOpen] = useState(false);
     const [splitTabIds, setSplitTabIds] = useState([]);
     const [isEditHostHidden, setIsEditHostHidden] = useState(true);
     const [currentHostConfig, setCurrentHostConfig] = useState(null);
     const [isLoggingIn, setIsLoggingIn] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [isHostViewerMenuOpen, setIsHostViewerMenuOpen] = useState(null);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -133,13 +140,13 @@ function App() {
 
         if (userRef.current?.getUser()) {
             setIsLoggingIn(false);
-            setIsLoginUserHidden(true);
+            setIsAuthModalHidden(true);
             return;
         }
 
         if (!sessionToken) {
             setIsLoggingIn(false);
-            setIsLoginUserHidden(false);
+            setIsAuthModalHidden(false);
             return;
         }
 
@@ -147,13 +154,13 @@ function App() {
         let loginAttempts = 0;
         const maxAttempts = 50;
         let attemptLoginInterval;
-        
+
         const loginTimeout = setTimeout(() => {
             if (isComponentMounted) {
                 clearInterval(attemptLoginInterval);
                 if (!userRef.current?.getUser()) {
                     localStorage.removeItem('sessionToken');
-                    setIsLoginUserHidden(false);
+                    setIsAuthModalHidden(false);
                     setIsLoggingIn(false);
                     setErrorMessage('Login timed out. Please try again.');
                     setIsErrorHidden(false);
@@ -163,14 +170,14 @@ function App() {
 
         const attemptLogin = () => {
             if (!isComponentMounted || isLoginInProgress) return;
-            
+
             if (loginAttempts >= maxAttempts || userRef.current?.getUser()) {
                 clearTimeout(loginTimeout);
                 clearInterval(attemptLoginInterval);
-                
+
                 if (!userRef.current?.getUser()) {
                     localStorage.removeItem('sessionToken');
-                    setIsLoginUserHidden(false);
+                    setIsAuthModalHidden(false);
                     setIsLoggingIn(false);
                     setErrorMessage('Login timed out. Please try again.');
                     setIsErrorHidden(false);
@@ -186,7 +193,7 @@ function App() {
                         if (isComponentMounted) {
                             clearTimeout(loginTimeout);
                             clearInterval(attemptLoginInterval);
-                            setIsLoginUserHidden(true);
+                            setIsAuthModalHidden(true);
                             setIsLoggingIn(false);
                             setIsErrorHidden(true);
                         }
@@ -200,7 +207,7 @@ function App() {
                                 localStorage.removeItem('sessionToken');
                                 setErrorMessage(`Auto-login failed: ${error}`);
                                 setIsErrorHidden(false);
-                                setIsLoginUserHidden(false);
+                                setIsAuthModalHidden(false);
                                 setIsLoggingIn(false);
                             }
                         }
@@ -222,34 +229,53 @@ function App() {
     }, []);
 
     const handleAddHost = () => {
-        if (addHostForm.ip && addHostForm.user && addHostForm.port) {
+        if (addHostForm.ip && addHostForm.port) {
+            if (addHostForm.connectionType === 'ssh' && !addHostForm.user) {
+                setErrorMessage("Please fill out all required fields (IP, User, Port).");
+                setIsErrorHidden(false);
+                return;
+            }
+
             if (!addHostForm.rememberHost) {
                 connectToHost();
                 setIsAddHostHidden(true);
                 return;
             }
 
-            if (addHostForm.authMethod === 'Select Auth') {
-                alert("Please select an authentication method.");
-                return;
+            if (addHostForm.connectionType === 'ssh') {
+                if (addHostForm.authMethod === 'Select Auth') {
+                    setErrorMessage("Please select an authentication method.");
+                    setIsErrorHidden(false);
+                    return;
+                }
+                if (addHostForm.authMethod === 'password' && !addHostForm.password) {
+                    setIsNoAuthHidden(false);
+                    return;
+                }
+                if (addHostForm.authMethod === 'sshKey' && !addHostForm.sshKey) {
+                    setIsNoAuthHidden(false);
+                    return;
+                }
             }
-            if (addHostForm.authMethod === 'password' && !addHostForm.password) {
-                setIsNoAuthHidden(false);
-                return;
-            }
-            if (addHostForm.authMethod === 'rsaKey' && !addHostForm.rsaKey) {
+            else if (!addHostForm.password) {
                 setIsNoAuthHidden(false);
                 return;
             }
 
-            connectToHost();
-            if (!addHostForm.storePassword) {
-                addHostForm.password = '';
+            try {
+                connectToHost();
+                if (!addHostForm.storePassword) {
+                    addHostForm.password = '';
+                }
+                handleSaveHost();
+                setIsAddHostHidden(true);
+            } catch (error) {
+                setErrorMessage(error.message || "Failed to add host");
+                setIsErrorHidden(false);
             }
-            handleSaveHost();
-            setIsAddHostHidden(true);
         } else {
-            alert("Please fill out all required fields (IP, User, Port).");
+            setErrorMessage("Please fill out all required fields.");
+            setIsErrorHidden(false);
         }
     };
 
@@ -261,7 +287,7 @@ function App() {
             user: addHostForm.user,
             port: String(addHostForm.port),
             password: addHostForm.rememberHost && addHostForm.authMethod === 'password' ? addHostForm.password : undefined,
-            rsaKey: addHostForm.rememberHost && addHostForm.authMethod === 'rsaKey' ? addHostForm.rsaKey : undefined,
+            sshKey: addHostForm.rememberHost && addHostForm.authMethod === 'sshKey' ? addHostForm.sshKey : undefined,
         };
 
         const newTerminal = {
@@ -274,25 +300,42 @@ function App() {
         setActiveTab(nextId);
         setNextId(nextId + 1);
         setIsAddHostHidden(true);
-        setAddHostForm({ name: "", folder: "", ip: "", user: "", password: "", rsaKey: "", port: 22, authMethod: "Select Auth", rememberHost: false, storePassword: true });
+        setAddHostForm({ name: "", folder: "", ip: "", user: "", password: "", sshKey: "", port: 22, authMethod: "Select Auth", rememberHost: true, storePassword: true, connectionType: "ssh", rdpDomain: "", rdpWindowsAuthentication: true, rdpConsole: false, vncScaling: "100%", vncQuality: "High" });
     }
 
     const handleAuthSubmit = (form) => {
-        const updatedTerminals = terminals.map((terminal) => {
-            if (terminal.id === activeTab) {
-                return {
-                    ...terminal,
-                    hostConfig: {
-                        ...terminal.hostConfig,
-                        password: form.password,
-                        rsaKey: form.rsaKey
+        try {
+            setIsNoAuthHidden(true);
+
+            setTimeout(() => {
+                const updatedTerminals = terminals.map((terminal) => {
+                    if (terminal.id === activeTab) {
+                        return {
+                            ...terminal,
+                            hostConfig: {
+                                ...terminal.hostConfig,
+                                password: form.authMethod === 'password' ? form.password : undefined,
+                                sshKey: form.authMethod === 'sshKey' ? form.sshKey : undefined
+                            }
+                        };
                     }
-                };
-            }
-            return terminal;
-        });
-        setTerminals(updatedTerminals);
-        setIsNoAuthHidden(true);
+                    return terminal;
+                });
+                
+                setTerminals(updatedTerminals);
+
+                setNoAuthenticationForm({
+                    authMethod: 'Select Auth',
+                    password: '',
+                    sshKey: '',
+                    keyType: '',
+                });
+            }, 100);
+        } catch (error) {
+            console.error("Authentication error:", error);
+            setErrorMessage("Failed to authenticate: " + (error.message || "Unknown error"));
+            setIsErrorHidden(false);
+        }
     };
 
     const connectToHostWithConfig = (hostConfig) => {
@@ -311,7 +354,7 @@ function App() {
             user: hostConfig.user.trim(),
             port: hostConfig.port || '22',
             password: hostConfig.password?.trim(),
-            rsaKey: hostConfig.rsaKey?.trim(),
+            sshKey: hostConfig.sshKey?.trim(),
         };
 
         const newTerminal = {
@@ -326,20 +369,30 @@ function App() {
         setIsLaunchpadOpen(false);
     }
 
-    const handleSaveHost = () => {
-        let hostConfig = {
-            name: addHostForm.name || addHostForm.ip,
-            folder: addHostForm.folder,
-            ip: addHostForm.ip,
-            user: addHostForm.user,
-            password: addHostForm.authMethod === 'password' ? addHostForm.password : undefined,
-            rsaKey: addHostForm.authMethod === 'rsaKey' ? addHostForm.rsaKey : undefined,
-            port: String(addHostForm.port),
-        }
-        if (userRef.current) {
-            userRef.current.saveHost({
-                hostConfig,
-            });
+    const handleSaveHost = async () => {
+        try {
+            let hostConfig = {
+                name: addHostForm.name || addHostForm.ip,
+                folder: addHostForm.folder,
+                ip: addHostForm.ip,
+                user: addHostForm.user,
+                password: (addHostForm.authMethod === 'password' || addHostForm.connectionType === 'vnc' || addHostForm.connectionType === 'rdp') ? addHostForm.password : undefined,
+                sshKey: addHostForm.connectionType === 'ssh' && addHostForm.authMethod === 'sshKey' ? addHostForm.sshKey : undefined,
+                port: String(addHostForm.port),
+                connectionType: addHostForm.connectionType,
+                rdpDomain: addHostForm.connectionType === 'rdp' ? addHostForm.rdpDomain : undefined,
+                rdpWindowsAuthentication: addHostForm.connectionType === 'rdp' ? addHostForm.rdpWindowsAuthentication : undefined,
+                rdpConsole: addHostForm.connectionType === 'rdp' ? addHostForm.rdpConsole : undefined,
+                vncScaling: addHostForm.connectionType === 'vnc' ? addHostForm.vncScaling : undefined,
+                vncQuality: addHostForm.connectionType === 'vnc' ? addHostForm.vncQuality : undefined
+            }
+            if (userRef.current) {
+                await userRef.current.saveHost({
+                    hostConfig,
+                });
+            }
+        } catch (error) {
+            throw error;
         }
     }
 
@@ -349,13 +402,13 @@ function App() {
                 userRef.current.loginUser({
                     sessionToken,
                     onSuccess: () => {
-                        setIsLoginUserHidden(true);
+                        setIsAuthModalHidden(true);
                         setIsLoggingIn(false);
                         if (onSuccess) onSuccess();
                     },
                     onFailure: (error) => {
                         localStorage.removeItem('sessionToken');
-                        setIsLoginUserHidden(false);
+                        setIsAuthModalHidden(false);
                         setIsLoggingIn(false);
                         if (onFailure) onFailure(error);
                     },
@@ -365,12 +418,12 @@ function App() {
                     username,
                     password,
                     onSuccess: () => {
-                        setIsLoginUserHidden(true);
+                        setIsAuthModalHidden(true);
                         setIsLoggingIn(false);
                         if (onSuccess) onSuccess();
                     },
                     onFailure: (error) => {
-                        setIsLoginUserHidden(false);
+                        setIsAuthModalHidden(false);
                         setIsLoggingIn(false);
                         if (onFailure) onFailure(error);
                     },
@@ -446,7 +499,7 @@ function App() {
             if (newConfig) {
                 if (isEditing) return;
                 setIsEditing(true);
-                
+
                 try {
                     await userRef.current.editHost({
                         oldHostConfig: oldConfig,
@@ -454,9 +507,11 @@ function App() {
                     });
 
                     await new Promise(resolve => setTimeout(resolve, 3000));
+                    setIsEditHostHidden(true);
+                } catch (error) {
+                    throw error;
                 } finally {
                     setIsEditing(false);
-                    setIsEditHostHidden(true);
                 }
                 return;
             }
@@ -464,7 +519,7 @@ function App() {
             updateEditHostForm(oldConfig);
         } catch (error) {
             console.error('Edit failed:', error);
-            setErrorMessage(`Edit failed: ${error}`);
+            setErrorMessage(`Edit failed: ${error.message || error}`);
             setIsErrorHidden(false);
             setIsEditing(false);
         }
@@ -585,7 +640,7 @@ function App() {
                             {/* Profile Button */}
                             <Button
                                 disabled={isLoggingIn}
-                                onClick={() => userRef.current?.getUser() ? setIsProfileHidden(false) : setIsLoginUserHidden(false)}
+                                onClick={() => userRef.current?.getUser() ? setIsProfileHidden(false) : setIsAuthModalHidden(false)}
                                 sx={{
                                     backgroundColor: theme.palette.general.tertiary,
                                     "&:hover": { backgroundColor: theme.palette.general.secondary },
@@ -633,6 +688,8 @@ function App() {
                                         hostConfig={terminal.hostConfig}
                                         isVisible={activeTab === terminal.id || splitTabIds.includes(terminal.id)}
                                         setIsNoAuthHidden={setIsNoAuthHidden}
+                                        setErrorMessage={setErrorMessage}
+                                        setIsErrorHidden={setIsErrorHidden}
                                         ref={(ref) => {
                                             terminal.terminalRef = ref;
                                         }}
@@ -649,8 +706,8 @@ function App() {
                         )}
                         <NoAuthenticationModal
                             isHidden={isNoAuthHidden}
-                            form={authForm}
-                            setForm={setAuthForm}
+                            form={noAuthenticationForm}
+                            setForm={setNoAuthenticationForm}
                             setIsNoAuthHidden={setIsNoAuthHidden}
                             handleAuthSubmit={handleAuthSubmit}
                         />
@@ -694,6 +751,8 @@ function App() {
                                     editHost={handleEditHost}
                                     shareHost={(hostId, username) => userRef.current?.shareHost(hostId, username)}
                                     userRef={userRef}
+                                    isHostViewerMenuOpen={isHostViewerMenuOpen}
+                                    setIsHostViewerMenuOpen={setIsHostViewerMenuOpen}
                                 />
                             )}
                         </>
@@ -705,40 +764,31 @@ function App() {
                         setIsErrorHidden={setIsErrorHidden}
                     />
 
-                    <LoginUserModal
-                        isHidden={isLoginUserHidden}
-                        form={loginUserForm}
-                        setForm={setLoginUserForm}
+                    <AuthModal
+                        isHidden={isAuthModalHidden}
+                        form={authForm}
+                        setForm={setAuthForm}
                         handleLoginUser={handleLoginUser}
-                        handleGuestLogin={handleGuestLogin}
-                        setIsLoginUserHidden={setIsLoginUserHidden}
-                        setIsCreateUserHidden={setIsCreateUserHidden}
-                    />
-
-                    <CreateUserModal
-                        isHidden={isCreateUserHidden}
-                        form={createUserForm}
-                        setForm={setCreateUserForm}
                         handleCreateUser={handleCreateUser}
-                        setIsCreateUserHidden={setIsCreateUserHidden}
-                        setIsLoginUserHidden={setIsLoginUserHidden}
+                        handleGuestLogin={handleGuestLogin}
+                        setIsAuthModalHidden={setIsAuthModalHidden}
                     />
 
                     {/* User component */}
                     <User
                         ref={userRef}
                         onLoginSuccess={() => {
-                            setIsLoginUserHidden(true);
+                            setIsAuthModalHidden(true);
                             setIsLoggingIn(false);
                             setIsErrorHidden(true);
                         }}
                         onCreateSuccess={() => {
-                            setIsCreateUserHidden(true);
-                            handleLoginUser({ 
-                                username: createUserForm.username, 
-                                password: createUserForm.password,
+                            setIsAuthModalHidden(true);
+                            handleLoginUser({
+                                username: authForm.username,
+                                password: authForm.password,
                                 onSuccess: () => {
-                                    setIsLoginUserHidden(true);
+                                    setIsAuthModalHidden(true);
                                     setIsLoggingIn(false);
                                     setIsErrorHidden(true);
                                 },
@@ -756,6 +806,7 @@ function App() {
                             setErrorMessage(`Action failed: ${error}`);
                             setIsErrorHidden(false);
                             setIsLoggingIn(false);
+                            eventBus.emit('failedLoginUser');
                         }}
                     />
                 </div>
