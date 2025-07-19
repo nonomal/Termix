@@ -18,7 +18,9 @@ export const sshData = sqliteTable('ssh_data', {
     username: text('username'),
     password: text('password'),
     authMethod: text('auth_method'),
-    key: text('key', { length: 2048 }),
+    key: text('key', { length: 8192 }), // Increased for larger keys
+    keyPassword: text('key_password'), // Password for protected keys
+    keyType: text('key_type'), // Type of SSH key (RSA, ED25519, etc.)
     saveAuthMethod: integer('save_auth_method', { mode: 'boolean' }),
     isPinned: integer('is_pinned', { mode: 'boolean' }),
 });

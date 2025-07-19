@@ -16,6 +16,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem, SidebarProvider,
 } from "@/components/ui/sidebar.tsx"
+import Icon from "/public/icon.svg";
 
 import {
     Separator,
@@ -85,8 +86,9 @@ export function HomepageSidebar({ onSelectView, disabled, isAdmin, username }: S
             <Sidebar>
                 <SidebarContent>
                     <SidebarGroup>
-                        <SidebarGroupLabel className="text-lg text-center font-bold text-white">
-                            Termix
+                        <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
+                            <img src={Icon} alt="Icon" className="w-6 h-6" />
+                            - Termix
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
                         <SidebarGroupContent>

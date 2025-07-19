@@ -4,7 +4,8 @@ import { useForm, Controller } from "react-hook-form";
 import {
     CornerDownLeft,
     Plus,
-    MoreVertical
+    MoreVertical,
+    Hammer
 } from "lucide-react"
 
 import {
@@ -58,11 +59,15 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import Icon from "../../../public/icon.svg";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
     onAddHostSubmit: (data: any) => void;
     onHostConnect: (hostConfig: any) => void;
+    allTabs: { id: number; title: string; terminalRef: React.RefObject<any> }[];
+    runCommandOnTabs: (tabIds: number[], command: string) => void;
 }
 
 interface AuthPromptFormData {
@@ -70,6 +75,8 @@ interface AuthPromptFormData {
     authMethod: string;
     sshKeyFile: File | null;
     sshKeyContent?: string;
+    keyPassword?: string;
+    keyType?: string;
 }
 
 interface AddHostFormData {
@@ -84,11 +91,13 @@ interface AddHostFormData {
     authMethod: string;
     sshKeyFile: File | null;
     sshKeyContent?: string;
+    keyPassword?: string;
+    keyType?: string;
     saveAuthMethod: boolean;
     isPinned: boolean;
 }
 
-export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: SidebarProps): React.ReactElement {
+export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTabs, runCommandOnTabs }: SidebarProps): React.ReactElement {
     const addHostForm = useForm<AddHostFormData>({
         defaultValues: {
             name: '',
@@ -228,6 +237,8 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                     password: data.password,
                     authMethod: data.authMethod,
                     key: sshKeyContent,
+                    keyPassword: data.keyPassword,
+                    keyType: data.keyType === 'auto' ? '' : data.keyType,
                     saveAuthMethod: data.saveAuthMethod,
                     isPinned: data.isPinned
                 },
@@ -381,6 +392,8 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                 tagsInput: '',
                 sshKeyFile: null,
                 sshKeyContent: editHostData.key || '',
+                keyPassword: editHostData.keyPassword || '',
+                keyType: editHostData.keyType || '',
             });
         }
     }, [editHostData]);
@@ -423,9 +436,11 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                     ip: data.ip,
                     port: data.port,
                     username: data.username,
-                    password: data.password,
+                    password: data.password, // always send
                     authMethod: data.authMethod,
-                    key: sshKeyContent,
+                    key: sshKeyContent, // always send
+                    keyPassword: data.keyPassword, // always send
+                    keyType: data.keyType, // always send
                     saveAuthMethod: data.saveAuthMethod,
                     isPinned: data.isPinned
                 },
@@ -486,6 +501,8 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
             ...authPromptHost,
             password: data.authMethod === 'password' ? data.password : undefined,
             key: data.authMethod === 'key' ? sshKeyContent : undefined,
+            keyPassword: data.authMethod === 'key' ? data.keyPassword : undefined,
+            keyType: data.authMethod === 'key' ? (data.keyType === 'auto' ? undefined : data.keyType) : undefined,
             authMethod: data.authMethod,
         };
 
@@ -507,17 +524,125 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
         }
     }, [authPromptOpen, authPromptForm]);
 
+    // Key type options
+    const keyTypeOptions = [
+        { value: 'auto', label: 'Auto-detect' },
+        { value: 'ssh-rsa', label: 'RSA' },
+        { value: 'ssh-ed25519', label: 'ED25519' },
+        { value: 'ecdsa-sha2-nistp256', label: 'ECDSA NIST P-256' },
+        { value: 'ecdsa-sha2-nistp384', label: 'ECDSA NIST P-384' },
+        { value: 'ecdsa-sha2-nistp521', label: 'ECDSA NIST P-521' },
+        { value: 'ssh-dss', label: 'DSA' },
+        { value: 'ssh-rsa-sha2-256', label: 'RSA SHA2-256' },
+        { value: 'ssh-rsa-sha2-512', label: 'RSA SHA2-512' },
+    ];
+
+    const [keyTypeDropdownOpen, setKeyTypeDropdownOpen] = useState(false);
+    const [editKeyTypeDropdownOpen, setEditKeyTypeDropdownOpen] = useState(false);
+    const keyTypeDropdownRef = React.useRef<HTMLDivElement>(null);
+    const editKeyTypeDropdownRef = React.useRef<HTMLDivElement>(null);
+    const keyTypeButtonRef = React.useRef<HTMLButtonElement>(null);
+    const editKeyTypeButtonRef = React.useRef<HTMLButtonElement>(null);
+
+    // Close dropdown on outside click (add form)
+    React.useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                keyTypeDropdownRef.current &&
+                !keyTypeDropdownRef.current.contains(event.target as Node) &&
+                keyTypeButtonRef.current &&
+                !keyTypeButtonRef.current.contains(event.target as Node)
+            ) {
+                setKeyTypeDropdownOpen(false);
+            }
+        }
+        if (keyTypeDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [keyTypeDropdownOpen]);
+    // Close dropdown on outside click (edit form)
+    React.useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                editKeyTypeDropdownRef.current &&
+                !editKeyTypeDropdownRef.current.contains(event.target as Node) &&
+                editKeyTypeButtonRef.current &&
+                !editKeyTypeButtonRef.current.contains(event.target as Node)
+            ) {
+                setEditKeyTypeDropdownOpen(false);
+            }
+        }
+        if (editKeyTypeDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [editKeyTypeDropdownOpen]);
+
+    const [keyTypeDropdownOpenAuth, setKeyTypeDropdownOpenAuth] = useState(false);
+    const keyTypeDropdownAuthRef = React.useRef<HTMLDivElement>(null);
+    const keyTypeButtonAuthRef = React.useRef<HTMLButtonElement>(null);
+
+    // Close dropdown on outside click (auth prompt)
+    React.useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                keyTypeDropdownAuthRef.current &&
+                !keyTypeDropdownAuthRef.current.contains(event.target as Node) &&
+                keyTypeButtonAuthRef.current &&
+                !keyTypeButtonAuthRef.current.contains(event.target as Node)
+            ) {
+                setKeyTypeDropdownOpenAuth(false);
+            }
+        }
+        if (keyTypeDropdownOpenAuth) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [keyTypeDropdownOpenAuth]);
+
+    // Tools Sheet State
+    const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
+    const [toolsCommand, setToolsCommand] = useState("");
+    const [selectedTabIds, setSelectedTabIds] = useState<number[]>([]);
+    const handleTabToggle = (tabId: number) => {
+        setSelectedTabIds(prev => prev.includes(tabId) ? prev.filter(id => id !== tabId) : [...prev, tabId]);
+    };
+    // --- Fix: Run Command logic ---
+    const handleRunCommand = () => {
+        if (selectedTabIds.length && toolsCommand.trim()) {
+            // Ensure command ends with newline
+            let cmd = toolsCommand;
+            if (!cmd.endsWith("\n")) cmd += "\n";
+            runCommandOnTabs(selectedTabIds, cmd);
+            setToolsCommand(""); // Clear after run
+        }
+    };
+
     return (
         <SidebarProvider>
-            <Sidebar className="h-full flex flex-col">
-                <SidebarContent className="flex flex-col flex-grow h-full">
-                    <SidebarGroup className="flex flex-col flex-grow h-full">
-                        <SidebarGroupLabel className="text-lg text-center font-bold text-white">
-                            Termix / SSH
+            <Sidebar className="h-full flex flex-col overflow-hidden">
+                <SidebarContent className="flex flex-col flex-grow h-full overflow-hidden">
+                    <SidebarGroup className="flex flex-col flex-grow h-full overflow-hidden">
+                        <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
+                            <img src={Icon} alt="Icon" className="w-6 h-6" />
+                            - Termix / SSH
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
-                        <SidebarGroupContent className="flex flex-col flex-grow h-full">
-                            <SidebarMenu className="flex flex-col flex-grow h-full">
+                        <SidebarGroupContent className="flex flex-col flex-grow h-full overflow-hidden">
+                            <SidebarMenu className="flex flex-col flex-grow h-full overflow-hidden">
 
                                 <SidebarMenuItem key="Homepage">
                                     <Button
@@ -754,34 +879,98 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                                                         />
                                                                     </TabsContent>
 
-                                                                    <TabsContent value="key" className="mt-1">
-                                                                        <Controller
-                                                                            control={addHostForm.control}
-                                                                            name="sshKeyFile"
-                                                                            render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <FormLabel>SSH Private Key</FormLabel>
-                                                                                    <FormControl>
-                                                                                        <div className="relative">
-                                                                                            <input
-                                                                                                id="file-upload"
-                                                                                                type="file"
-                                                                                                accept=".pem,.key,.txt"
-                                                                                                onChange={(e) => {
-                                                                                                    const file = e.target.files?.[0];
-                                                                                                    field.onChange(file || null);
-                                                                                                }}
-                                                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                                                            />
-                                                                                            <Button type="button" variant="outline" className="w-full">
-                                                                                                {field.value ? field.value.name : "Upload"}
-                                                                                            </Button>
-                                                                                        </div>
-                                                                                    </FormControl>
-                                                                                </FormItem>
-                                                                            )}
-                                                                        />
-                                                                    </TabsContent>
+                                                                                                                <TabsContent value="key" className="mt-1">
+                                                <Controller
+                                                    control={addHostForm.control}
+                                                    name="sshKeyFile"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>SSH Private Key</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <input
+                                                                        id="file-upload"
+                                                                        type="file"
+                                                                        accept=".pem,.key,.txt,.ppk"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            field.onChange(file || null);
+                                                                        }}
+                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                                    />
+                                                                    <Button type="button" variant="outline" className="w-full">
+                                                                        {field.value ? field.value.name : "Upload"}
+                                                                    </Button>
+                                                                </div>
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={addHostForm.control}
+                                                    name="keyPassword"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3">
+                                                            <FormLabel>Key Password (if protected)</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="password"
+                                                                    placeholder="Enter key password"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={addHostForm.control}
+                                                    name="keyType"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3 relative">
+                                                            <FormLabel>Key Type</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Button
+                                                                        ref={keyTypeButtonRef}
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        className="w-full justify-start text-left rounded-md px-2 py-2 bg-[#18181b] border border-input text-foreground"
+                                                                        onClick={() => setKeyTypeDropdownOpen((open) => !open)}
+                                                                    >
+                                                                        {keyTypeOptions.find(opt => opt.value === field.value)?.label || 'Auto-detect'}
+                                                                    </Button>
+                                                                    {keyTypeDropdownOpen && (
+                                                                        <div
+                                                                            ref={keyTypeDropdownRef}
+                                                                            className="absolute bottom-full left-0 z-50 mb-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                                        >
+                                                                            <div className="grid grid-cols-1 gap-1 p-0">
+                                                                                {keyTypeOptions.map(opt => (
+                                                                                    <Button
+                                                                                        key={opt.value}
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="w-full justify-start text-left rounded-md px-2 py-1.5 bg-[#18181b] text-foreground hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                                        onClick={() => {
+                                                                                            field.onChange(opt.value);
+                                                                                            setKeyTypeDropdownOpen(false);
+                                                                                        }}
+                                                                                    >
+                                                                                        {opt.label}
+                                                                                    </Button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </TabsContent>
                                                                 </Tabs>
                                                             )}
                                                         />
@@ -865,10 +1054,10 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                     </Sheet>
                                 </SidebarMenuItem>
 
-                                <SidebarMenuItem key="Main" className="flex flex-col flex-grow">
-                                    <div className="w-full flex-grow rounded-md bg-[#09090b] border border-[#434345] overflow-hidden p-0 m-0 relative flex flex-col">
+                                <SidebarMenuItem key="Main" className="flex flex-col flex-grow overflow-hidden">
+                                    <div className="w-full flex-grow rounded-md bg-[#09090b] border border-[#434345] overflow-hidden p-0 m-0 relative flex flex-col min-h-0">
                                         {/* Search bar */}
-                                        <div className="w-full px-2 pt-2 pb-1 bg-[#09090b] sticky top-0 z-10">
+                                        <div className="w-full px-2 pt-2 pb-1 bg-[#09090b] z-10">
                                             <Input
                                                 value={search}
                                                 onChange={e => setSearch(e.target.value)}
@@ -890,7 +1079,7 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                             </div>
                                         )}
                                         <div className="flex-1 min-h-0">
-                                            <ScrollArea className="w-full h-full flex-1">
+                                            <ScrollArea className="w-full h-full">
                                                 <Accordion key={`host-accordion-${sortedFolders.length}`} type="multiple" className="w-full" defaultValue={sortedFolders.length > 0 ? sortedFolders : undefined}>
                                                     {sortedFolders.map((folder, idx) => (
                                                         <AccordionItem value={folder} key={`folder-${folder}`} className={idx === 0 ? "mt-0" : "mt-2"}>
@@ -921,6 +1110,65 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                 </SidebarMenuItem>
                             </SidebarMenu>
                         </SidebarGroupContent>
+                        {/* Tools Button at the very bottom */}
+                        <div className="bg-sidebar">
+                            <Sheet open={toolsSheetOpen} onOpenChange={setToolsSheetOpen}>
+                                <SheetTrigger asChild>
+                                    <Button
+                                        className="w-full h-8 mt-2"
+                                        variant="outline"
+                                        onClick={() => setToolsSheetOpen(true)}
+                                    >
+                                        <Hammer className="mr-2 h-4 w-4" />
+                                        Tools
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-[256px] fixed top-0 left-0 h-full z-[100] flex flex-col">
+                                    <SheetHeader className="pb-0.5">
+                                        <SheetTitle>Tools</SheetTitle>
+                                    </SheetHeader>
+                                    <div className="flex-1 overflow-y-auto px-2 pt-2">
+                                        <Accordion type="single" collapsible defaultValue="multiwindow">
+                                            <AccordionItem value="multiwindow">
+                                                <AccordionTrigger className="text-base font-semibold">Run multiwindow commands</AccordionTrigger>
+                                                <AccordionContent>
+                                                    <textarea
+                                                        className="w-full min-h-[120px] max-h-48 rounded-md border border-input text-foreground p-2 text-sm font-mono resize-vertical focus:outline-none focus:ring-0"
+                                                        placeholder="Enter command(s) to run on selected tabs..."
+                                                        value={toolsCommand}
+                                                        onChange={e => setToolsCommand(e.target.value)}
+                                                        style={{ fontFamily: 'monospace', marginBottom: 8, background: '#141416' }}
+                                                    />
+                                                    {/* Tab selection as tag-like buttons */}
+                                                    <div className="flex flex-wrap gap-2 mb-2">
+                                                        {allTabs.map(tab => (
+                                                            <Button
+                                                                key={tab.id}
+                                                                type="button"
+                                                                variant={selectedTabIds.includes(tab.id) ? "secondary" : "outline"}
+                                                                size="sm"
+                                                                className="rounded-full px-3 py-1 text-xs flex items-center gap-1"
+                                                                onClick={() => handleTabToggle(tab.id)}
+                                                            >
+                                                                {tab.title}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                    <Button
+                                                        className="w-full"
+                                                        variant="outline"
+                                                        onClick={handleRunCommand}
+                                                        disabled={!toolsCommand.trim() || !selectedTabIds.length}
+                                                    >
+                                                        Run Command
+                                                    </Button>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </SidebarGroup>
                 </SidebarContent>
             </Sidebar>
@@ -1137,7 +1385,7 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                                                     <input
                                                                         id="file-upload"
                                                                         type="file"
-                                                                        accept=".pem,.key,.txt"
+                                                                        accept=".pem,.key,.txt,.ppk"
                                                                         onChange={(e) => {
                                                                             const file = e.target.files?.[0];
                                                                             field.onChange(file || null);
@@ -1149,6 +1397,70 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                                                     </Button>
                                                                 </div>
                                                             </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={editHostForm.control}
+                                                    name="keyPassword"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3">
+                                                            <FormLabel>Key Password (if protected)</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="password"
+                                                                    placeholder="Enter key password"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={editHostForm.control}
+                                                    name="keyType"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3 relative">
+                                                            <FormLabel>Key Type</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Button
+                                                                        ref={editKeyTypeButtonRef}
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        className="w-full justify-start text-left rounded-md px-2 py-2 bg-[#18181b] border border-input text-foreground"
+                                                                        onClick={() => setEditKeyTypeDropdownOpen((open) => !open)}
+                                                                    >
+                                                                        {keyTypeOptions.find(opt => opt.value === field.value)?.label || 'Auto-detect'}
+                                                                    </Button>
+                                                                    {editKeyTypeDropdownOpen && (
+                                                                        <div
+                                                                            ref={editKeyTypeDropdownRef}
+                                                                            className="absolute bottom-full left-0 z-50 mb-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                                        >
+                                                                            <div className="grid grid-cols-1 gap-1 p-0">
+                                                                                {keyTypeOptions.map(opt => (
+                                                                                    <Button
+                                                                                        key={opt.value}
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="w-full justify-start text-left rounded-md px-2 py-1.5 bg-[#18181b] text-foreground hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                                        onClick={() => {
+                                                                                            field.onChange(opt.value);
+                                                                                            setEditKeyTypeDropdownOpen(false);
+                                                                                        }}
+                                                                                    >
+                                                                                        {opt.label}
+                                                                                    </Button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
@@ -1270,7 +1582,7 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                                                     <input
                                                                         id="auth-file-upload"
                                                                         type="file"
-                                                                        accept=".pem,.key,.txt"
+                                                                        accept=".pem,.key,.txt,.ppk"
                                                                         onChange={(e) => {
                                                                             const file = e.target.files?.[0];
                                                                             field.onChange(file || null);
@@ -1282,6 +1594,70 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect }: Sid
                                                                     </Button>
                                                                 </div>
                                                             </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={authPromptForm.control}
+                                                    name="keyPassword"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3">
+                                                            <FormLabel>Key Password (if protected)</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="password"
+                                                                    placeholder="Enter key password"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={authPromptForm.control}
+                                                    name="keyType"
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-3 relative">
+                                                            <FormLabel>Key Type</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Button
+                                                                        ref={keyTypeButtonAuthRef}
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        className="w-full justify-start text-left rounded-md px-2 py-2 bg-[#18181b] border border-input text-foreground"
+                                                                        onClick={() => setKeyTypeDropdownOpenAuth((open) => !open)}
+                                                                    >
+                                                                        {keyTypeOptions.find(opt => opt.value === field.value)?.label || 'Auto-detect'}
+                                                                    </Button>
+                                                                    {keyTypeDropdownOpenAuth && (
+                                                                        <div
+                                                                            ref={keyTypeDropdownAuthRef}
+                                                                            className="absolute bottom-full left-0 z-50 mb-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                                        >
+                                                                            <div className="grid grid-cols-1 gap-1 p-0">
+                                                                                {keyTypeOptions.map(opt => (
+                                                                                    <Button
+                                                                                        key={opt.value}
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="w-full justify-start text-left rounded-md px-2 py-1.5 bg-[#18181b] text-foreground hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                                        onClick={() => {
+                                                                                            field.onChange(opt.value);
+                                                                                            setKeyTypeDropdownOpenAuth(false);
+                                                                                        }}
+                                                                                    >
+                                                                                        {opt.label}
+                                                                                    </Button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />

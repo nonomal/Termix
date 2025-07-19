@@ -81,11 +81,13 @@ wss.on('connection', (ws: WebSocket) => {
             username: string;
             password?: string;
             key?: string;
+            keyPassword?: string;
+            keyType?: string;
             authMethod?: string;
         };
     }) {
         const { cols, rows, hostConfig } = data;
-        const { ip, port, username, password, key, authMethod } = hostConfig;
+        const { ip, port, username, password, key, keyPassword, keyType, authMethod } = hostConfig;
 
         if (!username || typeof username !== 'string' || username.trim() === '') {
             logger.error('Invalid username provided');
@@ -147,7 +149,23 @@ wss.on('connection', (ws: WebSocket) => {
 
         sshConn.on('error', (err: Error) => {
             logger.error('SSH connection error: ' + err.message);
-            ws.send(JSON.stringify({ type: 'error', message: 'SSH error: ' + err.message }));
+
+            let errorMessage = 'SSH error: ' + err.message;
+            if (err.message.includes('No matching key exchange algorithm')) {
+                errorMessage = 'SSH error: No compatible key exchange algorithm found. This may be due to an older SSH server or network device.';
+            } else if (err.message.includes('No matching cipher')) {
+                errorMessage = 'SSH error: No compatible cipher found. This may be due to an older SSH server or network device.';
+            } else if (err.message.includes('No matching MAC')) {
+                errorMessage = 'SSH error: No compatible MAC algorithm found. This may be due to an older SSH server or network device.';
+            } else if (err.message.includes('ENOTFOUND') || err.message.includes('ENOENT')) {
+                errorMessage = 'SSH error: Could not resolve hostname or connect to server.';
+            } else if (err.message.includes('ECONNREFUSED')) {
+                errorMessage = 'SSH error: Connection refused. The server may not be running or the port may be incorrect.';
+            } else if (err.message.includes('ETIMEDOUT')) {
+                errorMessage = 'SSH error: Connection timed out. Check your network connection and server availability.';
+            }
+            
+            ws.send(JSON.stringify({ type: 'error', message: errorMessage }));
             cleanupSSH();
         });
 
@@ -162,12 +180,51 @@ wss.on('connection', (ws: WebSocket) => {
             keepaliveInterval: 5000,
             keepaliveCountMax: 10,
             readyTimeout: 10000,
+
+            algorithms: {
+                kex: [
+                    'diffie-hellman-group14-sha256',
+                    'diffie-hellman-group14-sha1',
+                    'diffie-hellman-group1-sha1',
+                    'diffie-hellman-group-exchange-sha256',
+                    'diffie-hellman-group-exchange-sha1',
+                    'ecdh-sha2-nistp256',
+                    'ecdh-sha2-nistp384',
+                    'ecdh-sha2-nistp521'
+                ],
+                cipher: [
+                    'aes128-ctr',
+                    'aes192-ctr',
+                    'aes256-ctr',
+                    'aes128-gcm@openssh.com',
+                    'aes256-gcm@openssh.com',
+                    'aes128-cbc',
+                    'aes192-cbc',
+                    'aes256-cbc',
+                    '3des-cbc'
+                ],
+                hmac: [
+                    'hmac-sha2-256',
+                    'hmac-sha2-512',
+                    'hmac-sha1',
+                    'hmac-md5'
+                ],
+                compress: [
+                    'none',
+                    'zlib@openssh.com',
+                    'zlib'
+                ]
+            }
         };
         if (authMethod === 'key' && key) {
             connectConfig.privateKey = key;
+            if (keyPassword) {
+                connectConfig.passphrase = keyPassword;
+            }
         } else {
             connectConfig.password = password;
         }
+
         sshConn.connect(connectConfig);
     }
 

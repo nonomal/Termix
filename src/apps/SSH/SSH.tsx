@@ -431,6 +431,14 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                 onSelectView={onSelectView}
                 onAddHostSubmit={onAddHostSubmit}
                 onHostConnect={onHostConnect}
+                allTabs={allTabs}
+                runCommandOnTabs={(tabIds: number[], command: string) => {
+                    allTabs.forEach(tab => {
+                        if (tabIds.includes(tab.id) && tab.terminalRef?.current?.sendInput) {
+                            tab.terminalRef.current.sendInput(command);
+                        }
+                    });
+                }}
             />
             </div>
             {/* Main area: fills the rest */}

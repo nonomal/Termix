@@ -31,6 +31,11 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             if (fitAddonRef.current) {
                 fitAddonRef.current.fit();
             }
+        },
+        sendInput: (data: string) => {
+            if (webSocketRef.current && webSocketRef.current.readyState === 1) {
+                webSocketRef.current.send(JSON.stringify({ type: 'input', data }));
+            }
         }
     }), []);
 

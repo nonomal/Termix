@@ -69,7 +69,7 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
 // Route: Create SSH data (requires JWT)
 // POST /ssh/host
 router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
-    const { name, folder, tags, ip, port, username, password, authMethod, key, saveAuthMethod, isPinned } = req.body;
+    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, saveAuthMethod, isPinned } = req.body;
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId) || !isNonEmptyString(ip) || !isValidPort(port)) {
         logger.warn('Invalid SSH data input');
@@ -93,13 +93,19 @@ router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
         if (authMethod === 'password') {
             sshDataObj.password = password;
             sshDataObj.key = null;
+            sshDataObj.keyPassword = null;
+            sshDataObj.keyType = null;
         } else if (authMethod === 'key') {
             sshDataObj.key = key;
+            sshDataObj.keyPassword = keyPassword;
+            sshDataObj.keyType = keyType;
             sshDataObj.password = null;
         }
     } else {
         sshDataObj.password = null;
         sshDataObj.key = null;
+        sshDataObj.keyPassword = null;
+        sshDataObj.keyType = null;
     }
 
     try {
@@ -114,7 +120,7 @@ router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
 // Route: Update SSH data (requires JWT)
 // PUT /ssh/host/:id
 router.put('/host/:id', authenticateJWT, async (req: Request, res: Response) => {
-    const { name, folder, tags, ip, port, username, password, authMethod, key, saveAuthMethod, isPinned } = req.body;
+    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, saveAuthMethod, isPinned } = req.body;
     const { id } = req.params;
     const userId = (req as any).userId;
     
@@ -139,13 +145,19 @@ router.put('/host/:id', authenticateJWT, async (req: Request, res: Response) => 
         if (authMethod === 'password') {
             sshDataObj.password = password;
             sshDataObj.key = null;
+            sshDataObj.keyPassword = null;
+            sshDataObj.keyType = null;
         } else if (authMethod === 'key') {
             sshDataObj.key = key;
+            sshDataObj.keyPassword = keyPassword;
+            sshDataObj.keyType = keyType;
             sshDataObj.password = null;
         }
     } else {
         sshDataObj.password = null;
         sshDataObj.key = null;
+        sshDataObj.keyPassword = null;
+        sshDataObj.keyType = null;
     }
 
     try {

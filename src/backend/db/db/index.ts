@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS ssh_data (
     password TEXT,
     auth_method TEXT,
     key TEXT,
+    key_password TEXT,
+    key_type TEXT,
     save_auth_method INTEGER,
     is_pinned INTEGER,
     FOREIGN KEY(user_id) REFERENCES users(id)

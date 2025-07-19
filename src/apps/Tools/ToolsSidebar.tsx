@@ -21,6 +21,7 @@ import {
 import {
     Separator,
 } from "@/components/ui/separator.tsx"
+import Icon from "../../../public/icon.svg";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
@@ -32,8 +33,9 @@ export function ToolsSidebar({ onSelectView }: SidebarProps): React.ReactElement
             <Sidebar>
                 <SidebarContent>
                     <SidebarGroup>
-                        <SidebarGroupLabel className="text-lg text-center font-bold text-white">
-                            Termix / Tools
+                        <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
+                            <img src={Icon} alt="Icon" className="w-6 h-6" />
+                            - Termix / Tools
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
                         <SidebarGroupContent className="flex flex-col flex-grow">
