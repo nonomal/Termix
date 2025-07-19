@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useXTerm } from 'react-xtermjs';
 import { FitAddon } from '@xterm/addon-fit';
 import { ClipboardAddon } from '@xterm/addon-clipboard';
@@ -15,7 +15,6 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
     { hostConfig, isVisible, splitScreen = false },
     ref
 ) {
-    console.log('Rendering SSHTerminal', { hostConfig, isVisible });
     const { instance: terminal, ref: xtermRef } = useXTerm();
     const fitAddonRef = useRef<FitAddon | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
@@ -75,7 +74,6 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             resizeTimeout.current = setTimeout(() => {
                 fitAddonRef.current?.fit();
 
-                // Always send cols + 1
                 const cols = terminal.cols + 1;
                 const rows = terminal.rows;
 
@@ -93,7 +91,6 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             fitAddon.fit();
             setVisible(true);
 
-            // Always send cols + 1
             const cols = terminal.cols + 1;
             const rows = terminal.rows;
 
@@ -101,8 +98,6 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             webSocketRef.current = ws;
 
             ws.addEventListener('open', () => {
-                terminal.writeln('WebSocket opened');
-
                 ws.send(JSON.stringify({
                     type: 'connectToHost',
                     data: {
@@ -123,16 +118,13 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             ws.addEventListener('message', (event) => {
                 try {
                     const msg = JSON.parse(event.data);
-                    console.log('WS message received:', msg); // Debug log
 
                     if (msg.type === 'data') {
                         terminal.write(msg.data);
                     } else if (msg.type === 'error') {
                         terminal.writeln(`\r\n[ERROR] ${msg.message}`);
                     } else if (msg.type === 'connected') {
-                        terminal.writeln('[SSH connected. Waiting for prompt...]');
-                    } else {
-                        console.log('Unhandled message:', msg);
+                        /* nothing for now */
                     }
                 } catch (err) {
                     console.error('Failed to parse message', err);
@@ -166,13 +158,34 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             ref={xtermRef}
             style={{
                 position: 'absolute',
-                top: splitScreen ? 0 : 48,
+                top: splitScreen ? 0 : 0,
                 left: 0,
-                right: '-1ch',
+                right: 0,
                 bottom: 0,
                 marginLeft: 2,
                 opacity: visible && isVisible ? 1 : 0,
+                overflow: 'hidden',
             }}
         />
     );
 });
+
+const style = document.createElement('style');
+style.innerHTML = `
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(180,180,180,0.7);
+  border-radius: 4px;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(120,120,120,0.9);
+}
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180,180,180,0.7) transparent;
+}
+`;
+document.head.appendChild(style);

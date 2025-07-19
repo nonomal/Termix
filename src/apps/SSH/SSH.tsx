@@ -1,8 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { SSHSidebar } from "@/apps/SSH/SSHSidebar.tsx";
 import { SSHTerminal } from "./SSHTerminal.tsx";
 import { SSHTopbar } from "@/apps/SSH/SSHTopbar.tsx";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import * as ResizablePrimitive from "react-resizable-panels";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;
@@ -15,37 +16,20 @@ type Tab = {
     terminalRef: React.RefObject<any>;
 };
 
-function TerminalOverlay({ tabId, splitScreen }: { tabId: number, splitScreen: boolean }) {
-    React.useEffect(() => {
-        const el = document.getElementById(`terminal-container-${tabId}`);
-        if (el) {
-            el.style.opacity = '1';
-            el.style.zIndex = '10';
-            el.style.left = splitScreen ? '8px' : '0px';
-            el.style.width = splitScreen ? 'calc(100% - 8px)' : '100%';
-        }
-        return () => {
-            if (el) {
-                el.style.opacity = '0';
-                el.style.zIndex = '1';
-            }
-        };
-    }, [tabId, splitScreen]);
-    return <div style={{ width: '100%', height: '100%', position: 'relative' }} />;
-}
-
 export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
     const [allTabs, setAllTabs] = useState<Tab[]>([]);
     const [currentTab, setCurrentTab] = useState<number | null>(null);
     const [allSplitScreenTab, setAllSplitScreenTab] = useState<number[]>([]);
     const nextTabId = useRef(1);
-    const [splitKey, setSplitKey] = useState(0);
+
+    const [panelRects, setPanelRects] = useState<Record<string, DOMRect | null>>({});
+    const panelRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const panelGroupRefs = useRef<{ [key: string]: any }>({});
 
     const setActiveTab = (tabId: number) => {
         setCurrentTab(tabId);
     };
 
-    // Helper to fit all visible terminals
     const fitVisibleTerminals = () => {
         allTabs.forEach((terminal) => {
             const isVisible =
@@ -57,7 +41,6 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         });
     };
 
-    // Wrap setSplitScreenTab to fit before and after
     const setSplitScreenTab = (tabId: number) => {
         fitVisibleTerminals();
         setAllSplitScreenTab((prev) => {
@@ -75,7 +58,6 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
     };
 
     const setCloseTab = (tabId: number) => {
-        // Find the tab and call disconnect on its terminal
         const tab = allTabs.find((t) => t.id === tabId);
         if (tab && tab.terminalRef && tab.terminalRef.current && typeof tab.terminalRef.current.disconnect === "function") {
             tab.terminalRef.current.disconnect();
@@ -88,290 +70,312 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         }
     };
 
-    // Render all terminals absolutely positioned, always mounted
-    const renderAllTerminals = () => (
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
-            {allTabs.map((tab) => (
-                <div
-                    key={tab.id}
-                    id={`terminal-container-${tab.id}`}
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        zIndex: 1,
-                        opacity: 0,
-                        pointerEvents: 'auto',
-                        transition: 'opacity 0.15s',
-                    }}
-                    data-terminal-id={tab.id}
-                >
-                    <SSHTerminal
-                        key={tab.id}
-                        ref={tab.terminalRef}
-                        hostConfig={tab.hostConfig}
-                        isVisible={false}
-                        title={tab.title}
-                        showTitle={false}
-                        splitScreen={false}
-                    />
-                </div>
-            ))}
-        </div>
-    );
+    const updatePanelRects = () => {
+        setPanelRects((prev) => {
+            const next: Record<string, DOMRect | null> = { ...prev };
+            Object.entries(panelRefs.current).forEach(([id, ref]) => {
+                if (ref) {
+                    next[id] = ref.getBoundingClientRect();
+                }
+            });
+            return next;
+        });
+    };
 
-    // Helper to show a terminal in a panel by toggling zIndex/opacity
-    const showTerminal = (tab: Tab, splitScreen: boolean) => (
-        <TerminalOverlay tabId={tab.id} splitScreen={splitScreen} />
-    );
+    useEffect(() => {
+        const observers: ResizeObserver[] = [];
+        Object.entries(panelRefs.current).forEach(([id, ref]) => {
+            if (ref) {
+                const observer = new ResizeObserver(() => updatePanelRects());
+                observer.observe(ref);
+                observers.push(observer);
+            }
+        });
+        updatePanelRects();
+        return () => {
+            observers.forEach((observer) => observer.disconnect());
+        };
+    }, [allSplitScreenTab, currentTab, allTabs.length]);
 
-    const renderTerminals = () => {
-        if (allSplitScreenTab.length === 0) {
-            return (
-                <>
-                    {allTabs.map((tab) => (
-                        <div
-                            key={tab.id}
-                            style={{
-                                height: '100%',
-                                width: '100%',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                zIndex: tab.id === currentTab ? 10 : 1,
-                                opacity: tab.id === currentTab ? 1 : 0,
-                                transition: 'opacity 0.15s',
-                                marginTop: 0,
-                            }}
-                        >
-                            <TerminalOverlay tabId={tab.id} splitScreen={false} />
-                        </div>
-                    ))}
-                </>
-            );
-        }
-
-        // Split screen logic
+    const renderAllTerminals = () => {
+        const layoutStyles: Record<number, React.CSSProperties> = {};
         const splitTabs = allTabs.filter((tab) => allSplitScreenTab.includes(tab.id));
         const mainTab = allTabs.find((tab) => tab.id === currentTab);
-        const layoutTabs = [mainTab, ...splitTabs.filter((t) => t && t.id !== currentTab)].filter((t): t is Tab => !!t);
+        const layoutTabs = [mainTab, ...splitTabs.filter((t) => t && t.id !== (mainTab && mainTab.id))].filter((t): t is Tab => !!t);
+        if (allSplitScreenTab.length === 0 && mainTab) {
+            layoutStyles[mainTab.id] = {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 20,
+                display: 'block',
+                pointerEvents: 'auto',
+            };
+        } else {
+            layoutTabs.forEach((tab) => {
+                const rect = panelRects[String(tab.id)];
+                if (rect) {
+                    const parentRect = panelRefs.current['parent']?.getBoundingClientRect();
+                    let top = rect.top, left = rect.left, width = rect.width, height = rect.height;
+                    if (parentRect) {
+                        top = rect.top - parentRect.top;
+                        left = rect.left - parentRect.left;
+                    }
+                    layoutStyles[tab.id] = {
+                        position: 'absolute',
+                        top: top + 28,
+                        left,
+                        width,
+                        height: height - 28,
+                        zIndex: 20,
+                        display: 'block',
+                        pointerEvents: 'auto',
+                    };
+                }
+            });
+        }
+        return (
+            <div ref={el => { panelRefs.current['parent'] = el; }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden' }}>
+                {allTabs.map((tab) => {
+                    const style = layoutStyles[tab.id]
+                        ? { ...layoutStyles[tab.id], overflow: 'hidden' }
+                        : { display: 'none', overflow: 'hidden' };
+                    const isVisible = !!layoutStyles[tab.id];
+                    return (
+                        <div key={tab.id} style={style} data-terminal-id={tab.id}>
+                            <SSHTerminal
+                                key={tab.id}
+                                ref={tab.terminalRef}
+                                hostConfig={tab.hostConfig}
+                                isVisible={isVisible}
+                                title={tab.title}
+                                showTitle={false}
+                                splitScreen={allSplitScreenTab.length > 0}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
 
-        // 2 splits: horizontal
+    const renderSplitOverlays = () => {
+        const splitTabs = allTabs.filter((tab) => allSplitScreenTab.includes(tab.id));
+        const mainTab = allTabs.find((tab) => tab.id === currentTab);
+        const layoutTabs = [mainTab, ...splitTabs.filter((t) => t && t.id !== (mainTab && mainTab.id))].filter((t): t is Tab => !!t);
+        if (allSplitScreenTab.length === 0) return null;
+
         if (layoutTabs.length === 2) {
             const [tab1, tab2] = layoutTabs;
             return (
-                <ResizablePanelGroup key={splitKey} direction="horizontal" className="h-full w-full">
-                    <ResizablePanel key={tab1.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                            <div style={{
-                                background: '#18181b',
-                                color: '#fff',
-                                fontSize: 13,
-                                height: 28,
-                                lineHeight: '28px',
-                                padding: '0 10px',
-                                borderBottom: '1px solid #222224',
-                                letterSpacing: 1,
-                                margin: 0,
-                            }}>{tab1.title}</div>
-                            <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                {showTerminal(tab1, true)}
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                    <ResizablePrimitive.PanelGroup
+                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        direction="horizontal"
+                        className="h-full w-full"
+                        id="main-horizontal"
+                    >
+                        <ResizablePanel key={tab1.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${tab1.id}`} order={1}>
+                            <div ref={el => { panelRefs.current[String(tab1.id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <div style={{
+                                    background: '#18181b',
+                                    color: '#fff',
+                                    fontSize: 13,
+                                    height: 28,
+                                    lineHeight: '28px',
+                                    padding: '0 10px',
+                                    borderBottom: '1px solid #222224',
+                                    letterSpacing: 1,
+                                    margin: 0,
+                                    pointerEvents: 'auto',
+                                    zIndex: 11,
+                                }}>{tab1.title}</div>
                             </div>
-                        </div>
-                    </ResizablePanel>
-                    <ResizableHandle />
-                    <ResizablePanel key={tab2.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                            <div style={{
-                                background: '#18181b',
-                                color: '#fff',
-                                fontSize: 13,
-                                height: 28,
-                                lineHeight: '28px',
-                                padding: '0 10px',
-                                borderBottom: '1px solid #222224',
-                                letterSpacing: 1,
-                                margin: 0,
-                            }}>{tab2.title}</div>
-                            <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                {showTerminal(tab2, true)}
+                        </ResizablePanel>
+                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                        <ResizablePanel key={tab2.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${tab2.id}`} order={2}>
+                            <div ref={el => { panelRefs.current[String(tab2.id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <div style={{
+                                    background: '#18181b',
+                                    color: '#fff',
+                                    fontSize: 13,
+                                    height: 28,
+                                    lineHeight: '28px',
+                                    padding: '0 10px',
+                                    borderBottom: '1px solid #222224',
+                                    letterSpacing: 1,
+                                    margin: 0,
+                                    pointerEvents: 'auto',
+                                    zIndex: 11,
+                                }}>{tab2.title}</div>
                             </div>
-                        </div>
-                    </ResizablePanel>
-                </ResizablePanelGroup>
+                        </ResizablePanel>
+                    </ResizablePrimitive.PanelGroup>
+                </div>
             );
         }
-
-        // 3 splits: vertical group (top: horizontal with 2, bottom: single)
         if (layoutTabs.length === 3) {
             return (
-                <ResizablePanelGroup key={splitKey} direction="vertical" className="h-full w-full">
-                    <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-                            {/* Left/top panel */}
-                            <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                    }}>{layoutTabs[0].title}</div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[0], true)}
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                    <ResizablePrimitive.PanelGroup
+                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        direction="vertical"
+                        className="h-full w-full"
+                        id="main-vertical"
+                    >
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="top-panel" order={1}>
+                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['top'] = el; }} direction="horizontal" className="h-full w-full" id="top-horizontal">
+                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[0].id}`} order={1}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[0].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[0].title}</div>
                                     </div>
-                                </div>
-                            </ResizablePanel>
-                            <ResizableHandle />
-                            {/* Right/top panel (no reset button here) */}
-                            <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                    }}>
-                                        <span>{layoutTabs[1].title}</span>
+                                </ResizablePanel>
+                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[1].id}`} order={2}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[1].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[1].title}</div>
                                     </div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[1], true)}
-                                    </div>
-                                </div>
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    </ResizablePanel>
-                    <ResizableHandle />
-                    <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                            <div style={{
-                                background: '#18181b',
-                                color: '#fff',
-                                fontSize: 13,
-                                height: 28,
-                                lineHeight: '28px',
-                                padding: '0 10px',
-                                borderBottom: '1px solid #222224',
-                                letterSpacing: 1,
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}>{layoutTabs[2].title}</div>
-                            <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                {showTerminal(layoutTabs[2], true)}
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        </ResizablePanel>
+                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="bottom-panel" order={2}>
+                            <div ref={el => { panelRefs.current[String(layoutTabs[2].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <div style={{
+                                    background: '#18181b',
+                                    color: '#fff',
+                                    fontSize: 13,
+                                    height: 28,
+                                    lineHeight: '28px',
+                                    padding: '0 10px',
+                                    borderBottom: '1px solid #222224',
+                                    letterSpacing: 1,
+                                    margin: 0,
+                                    pointerEvents: 'auto',
+                                    zIndex: 11,
+                                }}>{layoutTabs[2].title}</div>
                             </div>
-                        </div>
-                    </ResizablePanel>
-                </ResizablePanelGroup>
+                        </ResizablePanel>
+                    </ResizablePrimitive.PanelGroup>
+                </div>
             );
         }
-
-        // 4 splits: 2x2 grid (vertical group with two horizontal groups)
         if (layoutTabs.length === 4) {
             return (
-                <ResizablePanelGroup key={splitKey} direction="vertical" className="h-full w-full">
-                    <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-                            <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                    }}>{layoutTabs[0].title}</div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[0], true)}
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                    <ResizablePrimitive.PanelGroup
+                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        direction="vertical"
+                        className="h-full w-full"
+                        id="main-vertical"
+                    >
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="top-panel" order={1}>
+                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['top'] = el; }} direction="horizontal" className="h-full w-full" id="top-horizontal">
+                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[0].id}`} order={1}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[0].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[0].title}</div>
                                     </div>
-                                </div>
-                            </ResizablePanel>
-                            <ResizableHandle />
-                            <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                    }}>{layoutTabs[1].title}</div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[1], true)}
+                                </ResizablePanel>
+                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[1].id}`} order={2}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[1].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[1].title}</div>
                                     </div>
-                                </div>
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    </ResizablePanel>
-                    <ResizableHandle />
-                    <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-                            <ResizablePanel key={layoutTabs[2].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                    }}>{layoutTabs[2].title}</div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[2], true)}
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        </ResizablePanel>
+                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="bottom-panel" order={2}>
+                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['bottom'] = el; }} direction="horizontal" className="h-full w-full" id="bottom-horizontal">
+                                <ResizablePanel key={layoutTabs[2].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[2].id}`} order={1}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[2].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[2].title}</div>
                                     </div>
-                                </div>
-                            </ResizablePanel>
-                            <ResizableHandle />
-                            <ResizablePanel key={layoutTabs[3].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full">
-                                <div style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: '#09090b', margin: 0, padding: 0, position: 'relative'}}>
-                                    <div style={{
-                                        background: '#18181b',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        height: 28,
-                                        lineHeight: '28px',
-                                        padding: '0 10px',
-                                        borderBottom: '1px solid #222224',
-                                        letterSpacing: 1,
-                                        margin: 0,
-                                    }}>{layoutTabs[3].title}</div>
-                                    <div style={{flex: 1, position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0}}>
-                                        {showTerminal(layoutTabs[3], true)}
+                                </ResizablePanel>
+                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
+                                <ResizablePanel key={layoutTabs[3].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[3].id}`} order={2}>
+                                    <div ref={el => { panelRefs.current[String(layoutTabs[3].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                        <div style={{
+                                            background: '#18181b',
+                                            color: '#fff',
+                                            fontSize: 13,
+                                            height: 28,
+                                            lineHeight: '28px',
+                                            padding: '0 10px',
+                                            borderBottom: '1px solid #222224',
+                                            letterSpacing: 1,
+                                            margin: 0,
+                                            pointerEvents: 'auto',
+                                            zIndex: 11,
+                                        }}>{layoutTabs[3].title}</div>
                                     </div>
-                                </div>
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    </ResizablePanel>
-                </ResizablePanelGroup>
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        </ResizablePanel>
+                    </ResizablePrimitive.PanelGroup>
+                </div>
             );
         }
         return null;
@@ -392,16 +396,31 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         setAllSplitScreenTab((prev) => prev.filter((tid) => tid !== id));
     };
 
-    const getLayoutStyle = () => {
-        if (allSplitScreenTab.length === 0) {
-            return "flex flex-col h-full w-full";
-        } else if (allSplitScreenTab.length === 1) {
-            return "grid grid-cols-2 h-full w-full";
-        } else if (allSplitScreenTab.length === 2) {
-            return "grid grid-cols-2 grid-rows-2 h-full w-full";
-        } else {
-            return "grid grid-cols-2 grid-rows-2 h-full w-full";
+    const getUniqueTabTitle = (baseTitle: string) => {
+        let title = baseTitle;
+        let count = 1;
+        const existingTitles = allTabs.map(t => t.title);
+        while (existingTitles.includes(title)) {
+            title = `${baseTitle} (${count})`;
+            count++;
         }
+        return title;
+    };
+
+    const onHostConnect = (hostConfig: any) => {
+        const baseTitle = hostConfig.name?.trim() ? hostConfig.name : `${hostConfig.ip || "Host"}:${hostConfig.port || 22}`;
+        const title = getUniqueTabTitle(baseTitle);
+        const terminalRef = React.createRef<any>();
+        const id = nextTabId.current++;
+        const newTab: Tab = {
+            id,
+            title,
+            hostConfig,
+            terminalRef,
+        };
+        setAllTabs((prev) => [...prev, newTab]);
+        setCurrentTab(id);
+        setAllSplitScreenTab((prev) => prev.filter((tid) => tid !== id));
     };
 
     return (
@@ -411,6 +430,7 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
             <SSHSidebar
                 onSelectView={onSelectView}
                 onAddHostSubmit={onAddHostSubmit}
+                onHostConnect={onHostConnect}
             />
             </div>
             {/* Main area: fills the rest */}
@@ -439,7 +459,31 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         </div>
                 {/* Split area below the topbar */}
                 <div style={{ height: 'calc(100% - 46px)', marginTop: 46, position: 'relative' }}>
-                    {/* Absolutely render all terminals for persistence */}
+                    {/* Show alert when no terminals are rendered */}
+                    {allTabs.length === 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: '#18181b',
+                            border: '1px solid #434345',
+                            borderRadius: '8px',
+                            padding: '24px',
+                            textAlign: 'center',
+                            color: '#f7f7f7',
+                            maxWidth: '400px',
+                            zIndex: 30
+                        }}>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+                                Welcome to Termix SSH
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#a1a1aa', lineHeight: '1.5' }}>
+                                Click on any host title in the sidebar to open a terminal connection, or use the "Add Host" button to create a new connection.
+                            </div>
+                        </div>
+                    )}
+                    {/* Absolutely render all terminals for persistence and layout */}
                     {allSplitScreenTab.length > 0 && (
                         <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, height: 28 }}>
                             <button
@@ -459,14 +503,27 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                     display: 'flex',
                                     alignItems: 'center',
                                 }}
-                                onClick={() => setSplitKey((k) => k + 1)}
+                                onClick={() => {
+                                    if (allSplitScreenTab.length === 1) {
+                                        panelGroupRefs.current['main']?.setLayout([50, 50]);
+                                    }
+                                    else if (allSplitScreenTab.length === 2) {
+                                        panelGroupRefs.current['main']?.setLayout([50, 50]);
+                                        panelGroupRefs.current['top']?.setLayout([50, 50]);
+                                    }
+                                    else if (allSplitScreenTab.length === 3) {
+                                        panelGroupRefs.current['main']?.setLayout([50, 50]);
+                                        panelGroupRefs.current['top']?.setLayout([50, 50]);
+                                        panelGroupRefs.current['bottom']?.setLayout([50, 50]);
+                                    }
+                                }}
                             >
                                 Reset Split Sizes
                             </button>
                         </div>
                     )}
                     {renderAllTerminals()}
-                    {renderTerminals()}
+                    {renderSplitOverlays()}
                 </div>
             </div>
         </div>

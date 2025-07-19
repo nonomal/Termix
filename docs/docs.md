@@ -95,7 +95,7 @@ For production environments, we recommend running the website via Nginx. See the
 ```bash
 cd src/backend
 node database.cjs
-node ssh.cjs
+node ssh.ts
 ```
 
 This will start the WebSocket services on ports 8081 and 8082.
