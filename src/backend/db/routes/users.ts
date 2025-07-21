@@ -133,7 +133,6 @@ router.post('/get', async (req, res) => {
         }
         const jwtSecret = process.env.JWT_SECRET || 'secret';
         const token = jwt.sign({ userId: userRecord.id }, jwtSecret, { expiresIn: '50d' });
-        logger.success(`User authenticated: ${username}`);
         res.json({ token });
     } catch (err) {
         logger.error('Failed to get user', err);

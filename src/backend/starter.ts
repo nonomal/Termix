@@ -3,6 +3,7 @@
 
 import './db/database.js'
 import './ssh/ssh.js';
+import './ssh_tunnel/ssh_tunnel.js';
 import chalk from 'chalk';
 
 const fixedIconSymbol = '🚀';

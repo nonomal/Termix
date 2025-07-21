@@ -211,6 +211,14 @@ export function HomepageAuth({ className, setLoggedIn, setIsAdmin, setUsername, 
                 >
                   Discord
                 </Button>
+                <div className="w-px h-4 bg-border"></div>
+                <Button
+                    variant="link"
+                    className="text-sm"
+                    onClick={() => window.open('https://www.paypal.com/paypalme/LukeGustafson803', '_blank')}
+                >
+                  Fund
+                </Button>
               </div>
             </div>
           </div>

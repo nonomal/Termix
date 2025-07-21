@@ -2,6 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import userRoutes from './routes/users.js';
 import sshRoutes from './routes/ssh.js';
+import sshTunnelRoutes from './routes/ssh_tunnel.js';
 import chalk from 'chalk';
 import cors from 'cors';
 
@@ -47,6 +48,7 @@ app.get('/health', (req, res) => {
 
 app.use('/users', userRoutes);
 app.use('/ssh', sshRoutes);
+app.use('/ssh_tunnel', sshTunnelRoutes);
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Unhandled error:', err);

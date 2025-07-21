@@ -64,6 +64,36 @@ CREATE TABLE IF NOT EXISTS ssh_data (
     is_pinned INTEGER,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS ssh_tunnel_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    name TEXT,
+    folder TEXT,
+    source_port INTEGER NOT NULL,
+    endpoint_port INTEGER NOT NULL,
+    source_ip TEXT NOT NULL,
+    source_ssh_port INTEGER NOT NULL,
+    source_username TEXT,
+    source_password TEXT,
+    source_auth_method TEXT,
+    source_ssh_key TEXT,
+    source_key_password TEXT,
+    source_key_type TEXT,
+    endpoint_ip TEXT NOT NULL,
+    endpoint_ssh_port INTEGER NOT NULL,
+    endpoint_username TEXT,
+    endpoint_password TEXT,
+    endpoint_auth_method TEXT,
+    endpoint_ssh_key TEXT,
+    endpoint_key_password TEXT,
+    endpoint_key_type TEXT,
+    max_retries INTEGER NOT NULL DEFAULT 3,
+    retry_interval INTEGER NOT NULL DEFAULT 5000,
+    connection_state TEXT NOT NULL DEFAULT 'DISCONNECTED',
+    auto_start INTEGER NOT NULL DEFAULT 0,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL

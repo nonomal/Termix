@@ -25,6 +25,36 @@ export const sshData = sqliteTable('ssh_data', {
     isPinned: integer('is_pinned', { mode: 'boolean' }),
 });
 
+export const sshTunnelData = sqliteTable('ssh_tunnel_data', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    name: text('name'),
+    folder: text('folder'),
+    sourcePort: integer('source_port').notNull(),
+    endpointPort: integer('endpoint_port').notNull(),
+    sourceIP: text('source_ip').notNull(),
+    sourceSSHPort: integer('source_ssh_port').notNull(),
+    sourceUsername: text('source_username'),
+    sourcePassword: text('source_password'),
+    sourceAuthMethod: text('source_auth_method'),
+    sourceSSHKey: text('source_ssh_key', { length: 8192 }),
+    sourceKeyPassword: text('source_key_password'),
+    sourceKeyType: text('source_key_type'),
+    endpointIP: text('endpoint_ip').notNull(),
+    endpointSSHPort: integer('endpoint_ssh_port').notNull(),
+    endpointUsername: text('endpoint_username'),
+    endpointPassword: text('endpoint_password'),
+    endpointAuthMethod: text('endpoint_auth_method'),
+    endpointSSHKey: text('endpoint_ssh_key', { length: 8192 }),
+    endpointKeyPassword: text('endpoint_key_password'),
+    endpointKeyType: text('endpoint_key_type'),
+    maxRetries: integer('max_retries').notNull().default(3),
+    retryInterval: integer('retry_interval').notNull().default(5000),
+    connectionState: text('connection_state').notNull().default('DISCONNECTED'),
+    autoStart: integer('auto_start', { mode: 'boolean' }).notNull().default(false),
+    isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
+});
+
 export const settings = sqliteTable('settings', {
     key: text('key').primaryKey(),
     value: text('value').notNull(),
