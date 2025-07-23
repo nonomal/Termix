@@ -37,7 +37,6 @@ if (!fs.existsSync(dbDir)) {
 }
 
 const sqlite = new Database('./db/data/db.sqlite');
-logger.success('Database connection established');
 
 sqlite.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -62,6 +61,26 @@ CREATE TABLE IF NOT EXISTS ssh_data (
     key_type TEXT,
     save_auth_method INTEGER,
     is_pinned INTEGER,
+    default_path TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS config_ssh_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    name TEXT,
+    folder TEXT,
+    tags TEXT,
+    ip TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    username TEXT,
+    password TEXT,
+    auth_method TEXT,
+    key TEXT,
+    key_password TEXT,
+    key_type TEXT,
+    save_auth_method INTEGER,
+    is_pinned INTEGER,
+    default_path TEXT,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 CREATE TABLE IF NOT EXISTS ssh_tunnel_data (
@@ -97,6 +116,18 @@ CREATE TABLE IF NOT EXISTS ssh_tunnel_data (
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS config_editor_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    name TEXT,
+    path TEXT NOT NULL,
+    server TEXT,
+    last_opened TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id)
 );
 `);
 try {

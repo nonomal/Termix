@@ -816,16 +816,12 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
 
                                                         <FormField
                                                             control={addHostForm.control}
-                                                            name="port"
+                                                            name="username"
                                                             render={({ field }) => (
                                                                 <FormItem>
-                                                                    <FormLabel>Port</FormLabel>
+                                                                    <FormLabel>Username</FormLabel>
                                                                     <FormControl>
-                                                                        <Input 
-                                                                            placeholder="22" 
-                                                                            {...field}
-                                                                            onChange={(e) => field.onChange(Number(e.target.value) || 22)}
-                                                                        />
+                                                                        <Input placeholder="username123" {...field} />
                                                                     </FormControl>
                                                                     <FormMessage />
                                                                 </FormItem>
@@ -834,12 +830,16 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
 
                                                         <FormField
                                                             control={addHostForm.control}
-                                                            name="username"
+                                                            name="port"
                                                             render={({ field }) => (
                                                                 <FormItem>
-                                                                    <FormLabel>Username</FormLabel>
+                                                                    <FormLabel>Port</FormLabel>
                                                                     <FormControl>
-                                                                        <Input placeholder="username123" {...field} />
+                                                                        <Input
+                                                                            placeholder="22"
+                                                                            {...field}
+                                                                            onChange={(e) => field.onChange(Number(e.target.value) || 22)}
+                                                                        />
                                                                     </FormControl>
                                                                     <FormMessage />
                                                                 </FormItem>
@@ -1057,7 +1057,7 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                                 <SidebarMenuItem key="Main" className="flex flex-col flex-grow overflow-hidden">
                                     <div className="w-full flex-grow rounded-md bg-[#09090b] border border-[#434345] overflow-hidden p-0 m-0 relative flex flex-col min-h-0">
                                         {/* Search bar */}
-                                        <div className="w-full px-2 pt-2 pb-1 bg-[#09090b] z-10">
+                                        <div className="w-full px-2 pt-2 pb-2 bg-[#09090b] z-10">
                                             <Input
                                                 value={search}
                                                 onChange={e => setSearch(e.target.value)}
@@ -1066,7 +1066,9 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                                                 autoComplete="off"
                                             />
                                         </div>
-                                        <Separator className="mx-2 mt-1" />
+                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                            <Separator className="w-full h-px bg-[#434345] my-2" style={{ maxWidth: 213, margin: '0 auto' }} />
+                                        </div>
                                         {/* Error and status messages */}
                                         {hostsError && (
                                             <div className="px-2 py-1 mt-2">
@@ -1082,26 +1084,33 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                                             <ScrollArea className="w-full h-full">
                                                 <Accordion key={`host-accordion-${sortedFolders.length}`} type="multiple" className="w-full" defaultValue={sortedFolders.length > 0 ? sortedFolders : undefined}>
                                                     {sortedFolders.map((folder, idx) => (
-                                                        <AccordionItem value={folder} key={`folder-${folder}`} className={idx === 0 ? "mt-0" : "mt-2"}>
-                                                            <AccordionTrigger className="text-base font-semibold rounded-t-none px-3 py-2" style={{marginTop: idx === 0 ? 0 : undefined}}>{folder}</AccordionTrigger>
-                                                            <AccordionContent className="flex flex-col gap-1 px-3 pb-2 pt-1">
-                                                                {getSortedHosts(hostsByFolder[folder]).map(host => (
-                                                                    <div key={host.id} className="w-full overflow-hidden">
-                                                                        <HostMenuItem
-                                                                            host={host}
-                                                                            onHostConnect={handleHostConnect}
-                                                                            onDeleteHost={onDeleteHost}
-                                                                            onEditHost={() => {
-                                                                                setEditHostData(host); 
-                                                                                setEditHostOpen(true); 
-                                                                            }}
-                                                                            popoverOpen={!!hostPopoverOpen[host.id]}
-                                                                            setPopoverOpen={(open: boolean) => handlePopoverOpenChange(host.id, open)}
-                                                                        />
-                                                                    </div>
-                                                                ))}
-                                                            </AccordionContent>
-                                                        </AccordionItem>
+                                                        <React.Fragment key={folder}>
+                                                            <AccordionItem value={folder} className={idx === 0 ? "mt-0 !border-b-transparent" : "mt-2 !border-b-transparent"}>
+                                                                <AccordionTrigger className="text-base font-semibold rounded-t-none px-3 py-2" style={{marginTop: idx === 0 ? 0 : undefined}}>{folder}</AccordionTrigger>
+                                                                <AccordionContent className="flex flex-col gap-1 px-3 pb-2 pt-1">
+                                                                    {getSortedHosts(hostsByFolder[folder]).map(host => (
+                                                                        <div key={host.id} className="w-full overflow-hidden">
+                                                                            <HostMenuItem
+                                                                                host={host}
+                                                                                onHostConnect={handleHostConnect}
+                                                                                onDeleteHost={onDeleteHost}
+                                                                                onEditHost={() => {
+                                                                                    setEditHostData(host); 
+                                                                                    setEditHostOpen(true); 
+                                                                                }}
+                                                                                popoverOpen={!!hostPopoverOpen[host.id]}
+                                                                                setPopoverOpen={(open: boolean) => handlePopoverOpenChange(host.id, open)}
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                </AccordionContent>
+                                                            </AccordionItem>
+                                                            {idx < sortedFolders.length - 1 && (
+                                                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                                    <Separator className="h-px bg-[#434345] my-1" style={{ width: 213 }} />
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
                                                     ))}
                                                 </Accordion>
                                             </ScrollArea>
@@ -1315,16 +1324,12 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                                 />
                                 <FormField
                                     control={editHostForm.control}
-                                    name="port"
+                                    name="username"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Port</FormLabel>
+                                            <FormLabel>Username</FormLabel>
                                             <FormControl>
-                                                <Input 
-                                                    placeholder="22" 
-                                                    {...field}
-                                                    onChange={(e) => field.onChange(Number(e.target.value) || 22)}
-                                                />
+                                                <Input placeholder="username123" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -1332,12 +1337,16 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                                 />
                                 <FormField
                                     control={editHostForm.control}
-                                    name="username"
+                                    name="port"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Username</FormLabel>
+                                            <FormLabel>Port</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="username123" {...field} />
+                                                <Input
+                                                    placeholder="22"
+                                                    {...field}
+                                                    onChange={(e) => field.onChange(Number(e.target.value) || 22)}
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -1690,10 +1699,10 @@ const HostMenuItem = React.memo(function HostMenuItem({ host, onHostConnect, onD
     const hasTags = tags.length > 0;
     return (
         <div className="relative group flex flex-col mb-1 w-full overflow-hidden" style={{ height: hasTags ? 70 : 40, maxWidth: '213px' }}>
-            <div className={`flex flex-col w-full rounded overflow-hidden border border-border bg-secondary h-full`} style={{ maxWidth: '213px' }}>
+            <div className={`flex flex-col w-full rounded overflow-hidden border border-[#434345] bg-[#18181b] h-full`} style={{ maxWidth: '213px' }}>
                 <div className="flex w-full h-10">
                     {/* Left: Name + Star - Horizontal scroll only */}
-                    <div className="flex items-center h-full px-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent min-w-0 border-r border-border hover:bg-muted transition-colors cursor-pointer" 
+                    <div className="flex items-center h-full px-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent min-w-0 border-r border-[#434345] hover:bg-muted transition-colors cursor-pointer" 
                          style={{ flex: '0 1 calc(100% - 32px)', maxWidth: 'calc(100% - 32px)' }}
                          onClick={() => onHostConnect(host)}
                     >
@@ -1729,9 +1738,9 @@ const HostMenuItem = React.memo(function HostMenuItem({ host, onHostConnect, onD
                     </div>
                 </div>
                 {hasTags && (
-                    <div className="border-t border-border bg-secondary flex items-center gap-1 px-2 py-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent" style={{ height: 30, width: '100%' }}>
+                    <div className="border-t border-border bg-[#18181b] flex items-center gap-1 px-2 py-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent" style={{ height: 30, width: '100%' }}>
                         {tags.map((tag: string) => (
-                            <span key={tag} className="bg-muted-foreground/10 text-xs rounded-full px-2 py-0.5 text-muted-foreground whitespace-nowrap border border-border flex-shrink-0">
+                            <span key={tag} className="bg-muted-foreground/10 text-xs rounded-full px-2 py-0.5 text-muted-foreground whitespace-nowrap border border-border flex-shrink-0 hover:bg-muted transition-colors">
                                 {tag}
                             </span>
                         ))}

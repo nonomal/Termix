@@ -1,9 +1,10 @@
 //  npx tsc -p tsconfig.node.json
 //  node ./dist/backend/starter.js
 
-import './db/database.js'
+import './database/database.js'
 import './ssh/ssh.js';
 import './ssh_tunnel/ssh_tunnel.js';
+import './config_editor/config_editor.js';
 import chalk from 'chalk';
 
 const fixedIconSymbol = '🚀';

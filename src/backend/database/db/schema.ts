@@ -23,6 +23,7 @@ export const sshData = sqliteTable('ssh_data', {
     keyType: text('key_type'), // Type of SSH key (RSA, ED25519, etc.)
     saveAuthMethod: integer('save_auth_method', { mode: 'boolean' }),
     isPinned: integer('is_pinned', { mode: 'boolean' }),
+    defaultPath: text('default_path'), // Default path for SSH connection
 });
 
 export const sshTunnelData = sqliteTable('ssh_tunnel_data', {
@@ -58,4 +59,35 @@ export const sshTunnelData = sqliteTable('ssh_tunnel_data', {
 export const settings = sqliteTable('settings', {
     key: text('key').primaryKey(),
     value: text('value').notNull(),
+});
+
+export const configEditorData = sqliteTable('config_editor_data', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    type: text('type').notNull(), // 'recent' | 'pinned' | 'shortcut'
+    name: text('name'),
+    path: text('path').notNull(),
+    server: text('server', { length: 2048 }), // JSON stringified server info (if SSH)
+    lastOpened: text('last_opened'), // ISO string (for recent)
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+export const configSshData = sqliteTable('config_ssh_data', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    name: text('name'),
+    folder: text('folder'),
+    tags: text('tags'),
+    ip: text('ip').notNull(),
+    port: integer('port').notNull(),
+    username: text('username'),
+    password: text('password'),
+    authMethod: text('auth_method'),
+    key: text('key', { length: 8192 }),
+    keyPassword: text('key_password'),
+    keyType: text('key_type'),
+    saveAuthMethod: integer('save_auth_method', { mode: 'boolean' }),
+    isPinned: integer('is_pinned', { mode: 'boolean' }),
+    defaultPath: text('default_path'),
 });

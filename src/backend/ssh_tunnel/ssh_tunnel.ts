@@ -1082,7 +1082,7 @@ app.delete('/tunnel/:name', (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.SSH_TUNNEL_PORT || 8083;
+const PORT = 8083;
 app.listen(PORT, () => {
     // Initialize auto-start tunnels after a short delay
     setTimeout(() => {

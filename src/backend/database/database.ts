@@ -3,8 +3,18 @@ import bodyParser from 'body-parser';
 import userRoutes from './routes/users.js';
 import sshRoutes from './routes/ssh.js';
 import sshTunnelRoutes from './routes/ssh_tunnel.js';
+import configEditorRoutes from './routes/config_editor.js';
 import chalk from 'chalk';
 import cors from 'cors';
+
+// CORS for local dev
+const app = express();
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Custom logger (adapted from starter.ts, with a database icon)
 const dbIconSymbol = '🗄️';
@@ -33,13 +43,6 @@ const logger = {
     }
 };
 
-const app = express();
-
-app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
-}));
-
 app.use(bodyParser.json());
 
 app.get('/health', (req, res) => {
@@ -49,6 +52,7 @@ app.get('/health', (req, res) => {
 app.use('/users', userRoutes);
 app.use('/ssh', sshRoutes);
 app.use('/ssh_tunnel', sshTunnelRoutes);
+app.use('/config_editor', configEditorRoutes);
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Unhandled error:', err);
