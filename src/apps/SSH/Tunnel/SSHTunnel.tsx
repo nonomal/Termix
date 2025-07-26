@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { SSHTunnelSidebar } from "@/apps/SSH Tunnel/SSHTunnelSidebar.tsx";
-import { SSHTunnelViewer } from "@/apps/SSH Tunnel/SSHTunnelViewer.tsx";
+import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
+import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
 import axios from "axios";
 
 interface ConfigEditorProps {

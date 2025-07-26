@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button.tsx';
+import { Card } from '@/components/ui/card.tsx';
+import { Separator } from '@/components/ui/separator.tsx';
 import { Plus, Folder, File, Star, Trash2, Edit, Link2, Server } from 'lucide-react';
 
 interface SSHConnection {

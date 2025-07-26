@@ -3,7 +3,7 @@ import {
     Computer,
     Server,
     File,
-    Hammer, ChevronUp, User2
+    Hammer, ChevronUp, User2, HardDrive
 } from "lucide-react";
 
 import {
@@ -16,16 +16,30 @@ import {
     SidebarMenuButton,
     SidebarMenuItem, SidebarProvider,
 } from "@/components/ui/sidebar.tsx"
-import Icon from "/public/icon.svg";
 
 import {
     Separator,
 } from "@/components/ui/separator.tsx"
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@radix-ui/react-dropdown-menu";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetClose
+} from "@/components/ui/sheet";
 import {Checkbox} from "@/components/ui/checkbox.tsx";
 import axios from "axios";
 import {Button} from "@/components/ui/button.tsx";
+import {Homepage} from "@/apps/Homepage/Homepage.tsx";
+import {SSHManager} from "@/apps/SSH/Manager/SSHManager.tsx";
+import {SSH} from "@/apps/SSH/Terminal/SSH.tsx";
+import {SSHTunnel} from "@/apps/SSH/Tunnel/SSHTunnel.tsx";
+import {ConfigEditor} from "@/apps/SSH/Config Editor/ConfigEditor.tsx";
+import {Tools} from "@/apps/Tools/Tools.tsx";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
@@ -40,22 +54,22 @@ function handleLogout() {
 }
 
 function getCookie(name: string) {
-  return document.cookie.split('; ').reduce((r, v) => {
-    const parts = v.split('=');
-    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
-  }, "");
+    return document.cookie.split('; ').reduce((r, v) => {
+        const parts = v.split('=');
+        return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+    }, "");
 }
 
 const apiBase =
-  typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:8081/users"
-    : "/users";
+    typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:8081/users"
+        : "/users";
 
 const API = axios.create({
-  baseURL: apiBase,
+    baseURL: apiBase,
 });
 
-export function HomepageSidebar({ onSelectView, disabled, isAdmin, username }: SidebarProps): React.ReactElement {
+export function HomepageSidebar({onSelectView, getView, disabled, isAdmin, username}: SidebarProps): React.ReactElement {
     const [adminSheetOpen, setAdminSheetOpen] = React.useState(false);
     const [allowRegistration, setAllowRegistration] = React.useState(true);
     const [regLoading, setRegLoading] = React.useState(false);
@@ -72,8 +86,8 @@ export function HomepageSidebar({ onSelectView, disabled, isAdmin, username }: S
         try {
             await API.patch(
                 "/registration-allowed",
-                { allowed: checked },
-                { headers: { Authorization: `Bearer ${jwt}` } }
+                {allowed: checked},
+                {headers: {Authorization: `Bearer ${jwt}`}}
             );
             setAllowRegistration(checked);
         } catch (e) {
@@ -81,103 +95,120 @@ export function HomepageSidebar({ onSelectView, disabled, isAdmin, username }: S
             setRegLoading(false);
         }
     };
+
     return (
-        <SidebarProvider>
-            <Sidebar>
-                <SidebarContent>
-                    <SidebarGroup>
-                        <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
-                            <img src={Icon} alt="Icon" className="w-6 h-6" />
-                            - Termix
-                        </SidebarGroupLabel>
-                        <Separator className="p-0.25 mt-1 mb-1" />
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                <SidebarMenuItem key={"SSH"}>
-                                    <SidebarMenuButton onClick={() => onSelectView("ssh")} disabled={disabled}>
-                                        <Computer />
-                                        <span>SSH</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem key={"SSH Tunnel"}>
-                                    <SidebarMenuButton onClick={() => onSelectView("ssh_tunnel")} disabled={disabled}>
-                                        <Server />
-                                        <span>SSH Tunnel</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem key={"Config Editor"}>
-                                    <SidebarMenuButton onClick={() => onSelectView("config_editor")} disabled={disabled}>
-                                        <File />
-                                        <span>Config Editor</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem key={"Tools"}>
-                                    <SidebarMenuButton onClick={() => onSelectView("tools")} disabled={disabled}>
-                                        <Hammer />
-                                        <span>Tools</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                </SidebarContent>
-                <Separator className="p-0.25 mt-1 mb-1" />
-                <SidebarFooter>
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <SidebarMenuButton
-                                        className="data-[state=open]:opacity-90 w-full"
-                                        style={{ width: '100%' }}
-                                        disabled={disabled}
+        <div>
+            <SidebarProvider>
+                <Sidebar>
+                    <SidebarContent>
+                        <SidebarGroup>
+                            <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
+                                Termix
+                            </SidebarGroupLabel>
+                            <Separator className="p-0.25 mt-1 mb-1"/>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    <SidebarMenuItem key={"SSH Manager"}>
+                                        <SidebarMenuButton onClick={() => onSelectView("ssh_manager")} disabled={disabled}>
+                                            <HardDrive/>
+                                            <span>SSH Manager</span>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                    <div className="ml-5">
+                                        <SidebarMenuItem key={"Terminal"}>
+                                            <SidebarMenuButton onClick={() => onSelectView("terminal")} disabled={disabled}>
+                                                <Computer/>
+                                                <span>Terminal</span>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                        <SidebarMenuItem key={"Tunnel"}>
+                                            <SidebarMenuButton onClick={() => onSelectView("tunnel")}
+                                                               disabled={disabled}>
+                                                <Server/>
+                                                <span>Tunnel</span>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                        <SidebarMenuItem key={"Config Editor"}>
+                                            <SidebarMenuButton onClick={() => onSelectView("config_editor")}
+                                                               disabled={disabled}>
+                                                <File/>
+                                                <span>Config Editor</span>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    </div>
+                                    <SidebarMenuItem key={"Tools"}>
+                                        <SidebarMenuButton onClick={() => onSelectView("tools")} disabled={disabled}>
+                                            <Hammer/>
+                                            <span>Tools</span>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    </SidebarContent>
+                    <Separator className="p-0.25 mt-1 mb-1"/>
+                    <SidebarFooter>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <SidebarMenuButton
+                                            className="data-[state=open]:opacity-90 w-full"
+                                            style={{width: '100%'}}
+                                            disabled={disabled}
+                                        >
+                                            <User2/> {username ? username : 'Signed out'}
+                                            <ChevronUp className="ml-auto"/>
+                                        </SidebarMenuButton>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        side="top"
+                                        align="start"
+                                        sideOffset={6}
+                                        className="min-w-[var(--radix-popper-anchor-width)] bg-sidebar-accent text-sidebar-accent-foreground border border-border rounded-md shadow-2xl p-1"
                                     >
-                                        <User2 /> {username ? username : 'Signed out'}
-                                        <ChevronUp className="ml-auto" />
-                                    </SidebarMenuButton>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    side="top"
-                                    align="start"
-                                    sideOffset={6}
-                                    className="min-w-[var(--radix-popper-anchor-width)] bg-sidebar-accent text-sidebar-accent-foreground border border-border rounded-md shadow-2xl p-1"
-                                >
-                                    {isAdmin && (
-                                        <DropdownMenuItem className="rounded px-2 py-1.5 hover:bg-white/15 hover:text-accent-foreground focus:bg-white/20 focus:text-accent-foreground cursor-pointer focus:outline-none" onSelect={() => setAdminSheetOpen(true)}>
-                                            <span>Admin Settings</span>
+                                        {isAdmin && (
+                                            <DropdownMenuItem
+                                                className="rounded px-2 py-1.5 hover:bg-white/15 hover:text-accent-foreground focus:bg-white/20 focus:text-accent-foreground cursor-pointer focus:outline-none"
+                                                onSelect={() => setAdminSheetOpen(true)}>
+                                                <span>Admin Settings</span>
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem
+                                            className="rounded px-2 py-1.5 hover:bg-white/15 hover:text-accent-foreground focus:bg-white/20 focus:text-accent-foreground cursor-pointer focus:outline-none"
+                                            onSelect={handleLogout}>
+                                            <span>Sign out</span>
                                         </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem className="rounded px-2 py-1.5 hover:bg-white/15 hover:text-accent-foreground focus:bg-white/20 focus:text-accent-foreground cursor-pointer focus:outline-none" onSelect={handleLogout}>
-                                        <span>Sign out</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarFooter>
-                {/* Admin Settings Sheet (always rendered, only openable if isAdmin) */}
-                {isAdmin && (
-                    <Sheet open={adminSheetOpen} onOpenChange={setAdminSheetOpen}>
-                        <SheetContent side="left" className="w-[320px]">
-                            <SheetHeader>
-                                <SheetTitle>Admin Settings</SheetTitle>
-                            </SheetHeader>
-                            <div className="pt-1 pb-4 px-4 flex flex-col gap-4">
-                                <label className="flex items-center gap-2">
-                                    <Checkbox checked={allowRegistration} onCheckedChange={handleToggle} disabled={regLoading} />
-                                    Allow new account registration
-                                </label>
-                            </div>
-                            <SheetFooter className="px-4 pt-1 pb-4">
-                                <Separator className="p-0.25 mt-2 mb-2" />
-                                <SheetClose asChild>
-                                    <Button variant="outline">Close</Button>
-                                </SheetClose>
-                            </SheetFooter>
-                        </SheetContent>
-                    </Sheet>
-                )}
-            </Sidebar>
-        </SidebarProvider>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarFooter>
+                    {/* Admin Settings Sheet (always rendered, only openable if isAdmin) */}
+                    {isAdmin && (
+                        <Sheet open={adminSheetOpen} onOpenChange={setAdminSheetOpen}>
+                            <SheetContent side="left" className="w-[320px]">
+                                <SheetHeader>
+                                    <SheetTitle>Admin Settings</SheetTitle>
+                                </SheetHeader>
+                                <div className="pt-1 pb-4 px-4 flex flex-col gap-4">
+                                    <label className="flex items-center gap-2">
+                                        <Checkbox checked={allowRegistration} onCheckedChange={handleToggle}
+                                                  disabled={regLoading}/>
+                                        Allow new account registration
+                                    </label>
+                                </div>
+                                <SheetFooter className="px-4 pt-1 pb-4">
+                                    <Separator className="p-0.25 mt-2 mb-2"/>
+                                    <SheetClose asChild>
+                                        <Button variant="outline">Close</Button>
+                                    </SheetClose>
+                                </SheetFooter>
+                            </SheetContent>
+                        </Sheet>
+                    )}
+                </Sidebar>
+            </SidebarProvider>
+        </div>
     )
 }

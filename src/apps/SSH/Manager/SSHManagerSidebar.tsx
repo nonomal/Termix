@@ -26,14 +26,14 @@ interface SidebarProps {
     onSelectView: (view: string) => void;
 }
 
-export function ToolsSidebar({ onSelectView }: SidebarProps): React.ReactElement {
+export function SSHManagerSidebar({ onSelectView }: SidebarProps): React.ReactElement {
     return (
         <SidebarProvider>
             <Sidebar>
                 <SidebarContent>
                     <SidebarGroup>
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
-                            Termix / Tools
+                            Termix / SSH Manager
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
                         <SidebarGroupContent className="flex flex-col flex-grow">

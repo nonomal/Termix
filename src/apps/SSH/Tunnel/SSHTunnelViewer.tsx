@@ -1,7 +1,7 @@
 import React from "react";
-import { SSHTunnelObject } from "./SSHTunnelObject";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
+import { SSHTunnelObject } from "./SSHTunnelObject.tsx";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion.tsx";
+import { Separator } from "@/components/ui/separator.tsx";
 
 interface SSHTunnelViewerProps {
     tunnels: Array<{

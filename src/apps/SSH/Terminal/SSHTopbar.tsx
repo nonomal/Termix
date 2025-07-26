@@ -1,4 +1,4 @@
-import {SSHTabList} from "@/apps/SSH/SSHTabList.tsx";
+import {SSHTabList} from "@/apps/SSH/Terminal/SSHTabList.tsx";
 import React from "react";
 
 interface TerminalTab {

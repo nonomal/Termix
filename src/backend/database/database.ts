@@ -2,21 +2,16 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import userRoutes from './routes/users.js';
 import sshRoutes from './routes/ssh.js';
-import sshTunnelRoutes from './routes/ssh_tunnel.js';
-import configEditorRoutes from './routes/config_editor.js';
 import chalk from 'chalk';
 import cors from 'cors';
 
-// CORS for local dev
 const app = express();
 app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true,
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Custom logger (adapted from starter.ts, with a database icon)
 const dbIconSymbol = '🗄️';
 const getTimeStamp = (): string => chalk.gray(`[${new Date().toLocaleTimeString()}]`);
 const formatMessage = (level: string, colorFn: chalk.Chalk, message: string): string => {
@@ -51,14 +46,16 @@ app.get('/health', (req, res) => {
 
 app.use('/users', userRoutes);
 app.use('/ssh', sshRoutes);
-app.use('/ssh_tunnel', sshTunnelRoutes);
-app.use('/config_editor', configEditorRoutes);
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Unhandled error:', err);
     res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Start server
 const PORT = 8081;
-app.listen(PORT);
+app.listen(PORT, () => {
+    logger.success(`Database server started on port ${PORT}`);
+}).on('error', (err) => {
+    logger.error(`Failed to start database server:`, err);
+    process.exit(1);
+});

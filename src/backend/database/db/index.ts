@@ -38,6 +38,7 @@ if (!fs.existsSync(dbDir)) {
 
 const sqlite = new Database('./db/data/db.sqlite');
 
+// Create tables using Drizzle schema
 sqlite.exec(`
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -45,102 +46,92 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     is_admin INTEGER NOT NULL DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS ssh_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    name TEXT,
-    folder TEXT,
-    tags TEXT,
-    ip TEXT NOT NULL,
-    port INTEGER NOT NULL,
-    username TEXT,
-    password TEXT,
-    auth_method TEXT,
-    key TEXT,
-    key_password TEXT,
-    key_type TEXT,
-    save_auth_method INTEGER,
-    is_pinned INTEGER,
-    default_path TEXT,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-);
-CREATE TABLE IF NOT EXISTS config_ssh_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    name TEXT,
-    folder TEXT,
-    tags TEXT,
-    ip TEXT NOT NULL,
-    port INTEGER NOT NULL,
-    username TEXT,
-    password TEXT,
-    auth_method TEXT,
-    key TEXT,
-    key_password TEXT,
-    key_type TEXT,
-    save_auth_method INTEGER,
-    is_pinned INTEGER,
-    default_path TEXT,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-);
-CREATE TABLE IF NOT EXISTS ssh_tunnel_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    name TEXT,
-    folder TEXT,
-    source_port INTEGER NOT NULL,
-    endpoint_port INTEGER NOT NULL,
-    source_ip TEXT NOT NULL,
-    source_ssh_port INTEGER NOT NULL,
-    source_username TEXT,
-    source_password TEXT,
-    source_auth_method TEXT,
-    source_ssh_key TEXT,
-    source_key_password TEXT,
-    source_key_type TEXT,
-    endpoint_ip TEXT NOT NULL,
-    endpoint_ssh_port INTEGER NOT NULL,
-    endpoint_username TEXT,
-    endpoint_password TEXT,
-    endpoint_auth_method TEXT,
-    endpoint_ssh_key TEXT,
-    endpoint_key_password TEXT,
-    endpoint_key_type TEXT,
-    max_retries INTEGER NOT NULL DEFAULT 3,
-    retry_interval INTEGER NOT NULL DEFAULT 5000,
-    connection_state TEXT NOT NULL DEFAULT 'DISCONNECTED',
-    auto_start INTEGER NOT NULL DEFAULT 0,
-    is_pinned INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS config_editor_data (
+
+CREATE TABLE IF NOT EXISTS ssh_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
-    type TEXT NOT NULL,
     name TEXT,
-    path TEXT NOT NULL,
-    server TEXT,
-    last_opened TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    folder TEXT,
+    tags TEXT,
+    pin INTEGER NOT NULL DEFAULT 0,
+    auth_type TEXT NOT NULL,
+    password TEXT,
+    key TEXT,
+    key_password TEXT,
+    key_type TEXT,
+    enable_terminal INTEGER NOT NULL DEFAULT 1,
+    enable_tunnel INTEGER NOT NULL DEFAULT 1,
+    tunnel_connections TEXT,
+    enable_config_editor INTEGER NOT NULL DEFAULT 1,
+    default_path TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 `);
-try {
-    sqlite.prepare('SELECT is_admin FROM users LIMIT 1').get();
-} catch (e) {
-    sqlite.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;');
-}
+
+// Function to safely add a column if it doesn't exist
+const addColumnIfNotExists = (table: string, column: string, definition: string) => {
+    try {
+        // Try to select the column to see if it exists
+        sqlite.prepare(`SELECT ${column} FROM ${table} LIMIT 1`).get();
+    } catch (e) {
+        // Column doesn't exist, add it
+        try {
+            sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
+        } catch (alterError) {
+            logger.warn(`Failed to add column ${column} to ${table}: ${alterError}`);
+        }
+    }
+};
+
+// Auto-migrate: Add any missing columns based on current schema
+const migrateSchema = () => {
+    logger.info('Checking for schema updates...');
+
+    // Add missing columns to users table
+    addColumnIfNotExists('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
+    
+    // Add missing columns to ssh_data table
+    addColumnIfNotExists('ssh_data', 'name', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'folder', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'tags', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'pin', 'INTEGER NOT NULL DEFAULT 0');
+    addColumnIfNotExists('ssh_data', 'auth_type', 'TEXT NOT NULL DEFAULT "password"');
+    addColumnIfNotExists('ssh_data', 'password', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'key', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'key_password', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'key_type', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'enable_terminal', 'INTEGER NOT NULL DEFAULT 1');
+    addColumnIfNotExists('ssh_data', 'enable_tunnel', 'INTEGER NOT NULL DEFAULT 1');
+    addColumnIfNotExists('ssh_data', 'tunnel_connections', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'enable_config_editor', 'INTEGER NOT NULL DEFAULT 1');
+    addColumnIfNotExists('ssh_data', 'default_path', 'TEXT');
+    addColumnIfNotExists('ssh_data', 'created_at', 'TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
+    addColumnIfNotExists('ssh_data', 'updated_at', 'TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
+
+    logger.success('Schema migration completed');
+};
+
+// Run auto-migration
+migrateSchema();
+
+// Initialize default settings
 try {
     const row = sqlite.prepare("SELECT value FROM settings WHERE key = 'allow_registration'").get();
     if (!row) {
         sqlite.prepare("INSERT INTO settings (key, value) VALUES ('allow_registration', 'true')").run();
     }
 } catch (e) {
+    logger.warn('Could not initialize default settings');
 }
 
 export const db = drizzle(sqlite, { schema });

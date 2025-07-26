@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ConfigEditorSidebar } from "@/apps/Config Editor/ConfigEditorSidebar";
-import { ConfigTabList } from "@/apps/Config Editor/ConfigTabList";
-import { ConfigHomeView } from "@/apps/Config Editor/ConfigHomeView";
-import { ConfigCodeEditor } from "@/apps/Config Editor/ConfigCodeEditor";
+import { ConfigEditorSidebar } from "@/apps/SSH/Config Editor/ConfigEditorSidebar.tsx";
+import { ConfigTabList } from "@/apps/SSH/Config Editor/ConfigTabList.tsx";
+import { ConfigHomeView } from "@/apps/SSH/Config Editor/ConfigHomeView.tsx";
+import { ConfigCodeEditor } from "@/apps/SSH/Config Editor/ConfigCodeEditor.tsx";
 import axios from 'axios';
-import { Button } from '@/components/ui/button';
-import { ConfigTopbar } from "@/apps/Config Editor/ConfigTopbar";
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button.tsx';
+import { ConfigTopbar } from "@/apps/SSH/Config Editor/ConfigTopbar.tsx";
+import { cn } from '@/lib/utils.ts';
 
 function getJWT() {
     return document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1];
@@ -216,11 +216,11 @@ export function ConfigEditor({ onSelectView }: { onSelectView: (view: string) =>
                         return (
                             <div className="flex flex-col h-full" style={{ flex: 1, minHeight: 0 }}>
                                 <div className="flex-1 min-h-0">
-                                    <ConfigCodeEditor
+                <ConfigCodeEditor
                                         content={tab.content}
                                         fileNameOld={tab.fileName}
                                         onContentChange={content => setTabContent(tab.id, content)}
-                                    />
+                />
                                 </div>
                             </div>
                         );

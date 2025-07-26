@@ -4,6 +4,7 @@ import { sshData } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import chalk from 'chalk';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
 import type { Request, Response, NextFunction } from 'express';
 
 const dbIconSymbol = '🗄️';
@@ -47,6 +48,22 @@ interface JWTPayload {
     exp?: number;
 }
 
+// Configure multer for file uploads
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        // Only allow specific file types for SSH keys
+        if (file.fieldname === 'key') {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type'));
+        }
+    }
+});
+
 // JWT authentication middleware
 function authenticateJWT(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
@@ -68,8 +85,34 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
 
 // Route: Create SSH data (requires JWT)
 // POST /ssh/host
-router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
-    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, saveAuthMethod, isPinned, defaultPath } = req.body;
+router.post('/host', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
+    let hostData: any;
+    
+    // Check if this is a multipart form data request (file upload)
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+        // Parse the JSON data from the 'data' field
+        if (req.body.data) {
+            try {
+                hostData = JSON.parse(req.body.data);
+            } catch (err) {
+                logger.warn('Invalid JSON data in multipart request');
+                return res.status(400).json({ error: 'Invalid JSON data' });
+            }
+        } else {
+            logger.warn('Missing data field in multipart request');
+            return res.status(400).json({ error: 'Missing data field' });
+        }
+        
+        // Add the file data if present
+        if (req.file) {
+            hostData.key = req.file.buffer.toString('utf8');
+        }
+    } else {
+        // Regular JSON request
+        hostData = req.body;
+    }
+    
+    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, pin, enableTerminal, enableTunnel, enableConfigEditor, defaultPath, tunnelConnections } = hostData;
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId) || !isNonEmptyString(ip) || !isValidPort(port)) {
         logger.warn('Invalid SSH data input');
@@ -80,33 +123,30 @@ router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
         userId: userId,
         name,
         folder,
-        tags: Array.isArray(tags) ? tags.join(',') : tags,
+        tags: Array.isArray(tags) ? tags.join(',') : (tags || ''),
         ip,
         port,
         username,
-        authMethod,
-        saveAuthMethod: saveAuthMethod ? 1 : 0,
-        isPinned: isPinned ? 1 : 0,
+        authType: authMethod,
+        pin: !!pin ? 1 : 0,
+        enableTerminal: !!enableTerminal ? 1 : 0,
+        enableTunnel: !!enableTunnel ? 1 : 0,
+        tunnelConnections: Array.isArray(tunnelConnections) ? JSON.stringify(tunnelConnections) : null,
+        enableConfigEditor: !!enableConfigEditor ? 1 : 0,
         defaultPath: defaultPath || null,
     };
 
-    if (saveAuthMethod) {
-        if (authMethod === 'password') {
-            sshDataObj.password = password;
-            sshDataObj.key = null;
-            sshDataObj.keyPassword = null;
-            sshDataObj.keyType = null;
-        } else if (authMethod === 'key') {
-            sshDataObj.key = key;
-            sshDataObj.keyPassword = keyPassword;
-            sshDataObj.keyType = keyType;
-            sshDataObj.password = null;
-        }
-    } else {
-        sshDataObj.password = null;
+    // Handle authentication data based on authMethod
+    if (authMethod === 'password') {
+        sshDataObj.password = password;
         sshDataObj.key = null;
         sshDataObj.keyPassword = null;
         sshDataObj.keyType = null;
+    } else if (authMethod === 'key') {
+        sshDataObj.key = key;
+        sshDataObj.keyPassword = keyPassword;
+        sshDataObj.keyType = keyType;
+        sshDataObj.password = null;
     }
 
     try {
@@ -120,11 +160,36 @@ router.post('/host', authenticateJWT, async (req: Request, res: Response) => {
 
 // Route: Update SSH data (requires JWT)
 // PUT /ssh/host/:id
-router.put('/host/:id', authenticateJWT, async (req: Request, res: Response) => {
-    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, saveAuthMethod, isPinned, defaultPath } = req.body;
+router.put('/host/:id', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
+    let hostData: any;
+    
+    // Check if this is a multipart form data request (file upload)
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+        // Parse the JSON data from the 'data' field
+        if (req.body.data) {
+            try {
+                hostData = JSON.parse(req.body.data);
+            } catch (err) {
+                logger.warn('Invalid JSON data in multipart request');
+                return res.status(400).json({ error: 'Invalid JSON data' });
+            }
+        } else {
+            logger.warn('Missing data field in multipart request');
+            return res.status(400).json({ error: 'Missing data field' });
+        }
+        
+        // Add the file data if present
+        if (req.file) {
+            hostData.key = req.file.buffer.toString('utf8');
+        }
+    } else {
+        // Regular JSON request
+        hostData = req.body;
+    }
+    
+    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, pin, enableTerminal, enableTunnel, enableConfigEditor, defaultPath, tunnelConnections } = hostData;
     const { id } = req.params;
     const userId = (req as any).userId;
-    
     if (!isNonEmptyString(userId) || !isNonEmptyString(ip) || !isValidPort(port) || !id) {
         logger.warn('Invalid SSH data input for update');
         return res.status(400).json({ error: 'Invalid SSH data' });
@@ -133,37 +198,34 @@ router.put('/host/:id', authenticateJWT, async (req: Request, res: Response) => 
     const sshDataObj: any = {
         name,
         folder,
-        tags: Array.isArray(tags) ? tags.join(',') : tags,
+        tags: Array.isArray(tags) ? tags.join(',') : (tags || ''),
         ip,
         port,
         username,
-        authMethod,
-        saveAuthMethod: saveAuthMethod ? 1 : 0,
-        isPinned: isPinned ? 1 : 0,
+        authType: authMethod,
+        pin: !!pin ? 1 : 0,
+        enableTerminal: !!enableTerminal ? 1 : 0,
+        enableTunnel: !!enableTunnel ? 1 : 0,
+        tunnelConnections: Array.isArray(tunnelConnections) ? JSON.stringify(tunnelConnections) : null,
+        enableConfigEditor: !!enableConfigEditor ? 1 : 0,
         defaultPath: defaultPath || null,
     };
 
-    if (saveAuthMethod) {
-        if (authMethod === 'password') {
-            sshDataObj.password = password;
-            sshDataObj.key = null;
-            sshDataObj.keyPassword = null;
-            sshDataObj.keyType = null;
-        } else if (authMethod === 'key') {
-            sshDataObj.key = key;
-            sshDataObj.keyPassword = keyPassword;
-            sshDataObj.keyType = keyType;
-            sshDataObj.password = null;
-        }
-    } else {
-        sshDataObj.password = null;
+    // Handle authentication data based on authMethod
+    if (authMethod === 'password') {
+        sshDataObj.password = password;
         sshDataObj.key = null;
         sshDataObj.keyPassword = null;
         sshDataObj.keyType = null;
+    } else if (authMethod === 'key') {
+        sshDataObj.key = key;
+        sshDataObj.keyPassword = keyPassword;
+        sshDataObj.keyType = keyType;
+        sshDataObj.password = null;
     }
 
     try {
-        const result = await db.update(sshData)
+        await db.update(sshData)
             .set(sshDataObj)
             .where(and(eq(sshData.id, Number(id)), eq(sshData.userId, userId)));
         res.json({ message: 'SSH data updated' });
@@ -186,10 +248,59 @@ router.get('/host', authenticateJWT, async (req: Request, res: Response) => {
             .select()
             .from(sshData)
             .where(eq(sshData.userId, userId));
-        res.json(data);
+        // Convert tags to array, booleans to bool, tunnelConnections to array
+        const result = data.map((row: any) => ({
+            ...row,
+            tags: typeof row.tags === 'string' ? (row.tags ? row.tags.split(',').filter(Boolean) : []) : [],
+            pin: !!row.pin,
+            enableTerminal: !!row.enableTerminal,
+            enableTunnel: !!row.enableTunnel,
+            tunnelConnections: row.tunnelConnections ? JSON.parse(row.tunnelConnections) : [],
+            enableConfigEditor: !!row.enableConfigEditor,
+        }));
+        res.json(result);
     } catch (err) {
         logger.error('Failed to fetch SSH data', err);
         res.status(500).json({ error: 'Failed to fetch SSH data' });
+    }
+});
+
+// Route: Get SSH host by ID (requires JWT)
+// GET /ssh/host/:id
+router.get('/host/:id', authenticateJWT, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+    
+    if (!isNonEmptyString(userId) || !id) {
+        logger.warn('Invalid request for SSH host fetch');
+        return res.status(400).json({ error: 'Invalid request' });
+    }
+    
+    try {
+        const data = await db
+            .select()
+            .from(sshData)
+            .where(and(eq(sshData.id, Number(id)), eq(sshData.userId, userId)));
+        
+        if (data.length === 0) {
+            return res.status(404).json({ error: 'SSH host not found' });
+        }
+        
+        const host = data[0];
+        const result = {
+            ...host,
+            tags: typeof host.tags === 'string' ? (host.tags ? host.tags.split(',').filter(Boolean) : []) : [],
+            pin: !!host.pin,
+            enableTerminal: !!host.enableTerminal,
+            enableTunnel: !!host.enableTunnel,
+            tunnelConnections: host.tunnelConnections ? JSON.parse(host.tunnelConnections) : [],
+            enableConfigEditor: !!host.enableConfigEditor,
+        };
+        
+        res.json(result);
+    } catch (err) {
+        logger.error('Failed to fetch SSH host', err);
+        res.status(500).json({ error: 'Failed to fetch SSH host' });
     }
 });
 

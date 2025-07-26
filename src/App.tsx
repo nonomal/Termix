@@ -1,10 +1,11 @@
-import React from "react"
+import React, {useEffect} from "react"
 
 import {Homepage} from "@/apps/Homepage/Homepage.tsx"
-import {SSH} from "@/apps/SSH/SSH.tsx"
-import {SSHTunnel} from "@/apps/SSH Tunnel/SSHTunnel.tsx";
-import {ConfigEditor} from "@/apps/Config Editor/ConfigEditor.tsx";
+import {SSH} from "@/apps/SSH/Terminal/SSH.tsx"
+import {SSHTunnel} from "@/apps/SSH/Tunnel/SSHTunnel.tsx";
+import {ConfigEditor} from "@/apps/SSH/Config Editor/ConfigEditor.tsx";
 import {Tools} from "@/apps/Tools/Tools.tsx";
+import {SSHManager} from "@/apps/SSH/Manager/SSHManager.tsx"
 
 function App() {
     const [view, setView] = React.useState<string>("homepage")
@@ -15,11 +16,15 @@ function App() {
                 return <Homepage
                     onSelectView={setView}
                 />
-            case "ssh":
+            case "ssh_manager":
+                return <SSHManager
+                    onSelectView={setView}
+                />
+            case "terminal":
                 return <SSH
                     onSelectView={setView}
                 />
-            case "ssh_tunnel":
+            case "tunnel":
                 return <SSHTunnel
                     onSelectView={setView}
                 />

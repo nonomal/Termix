@@ -58,8 +58,6 @@ export function HomepageAuth({ className, setLoggedIn, setIsAdmin, setUsername, 
       }
       setDbError(null);
     }).catch(() => {
-      setFirstUser(true);
-      setTab("signup");
       setDbError("Could not connect to the database. Please try again later.");
     });
   }, []);

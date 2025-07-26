@@ -48,8 +48,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import axios from "axios";
-import Icon from "../../../public/icon.svg";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert.tsx";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
@@ -478,8 +477,7 @@ export const SSHTunnelSidebar = React.forwardRef<{ openEditSheet: (tunnel: any) 
                 <SidebarContent>
                     <SidebarGroup>
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
-                            <img src={Icon} alt="Icon" className="w-6 h-6" />
-                            - Termix / SSH Tunnel
+                            Termix / Tunnel
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
                         <SidebarGroupContent className="flex flex-col flex-grow">

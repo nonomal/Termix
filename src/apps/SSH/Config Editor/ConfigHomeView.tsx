@@ -1,9 +1,9 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card.tsx';
+import { Button } from '@/components/ui/button.tsx';
 import { Star, Trash2, Folder, File, Plus } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs.tsx';
+import { Input } from '@/components/ui/input.tsx';
 import { useState } from 'react';
 
 interface FileItem {

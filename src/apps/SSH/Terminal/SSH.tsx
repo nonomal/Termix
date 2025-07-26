@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { SSHSidebar } from "@/apps/SSH/SSHSidebar.tsx";
+import { SSHSidebar } from "@/apps/SSH/Terminal/SSHSidebar.tsx";
 import { SSHTerminal } from "./SSHTerminal.tsx";
-import { SSHTopbar } from "@/apps/SSH/SSHTopbar.tsx";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { SSHTopbar } from "@/apps/SSH/Terminal/SSHTopbar.tsx";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable.tsx';
 import * as ResizablePrimitive from "react-resizable-panels";
 
 interface ConfigEditorProps {

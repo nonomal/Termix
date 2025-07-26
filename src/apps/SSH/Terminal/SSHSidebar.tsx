@@ -52,15 +52,13 @@ import {
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
-} from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@/components/ui/accordion.tsx";
+import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
-import Icon from "../../../public/icon.svg";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+} from "@/components/ui/popover.tsx";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
@@ -637,8 +635,7 @@ export function SSHSidebar({ onSelectView, onAddHostSubmit, onHostConnect, allTa
                 <SidebarContent className="flex flex-col flex-grow h-full overflow-hidden">
                     <SidebarGroup className="flex flex-col flex-grow h-full overflow-hidden">
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
-                            <img src={Icon} alt="Icon" className="w-6 h-6" />
-                            - Termix / SSH
+                            Termix / Terminal
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1" />
                         <SidebarGroupContent className="flex flex-col flex-grow h-full overflow-hidden">

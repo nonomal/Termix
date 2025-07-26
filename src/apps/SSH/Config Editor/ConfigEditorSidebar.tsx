@@ -6,26 +6,24 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel, SidebarMenu, SidebarMenuItem,
     SidebarProvider
-} from '@/components/ui/sidebar';
-import {Separator} from '@/components/ui/separator';
-import Icon from '../../../public/icon.svg';
-import {Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose} from '@/components/ui/sheet';
-import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {Plus, Folder, File, Star, Trash2, Edit, Link2, Server, ArrowUp, CornerDownLeft} from 'lucide-react';
-import axios from 'axios';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
-import {Switch} from '@/components/ui/switch';
-import {SheetDescription} from '@/components/ui/sheet';
-import {Form, FormField, FormItem, FormLabel, FormControl, FormMessage} from '@/components/ui/form';
+} from '@/components/ui/sidebar.tsx';
+import {Separator} from '@/components/ui/separator.tsx';
+import { Plus, CornerDownLeft, Folder, File, Star, Trash2, Edit, Link2, Server, ArrowUp, MoreVertical } from 'lucide-react';
+import {Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose} from '@/components/ui/sheet.tsx';
+import {Button} from '@/components/ui/button.tsx';
+import {Input} from '@/components/ui/input.tsx';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs.tsx';
+import {Switch} from '@/components/ui/switch.tsx';
+import {SheetDescription} from '@/components/ui/sheet.tsx';
+import {Form, FormField, FormItem, FormLabel, FormControl, FormMessage} from '@/components/ui/form.tsx';
 import {zodResolver} from '@hookform/resolvers/zod';
-import {useForm, FormProvider} from 'react-hook-form';
+import {useForm, Controller} from 'react-hook-form';
 import {z} from 'zod';
-import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
-import {MoreVertical} from 'lucide-react';
-import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from '@/components/ui/accordion';
-import {ScrollArea} from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover.tsx';
+import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from '@/components/ui/accordion.tsx';
+import {ScrollArea} from '@/components/ui/scroll-area.tsx';
+import { cn } from '@/lib/utils.ts';
+import axios from 'axios';
 
 function getJWT() {
     return document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1];
@@ -55,6 +53,8 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
             defaultPath: '/',
             folder: '',
             authMethod: 'password',
+            tags: [] as string[],
+            tagsInput: '',
         }
     });
     React.useEffect(() => {
@@ -66,7 +66,9 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
     const handleAddSSH = () => {
         setAddSheetOpen(true);
     };
+    // Update onAddSSHSubmit to only close the modal after a successful request, and show errors otherwise
     const onAddSSHSubmit = async (values: any) => {
+        console.log('onAddSSHSubmit called', values);
         setAddSubmitError(null);
         setAddSubmitting(true);
         try {
@@ -75,26 +77,44 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
             if (values.sshKeyFile instanceof File) {
                 sshKeyContent = await values.sshKeyFile.text();
             }
-            const payload = {
+            // Always send tags as a comma string
+            const tags = Array.isArray(values.tags) ? values.tags.join(',') : (values.tags || '');
+            // Build payload according to backend expectations
+            let payload: any = {
                 name: values.name,
+                folder: values.folder,
+                tags,
                 ip: values.ip,
                 port: values.port,
                 username: values.username,
-                password: values.password,
-                sshKey: sshKeyContent,
-                keyPassword: values.keyPassword,
-                keyType: values.keyType,
-                isPinned: values.isPinned,
-                defaultPath: values.defaultPath,
-                folder: values.folder,
                 authMethod: values.authMethod,
+                isPinned: values.isPinned ? 1 : 0,
+                defaultPath: values.defaultPath || null,
             };
+            if (values.authMethod === 'password') {
+                payload.password = values.password;
+                payload.sshKey = null;
+                payload.keyPassword = null;
+                payload.keyType = null;
+            } else if (values.authMethod === 'key') {
+                payload.password = null;
+                payload.sshKey = sshKeyContent;
+                payload.keyPassword = values.keyPassword || null;
+                payload.keyType = values.keyType || null;
+            }
+            // Remove unused fields
+            // (do not send sshKeyFile, tagsInput, etc.)
+            console.log('Submitting payload to /config_editor/ssh/host:', payload);
             await axios.post(`${API_BASE_DB}/config_editor/ssh/host`, payload, {headers: {Authorization: `Bearer ${jwt}`}});
             await fetchSSH();
             setAddSheetOpen(false);
-            addSSHForm.reset();
+            setTimeout(() => addSSHForm.reset(), 100); // reset after closing
         } catch (err: any) {
-            setAddSubmitError(err?.response?.data?.error || 'Failed to add SSH connection');
+            let errorMsg = err?.response?.data?.error || err?.message || 'Failed to add SSH connection';
+            if (typeof errorMsg !== 'string') {
+                errorMsg = 'An unknown error occurred. Please check the backend logs.';
+            }
+            setAddSubmitError(errorMsg);
         } finally {
             setAddSubmitting(false);
         }
@@ -421,7 +441,11 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
             await fetchSSH();
             // setShowAddSSH(false); // No longer used
         } catch (err: any) {
-            setSSHFormError(err?.response?.data?.error || 'Failed to save SSH connection');
+            let errorMsg = err?.response?.data?.error || 'Failed to save SSH connection';
+            if (typeof errorMsg !== 'string') {
+                errorMsg = 'An unknown error occurred. Please check the backend logs.';
+            }
+            setSSHFormError(errorMsg);
         } finally {
             setSSHFormLoading(false);
         }
@@ -474,6 +498,13 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
         };
     }, [folderDropdownOpen]);
 
+    // Before rendering the form, define filteredFolders:
+    const folderValue = addSSHForm.watch('folder');
+    const filteredFolders = React.useMemo(() => {
+        if (!folderValue) return folders;
+        return folders.filter(f => f.toLowerCase().includes(folderValue.toLowerCase()));
+    }, [folderValue, folders]);
+
     // --- Render ---
     // Expect a prop: tabs: Tab[]
     // Use: props.tabs
@@ -484,8 +515,7 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                 <SidebarContent style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
                     <SidebarGroup className="flex flex-col flex-grow h-full overflow-hidden">
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
-                            <img src={Icon} alt="Icon" className="w-6 h-6"/>
-                            - Termix / Config
+                            Termix / Config
                         </SidebarGroupLabel>
                         <Separator className="p-0.25 mt-1 mb-1"/>
                         <SidebarGroupContent className="flex flex-col flex-grow min-h-0">
@@ -498,12 +528,15 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                                     </Button>
                                     <Separator className="p-0.25 mt-1 mb-1"/>
                                 </SidebarMenuItem>
+                                {/* Add SSH button and modal here, as siblings */}
                                 <SidebarMenuItem key={"AddSSH"}>
-                                    <Button className="w-full mt-2 mb-2 h-8" onClick={handleAddSSH} variant="outline">
-                                        <Plus/>
-                                        Add SSH
-                                    </Button>
                                     <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
+                                        <SheetTrigger asChild>
+                                            <Button className="w-full mt-2 mb-2 h-8" variant="outline" onClick={handleAddSSH}>
+                                                <Plus />
+                                                Add SSH
+                                            </Button>
+                                        </SheetTrigger>
                                         <SheetContent side="left" className="w-[256px] fixed top-0 left-0 h-full z-[100] flex flex-col">
                                             <SheetHeader className="pb-0.5">
                                                 <SheetTitle>Add SSH</SheetTitle>
@@ -515,127 +548,178 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                                                 {addSubmitError && (
                                                     <div className="text-red-500 text-sm mb-2">{addSubmitError}</div>
                                                 )}
-                                                <FormProvider {...addSSHForm}>
+                                                <Form {...addSSHForm}>
                                                     <form id="add-host-form" onSubmit={addSSHForm.handleSubmit(onAddSSHSubmit)} className="space-y-4">
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="name"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Name</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Name" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="folder"
-                                                        render={({field}) => (
-                                                            <FormItem className="relative">
-                                                                <FormLabel>Folder</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        ref={el => {
-                                                                            if (typeof field.ref === 'function') field.ref(el);
-                                                                            (folderInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-                                                                        }}
-                                                                        placeholder="e.g. Work"
-                                                                        autoComplete="off"
-                                                                        value={field.value}
-                                                                        onFocus={() => setFolderDropdownOpen(true)}
-                                                                        onChange={e => {
-                                                                            field.onChange(e);
-                                                                            setFolderDropdownOpen(true);
-                                                                        }}
-                                                                        disabled={foldersLoading}
-                                                                    />
-                                                                </FormControl>
-                                                                {folderDropdownOpen && folders.length > 0 && (
-                                                                    <div
-                                                                        ref={folderDropdownRef}
-                                                                        className="absolute top-full left-0 z-50 mt-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
-                                                                    >
-                                                                        <div className="grid grid-cols-1 gap-1 p-0">
-                                                                            {folders.map(folder => (
+                                                        {/* Name */}
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="name"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Name</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input placeholder="SSH #1" {...field} />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        {/* Folder */}
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="folder"
+                                                            render={({ field }) => (
+                                                                <FormItem className="relative">
+                                                                    <FormLabel>Folder</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            ref={el => {
+                                                                                if (typeof field.ref === 'function') field.ref(el);
+                                                                                (folderInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                                                                            }}
+                                                                            placeholder="e.g. Work"
+                                                                            autoComplete="off"
+                                                                            value={field.value}
+                                                                            onFocus={() => setFolderDropdownOpen(true)}
+                                                                            onChange={e => {
+                                                                                field.onChange(e);
+                                                                                setFolderDropdownOpen(true);
+                                                                            }}
+                                                                            disabled={foldersLoading}
+                                                                        />
+                                                                    </FormControl>
+                                                                    {folderDropdownOpen && filteredFolders.length > 0 && (
+                                                                        <div
+                                                                            ref={folderDropdownRef}
+                                                                            className="absolute top-full left-0 z-50 mt-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                                        >
+                                                                            <div className="grid grid-cols-1 gap-1 p-0">
+                                                                                {filteredFolders.map((folder) => (
+                                                                                    <Button
+                                                                                        key={folder}
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="w-full justify-start text-left rounded px-2 py-1.5 hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                                        onClick={() => {
+                                                                                            field.onChange(folder);
+                                                                                            setFolderDropdownOpen(false);
+                                                                                        }}
+                                                                                        disabled={foldersLoading}
+                                                                                    >
+                                                                                        {folder}
+                                                                                    </Button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {foldersLoading && <div className="text-xs text-muted-foreground mt-1">Loading folders...</div>}
+                                                                    {foldersError && <div className="text-xs text-red-500 mt-1">{foldersError}</div>}
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        {/* Tags */}
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="tagsInput"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Tags</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            placeholder="Add tags (space to add)"
+                                                                            autoComplete="off"
+                                                                            value={addSSHForm.watch('tagsInput') || ''}
+                                                                            onChange={e => {
+                                                                                const value = e.target.value;
+                                                                                const tags = addSSHForm.watch('tags') as string[];
+                                                                                if (value.endsWith(' ')) {
+                                                                                    const tag = value.trim();
+                                                                                    if (tag && !tags.includes(tag)) {
+                                                                                        addSSHForm.setValue('tags', [...tags, tag]);
+                                                                                    }
+                                                                                    addSSHForm.setValue('tagsInput', '');
+                                                                                } else {
+                                                                                    addSSHForm.setValue('tagsInput', value);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </FormControl>
+                                                                    {/* Tag chips */}
+                                                                    {(addSSHForm.watch('tags') as string[]).length > 0 && (
+                                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                                            {(addSSHForm.watch('tags') as string[]).map((tag: string) => (
                                                                                 <Button
-                                                                                    key={folder}
+                                                                                    key={tag}
                                                                                     type="button"
-                                                                                    variant="ghost"
+                                                                                    variant="secondary"
                                                                                     size="sm"
-                                                                                    className="w-full justify-start text-left rounded px-2 py-1.5 hover:bg-white/15 focus:bg-white/20 focus:outline-none"
-                                                                                    onClick={() => {
-                                                                                        field.onChange(folder);
-                                                                                        setFolderDropdownOpen(false);
-                                                                                    }}
-                                                                                    disabled={foldersLoading}
+                                                                                    className="rounded-full px-3 py-1 text-xs flex items-center gap-1"
+                                                                                    onClick={() => addSSHForm.setValue('tags', (addSSHForm.watch('tags') as string[]).filter((t: string) => t !== tag))}
                                                                                 >
-                                                                                    {folder}
+                                                                                    {tag}
+                                                                                    <span className="ml-1 text-lg leading-none">&times;</span>
                                                                                 </Button>
                                                                             ))}
                                                                         </div>
-                                                                    </div>
-                                                                )}
-                                                                {foldersLoading &&
-                                                                    <div className="text-xs text-muted-foreground mt-1">Loading folders...</div>}
-                                                                {foldersError &&
-                                                                    <div className="text-xs text-red-500 mt-1">{foldersError}</div>}
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <h3 className="text-sm font-semibold mb-2 mt-2">Connection Details</h3>
-                                                    <Separator className="p-0.25 mb-2" />
-                                                    <div className="mb-2" />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="username"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Username</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Username" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="ip"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>IP Address</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="IP Address" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="port"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Port</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="Port" type="number" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="authMethod"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <h3 className="text-sm font-semibold">Authentication</h3>
-                                                                <Separator className="p-0.25 mb-1"/>
-                                                                <Tabs value={field.value} onValueChange={field.onChange} className="w-full mt-0">
+                                                                    )}
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        {/* Connection Details */}
+                                                        <Separator className="p-0.25 mt-1 mb-3" />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="ip"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>IP</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input placeholder="127.0.0.1" {...field} />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="username"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Username</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input placeholder="username123" {...field} />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="port"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Port</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            placeholder="22"
+                                                                            {...field}
+                                                                            onChange={e => field.onChange(Number(e.target.value) || 22)}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        {/* Authentication */}
+                                                        <Separator className="p-0.25 mt-1 mb-3" />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="authMethod"
+                                                            render={({ field }) => (
+                                                                <Tabs value={field.value} onValueChange={field.onChange}>
                                                                     <TabsList className="grid w-full grid-cols-2 !mb-0">
                                                                         <TabsTrigger value="password">Password</TabsTrigger>
                                                                         <TabsTrigger value="key">SSH Key</TabsTrigger>
@@ -644,75 +728,71 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                                                                         <FormField
                                                                             control={addSSHForm.control}
                                                                             name="password"
-                                                                            render={({field}) => (
+                                                                            render={({ field }) => (
                                                                                 <FormItem>
                                                                                     <FormLabel>Password</FormLabel>
                                                                                     <FormControl>
-                                                                                        <Input type="password" placeholder="Password" {...field} />
+                                                                                        <Input type="password" placeholder="password123" {...field} />
                                                                                     </FormControl>
-                                                                                    <FormMessage/>
+                                                                                    <FormMessage />
                                                                                 </FormItem>
                                                                             )}
                                                                         />
                                                                     </TabsContent>
                                                                     <TabsContent value="key" className="mt-1">
-                                                                        <FormField
+                                                                        <Controller
                                                                             control={addSSHForm.control}
                                                                             name="sshKeyFile"
-                                                                            render={({field}) => {
-                                                                                const file = field.value as File | null;
-                                                                                return (
-                                                                                    <FormItem>
-                                                                                        <FormLabel>SSH Key</FormLabel>
-                                                                                        <FormControl>
-                                                                                            <div className="relative">
-                                                                                                <input
-                                                                                                    id="file-upload"
-                                                                                                    type="file"
-                                                                                                    accept=".pem,.key,.txt,.ppk"
-                                                                                                    onChange={e => {
-                                                                                                        const file = e.target.files?.[0];
-                                                                                                        field.onChange(file || null);
-                                                                                                    }}
-                                                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                                                                />
-                                                                                                <Button type="button" variant="outline" className="w-full">
-                                                                                                    {file ? file.name : "Upload"}
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        </FormControl>
-                                                                                        <FormMessage/>
-                                                                                    </FormItem>
-                                                                                );
-                                                                            }}
+                                                                            render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <FormLabel>SSH Private Key</FormLabel>
+                                                                                    <FormControl>
+                                                                                        <div className="relative">
+                                                                                            <input
+                                                                                                id="file-upload"
+                                                                                                type="file"
+                                                                                                accept=".pem,.key,.txt,.ppk"
+                                                                                                onChange={e => {
+                                                                                                    const file = e.target.files?.[0];
+                                                                                                    field.onChange(file || null);
+                                                                                                }}
+                                                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                                                            />
+                                                                                            <Button type="button" variant="outline" className="w-full">
+                                                                                                {field.value && typeof field.value === 'object' && 'name' in field.value ? (field.value as File).name : "Upload"}
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </FormControl>
+                                                                                </FormItem>
+                                                                            )}
                                                                         />
                                                                         <FormField
                                                                             control={addSSHForm.control}
                                                                             name="keyPassword"
-                                                                            render={({field}) => (
+                                                                            render={({ field }) => (
                                                                                 <FormItem className="mt-3">
                                                                                     <FormLabel>Key Password (if protected)</FormLabel>
                                                                                     <FormControl>
-                                                                                        <Input type="password" placeholder="Key Password" {...field} />
+                                                                                        <Input type="password" placeholder="Enter key password" {...field} />
                                                                                     </FormControl>
-                                                                                    <FormMessage/>
+                                                                                    <FormMessage />
                                                                                 </FormItem>
                                                                             )}
                                                                         />
                                                                         <FormField
                                                                             control={addSSHForm.control}
                                                                             name="keyType"
-                                                                            render={({field}) => {
+                                                                            render={({ field }) => {
                                                                                 const keyTypeOptions = [
-                                                                                    {value: 'auto', label: 'Auto-detect'},
-                                                                                    {value: 'ssh-rsa', label: 'RSA'},
-                                                                                    {value: 'ssh-ed25519', label: 'ED25519'},
-                                                                                    {value: 'ecdsa-sha2-nistp256', label: 'ECDSA NIST P-256'},
-                                                                                    {value: 'ecdsa-sha2-nistp384', label: 'ECDSA NIST P-384'},
-                                                                                    {value: 'ecdsa-sha2-nistp521', label: 'ECDSA NIST P-521'},
-                                                                                    {value: 'ssh-dss', label: 'DSA'},
-                                                                                    {value: 'ssh-rsa-sha2-256', label: 'RSA SHA2-256'},
-                                                                                    {value: 'ssh-rsa-sha2-512', label: 'RSA SHA2-512'},
+                                                                                    { value: 'auto', label: 'Auto-detect' },
+                                                                                    { value: 'ssh-rsa', label: 'RSA' },
+                                                                                    { value: 'ssh-ed25519', label: 'ED25519' },
+                                                                                    { value: 'ecdsa-sha2-nistp256', label: 'ECDSA NIST P-256' },
+                                                                                    { value: 'ecdsa-sha2-nistp384', label: 'ECDSA NIST P-384' },
+                                                                                    { value: 'ecdsa-sha2-nistp521', label: 'ECDSA NIST P-521' },
+                                                                                    { value: 'ssh-dss', label: 'DSA' },
+                                                                                    { value: 'ssh-rsa-sha2-256', label: 'RSA SHA2-256' },
+                                                                                    { value: 'ssh-rsa-sha2-512', label: 'RSA SHA2-512' },
                                                                                 ];
                                                                                 const [dropdownOpen, setDropdownOpen] = React.useState(false);
                                                                                 const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -777,60 +857,61 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                                                                                                 )}
                                                                                             </div>
                                                                                         </FormControl>
-                                                                                        <FormMessage/>
+                                                                                        <FormMessage />
                                                                                     </FormItem>
                                                                                 );
                                                                             }}
                                                                         />
                                                                     </TabsContent>
                                                                 </Tabs>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <h3 className="text-sm font-semibold mb-2">Other</h3>
-                                                    <Separator className="p-0.25 mt-1 mb-3"/>
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="defaultPath"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Default Path</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="/home/user" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={addSSHForm.control}
-                                                        name="isPinned"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormControl>
-                                                                    <div className="flex flex-row items-center gap-2">
-                                                                        <Switch checked={!!field.value} onCheckedChange={field.onChange}/>
-                                                                        <FormLabel className="mb-0">Pin Connection</FormLabel>
-                                                                    </div>
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </form>
+                                                            )}
+                                                        />
+                                                        {/* Other */}
+                                                        <Separator className="p-0.25 mt-1 mb-3" />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="defaultPath"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Default Path</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input placeholder="/home/user" {...field} />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={addSSHForm.control}
+                                                            name="isPinned"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormControl>
+                                                                        <div className="flex flex-row items-center gap-2">
+                                                                            <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                                                                            <FormLabel className="mb-0">Pin Connection</FormLabel>
+                                                                        </div>
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </form>
+                                                </Form>
                                             </div>
                                             <SheetFooter className="px-4 pt-1 pb-4">
                                                 <Button type="submit" form="add-host-form" className="w-full" disabled={addSubmitting}>
                                                     {addSubmitting ? 'Adding...' : 'Add SSH'}
                                                 </Button>
                                                 <SheetClose asChild>
-                                                    <Button type="button" variant="outline" className="w-full mt-1">
+                                                    <Button type="button" variant="outline" className="w-full mt-1" disabled={addSubmitting}>
                                                         Close
                                                     </Button>
                                                 </SheetClose>
                                             </SheetFooter>
                                         </SheetContent>
                                     </Sheet>
+                                    <Separator className="p-0.25 mt-1 mb-1"/>
                                 </SidebarMenuItem>
                             </SidebarMenu>
                             {/* Main black div: servers list or file/folder browser */}
@@ -1110,6 +1191,377 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                     </div>
                     <SheetFooter className="px-4 pt-1 pb-4">
                         <Button type="submit" form="local-files-form" className="w-full">Save</Button>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
+            {/* Add Edit SSH modal logic (not in SidebarMenu, but as a Sheet rendered at root, open when editingSSH is set) */}
+            <Sheet open={!!editingSSH} onOpenChange={open => {
+                if (!open) {
+                    setTimeout(() => {
+                        setEditingSSH(null);
+                        form.reset();
+                    }, 100);
+                }
+            }}>
+                <SheetContent side="left" className="w-[256px] fixed top-0 left-0 h-full z-[100] flex flex-col">
+                    <SheetHeader className="pb-0.5">
+                        <SheetTitle>Edit SSH</SheetTitle>
+                        <SheetDescription>
+                            Edit the SSH connection details.
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4">
+                        <Form {...form}>
+                            <form id="edit-host-form" onSubmit={form.handleSubmit(async (values: any) => {
+                                setSSHFormError(null);
+                                setSSHFormLoading(true);
+                                try {
+                                    const jwt = getJWT();
+                                    let sshKeyContent = values.sshKey;
+                                    if (values.sshKeyFile instanceof File) {
+                                        sshKeyContent = await values.sshKeyFile.text();
+                                    }
+                                    const payload = {
+                                        name: values.name,
+                                        folder: values.folder,
+                                        tags: Array.isArray(values.tags) ? values.tags.join(',') : values.tags,
+                                        ip: values.ip,
+                                        port: values.port,
+                                        username: values.username,
+                                        password: values.password,
+                                        sshKey: sshKeyContent,
+                                        keyPassword: values.keyPassword,
+                                        keyType: values.keyType,
+                                        isPinned: values.isPinned,
+                                        defaultPath: values.defaultPath,
+                                        authMethod: values.authMethod,
+                                    };
+                                    await axios.put(`${API_BASE_DB}/config_editor/ssh/host/${editingSSH.id}`, payload, {headers: {Authorization: `Bearer ${jwt}`}});
+                                    await fetchSSH();
+                                    setEditingSSH(null);
+                                    setTimeout(() => form.reset(), 100); // reset after closing
+                                } catch (err: any) {
+                                    let errorMsg = err?.response?.data?.error || err?.message || 'Failed to update SSH connection';
+                                    if (typeof errorMsg !== 'string') {
+                                        errorMsg = 'An unknown error occurred. Please check the backend logs.';
+                                    }
+                                    setSSHFormError(errorMsg);
+                                } finally {
+                                    setSSHFormLoading(false);
+                                }
+                            })} className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Name</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Name" {...field} />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="folder"
+                                    render={({field}) => (
+                                        <FormItem className="relative">
+                                            <FormLabel>Folder</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    ref={el => {
+                                                        if (typeof field.ref === 'function') field.ref(el);
+                                                        (folderInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                                                    }}
+                                                    placeholder="e.g. Work"
+                                                    autoComplete="off"
+                                                    value={field.value}
+                                                    onFocus={() => setFolderDropdownOpen(true)}
+                                                    onChange={e => {
+                                                        field.onChange(e);
+                                                        setFolderDropdownOpen(true);
+                                                    }}
+                                                    disabled={foldersLoading}
+                                                />
+                                            </FormControl>
+                                            {folderDropdownOpen && folders.length > 0 && (
+                                                <div
+                                                    ref={folderDropdownRef}
+                                                    className="absolute top-full left-0 z-50 mt-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                >
+                                                    <div className="grid grid-cols-1 gap-1 p-0">
+                                                        {folders.map(folder => (
+                                                            <Button
+                                                                key={folder}
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="w-full justify-start text-left rounded px-2 py-1.5 hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                onClick={() => {
+                                                                    field.onChange(folder);
+                                                                    setFolderDropdownOpen(false);
+                                                                }}
+                                                                disabled={foldersLoading}
+                                                            >
+                                                                {folder}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {foldersLoading &&
+                                                <div className="text-xs text-muted-foreground mt-1">Loading folders...</div>}
+                                            {foldersError &&
+                                                <div className="text-xs text-red-500 mt-1">{foldersError}</div>}
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <h3 className="text-sm font-semibold mb-2 mt-2">Connection Details</h3>
+                                <Separator className="p-0.25 mb-2" />
+                                <div className="mb-2" />
+                                <FormField
+                                    control={form.control}
+                                    name="username"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Username</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Username" {...field} />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="ip"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>IP Address</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="IP Address" {...field} />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="port"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Port</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Port" type="number" {...field} />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="authMethod"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <h3 className="text-sm font-semibold">Authentication</h3>
+                                            <Separator className="p-0.25 mb-1"/>
+                                            <Tabs value={field.value} onValueChange={field.onChange} className="w-full mt-0">
+                                                <TabsList className="grid w-full grid-cols-2 !mb-0">
+                                                    <TabsTrigger value="password">Password</TabsTrigger>
+                                                    <TabsTrigger value="key">SSH Key</TabsTrigger>
+                                                </TabsList>
+                                                <TabsContent value="password" className="mt-1">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="password"
+                                                        render={({field}) => (
+                                                            <FormItem>
+                                                                <FormLabel>Password</FormLabel>
+                                                                <FormControl>
+                                                                    <Input type="password" placeholder="Password" {...field} />
+                                                                </FormControl>
+                                                                <FormMessage/>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </TabsContent>
+                                                <TabsContent value="key" className="mt-1">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="sshKeyFile"
+                                                        render={({field}) => {
+                                                            const file = field.value as File | null;
+                                                            return (
+                                                                <FormItem>
+                                                                    <FormLabel>SSH Key</FormLabel>
+                                                                    <FormControl>
+                                                                        <div className="relative">
+                                                                            <input
+                                                                                id="file-upload"
+                                                                                type="file"
+                                                                                accept=".pem,.key,.txt,.ppk"
+                                                                                onChange={e => {
+                                                                                    const file = e.target.files?.[0];
+                                                                                    field.onChange(file || null);
+                                                                                }}
+                                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                                            />
+                                                                            <Button type="button" variant="outline" className="w-full">
+                                                                                {file ? file.name : "Upload"}
+                                                                            </Button>
+                                                                        </div>
+                                                                    </FormControl>
+                                                                    <FormMessage/>
+                                                                </FormItem>
+                                                            );
+                                                        }}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="keyPassword"
+                                                        render={({field}) => (
+                                                            <FormItem className="mt-3">
+                                                                <FormLabel>Key Password (if protected)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input type="password" placeholder="Key Password" {...field} />
+                                                                </FormControl>
+                                                                <FormMessage/>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="keyType"
+                                                        render={({field}) => {
+                                                            const keyTypeOptions = [
+                                                                {value: 'auto', label: 'Auto-detect'},
+                                                                {value: 'ssh-rsa', label: 'RSA'},
+                                                                {value: 'ssh-ed25519', label: 'ED25519'},
+                                                                {value: 'ecdsa-sha2-nistp256', label: 'ECDSA NIST P-256'},
+                                                                {value: 'ecdsa-sha2-nistp384', label: 'ECDSA NIST P-384'},
+                                                                {value: 'ecdsa-sha2-nistp521', label: 'ECDSA NIST P-521'},
+                                                                {value: 'ssh-dss', label: 'DSA'},
+                                                                {value: 'ssh-rsa-sha2-256', label: 'RSA SHA2-256'},
+                                                                {value: 'ssh-rsa-sha2-512', label: 'RSA SHA2-512'},
+                                                            ];
+                                                            const [dropdownOpen, setDropdownOpen] = React.useState(false);
+                                                            const dropdownRef = React.useRef<HTMLDivElement>(null);
+                                                            const buttonRef = React.useRef<HTMLButtonElement>(null);
+                                                            React.useEffect(() => {
+                                                                function handleClickOutside(event: MouseEvent) {
+                                                                    if (
+                                                                        dropdownRef.current &&
+                                                                        !dropdownRef.current.contains(event.target as Node) &&
+                                                                        buttonRef.current &&
+                                                                        !buttonRef.current.contains(event.target as Node)
+                                                                    ) {
+                                                                        setDropdownOpen(false);
+                                                                    }
+                                                                }
+                                                                if (dropdownOpen) {
+                                                                    document.addEventListener('mousedown', handleClickOutside);
+                                                                } else {
+                                                                    document.removeEventListener('mousedown', handleClickOutside);
+                                                                }
+                                                                return () => {
+                                                                    document.removeEventListener('mousedown', handleClickOutside);
+                                                                };
+                                                            }, [dropdownOpen]);
+                                                            return (
+                                                                <FormItem className="mt-3 relative">
+                                                                    <FormLabel>Key Type</FormLabel>
+                                                                    <FormControl>
+                                                                        <div className="relative">
+                                                                            <Button
+                                                                                ref={buttonRef}
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                className="w-full justify-start text-left rounded-md px-2 py-2 bg-[#18181b] border border-input text-foreground"
+                                                                                onClick={() => setDropdownOpen(open => !open)}
+                                                                            >
+                                                                                {keyTypeOptions.find(opt => opt.value === field.value)?.label || 'Auto-detect'}
+                                                                            </Button>
+                                                                            {dropdownOpen && (
+                                                                                <div
+                                                                                    ref={dropdownRef}
+                                                                                    className="absolute bottom-full left-0 z-50 mb-1 w-full bg-[#18181b] border border-input rounded-md shadow-lg max-h-40 overflow-y-auto p-1"
+                                                                                >
+                                                                                    <div className="grid grid-cols-1 gap-1 p-0">
+                                                                                        {keyTypeOptions.map(opt => (
+                                                                                            <Button
+                                                                                                key={opt.value}
+                                                                                                type="button"
+                                                                                                variant="ghost"
+                                                                                                size="sm"
+                                                                                                className="w-full justify-start text-left rounded-md px-2 py-1.5 bg-[#18181b] text-foreground hover:bg-white/15 focus:bg-white/20 focus:outline-none"
+                                                                                                onClick={() => {
+                                                                                                    field.onChange(opt.value);
+                                                                                                    setDropdownOpen(false);
+                                                                                                }}
+                                                                                            >
+                                                                                                {opt.label}
+                                                                                            </Button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </FormControl>
+                                                                    <FormMessage/>
+                                                                </FormItem>
+                                                            );
+                                                        }}
+                                                    />
+                                                </TabsContent>
+                                            </Tabs>
+                                        </FormItem>
+                                    )}
+                                />
+                                <h3 className="text-sm font-semibold mb-2">Other</h3>
+                                <Separator className="p-0.25 mt-1 mb-3"/>
+                                <FormField
+                                    control={form.control}
+                                    name="defaultPath"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Default Path</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="/home/user" {...field} />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="isPinned"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <div className="flex flex-row items-center gap-2">
+                                                    <Switch checked={!!field.value} onCheckedChange={field.onChange}/>
+                                                    <FormLabel className="mb-0">Pin Connection</FormLabel>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                        </Form>
+                    </div>
+                    <SheetFooter className="px-4 pt-1 pb-4">
+                        <Button type="submit" form="edit-host-form" className="w-full" disabled={sshFormLoading}>
+                            {sshFormLoading ? 'Saving...' : 'Save'}
+                        </Button>
+                        <SheetClose asChild>
+                            <Button type="button" variant="outline" className="w-full mt-1" disabled={sshFormLoading}>
+                                Close
+                            </Button>
+                        </SheetClose>
                     </SheetFooter>
                 </SheetContent>
             </Sheet>
