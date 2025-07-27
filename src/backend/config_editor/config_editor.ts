@@ -193,7 +193,7 @@ app.get('/ssh/listFiles', (req, res) => {
     const sshConn = sshSessions[sessionId];
     const { path: sshPath = '/' } = req.query;
     if (!sshConn?.isConnected) {
-        logger.warn('SSH connection not established for session', sessionId);
+        logger.warn(`SSH connection not established for session: ${sessionId}`);
         return res.status(400).json({ error: 'SSH connection not established' });
     }
     sshConn.lastActive = Date.now();
@@ -227,7 +227,7 @@ app.get('/ssh/readFile', (req, res) => {
     const sshConn = sshSessions[sessionId];
     const { path: filePath } = req.query;
     if (!sshConn?.isConnected) {
-        logger.warn('SSH connection not established for session', sessionId);
+        logger.warn(`SSH connection not established for session: ${sessionId}`);
         return res.status(400).json({ error: 'SSH connection not established' });
     }
     if (!filePath) {
@@ -251,7 +251,7 @@ app.post('/ssh/writeFile', (req, res) => {
     const { sessionId, path: filePath, content } = req.body;
     const sshConn = sshSessions[sessionId];
     if (!sshConn?.isConnected) {
-        logger.warn('SSH connection not established for session', sessionId);
+        logger.warn(`SSH connection not established for session: ${sessionId}`);
         return res.status(400).json({ error: 'SSH connection not established' });
     }
     if (!filePath) {
