@@ -99,7 +99,12 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             const cols = terminal.cols + 1;
             const rows = terminal.rows;
 
-            const ws = new WebSocket('ws://localhost:8082');
+            const wsUrl = window.location.hostname === 'localhost'
+                ? 'ws://localhost:8082'
+                : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ssh/websocket/`;
+
+            const ws = new WebSocket(wsUrl);
+
             webSocketRef.current = ws;
 
             ws.addEventListener('open', () => {

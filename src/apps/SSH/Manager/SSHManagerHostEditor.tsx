@@ -30,7 +30,7 @@ interface SSHHost {
     folder: string;
     tags: string[];
     pin: boolean;
-    authType: 'password' | 'key';
+    authType: string;
     password?: string;
     key?: string;
     keyPassword?: string;
@@ -171,7 +171,7 @@ export function SSHManagerHostEditor({ editingHost, onFormSubmit }: SSHManagerHo
     type FormData = z.infer<typeof formSchema>;
 
     const form = useForm<FormData>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: {
             name: editingHost?.name || "",
             ip: editingHost?.ip || "",

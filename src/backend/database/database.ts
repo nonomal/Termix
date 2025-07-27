@@ -53,9 +53,4 @@ app.use((err: unknown, req: express.Request, res: express.Response, next: expres
 });
 
 const PORT = 8081;
-app.listen(PORT, () => {
-    logger.success(`Database server started on port ${PORT}`);
-}).on('error', (err) => {
-    logger.error(`Failed to start database server:`, err);
-    process.exit(1);
-});
+app.listen(PORT, () => {});
