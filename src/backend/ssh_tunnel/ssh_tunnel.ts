@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { Client } from 'ssh2';
-import { exec } from 'child_process';
+import {Client} from 'ssh2';
+import {exec, spawn, ChildProcess} from 'child_process';
 import chalk from 'chalk';
 import axios from 'axios';
+import * as net from 'net';
 
 const app = express();
 app.use(cors({
@@ -54,10 +55,12 @@ const tunnelVerifications = new Map<string, VerificationData>(); // tunnelName -
 const manualDisconnects = new Set<string>(); // tunnelNames
 const verificationTimers = new Map<string, NodeJS.Timeout>(); // timer keys -> timeout
 const activeRetryTimers = new Map<string, NodeJS.Timeout>(); // tunnelName -> retry timer
+const countdownIntervals = new Map<string, NodeJS.Timeout>(); // tunnelName -> countdown interval
 const retryExhaustedTunnels = new Set<string>(); // tunnelNames
 const remoteClosureEvents = new Map<string, number>(); // tunnelName -> count
 const hostConfigs = new Map<string, HostConfig>(); // hostName -> hostConfig
 const tunnelConfigs = new Map<string, TunnelConfig>(); // tunnelName -> tunnelConfig
+const activeTunnelProcesses = new Map<string, ChildProcess>(); // tunnelName -> ChildProcess
 
 // Types
 interface TunnelConnection {
@@ -149,7 +152,8 @@ const CONNECTION_STATES = {
     VERIFYING: "verifying",
     FAILED: "failed",
     UNSTABLE: "unstable",
-    RETRYING: "retrying"
+    RETRYING: "retrying",
+    WAITING: "waiting"
 } as const;
 
 const ERROR_TYPES = {
@@ -225,11 +229,33 @@ function classifyError(errorMessage: string): ErrorType {
 
 // Cleanup and disconnect functions
 function cleanupTunnelResources(tunnelName: string): void {
+    // Kill any local ssh process for this tunnel
+    if (activeTunnelProcesses.has(tunnelName)) {
+        try {
+            const proc = activeTunnelProcesses.get(tunnelName);
+            if (proc) {
+                proc.kill('SIGTERM');
+                logger.info(`Killed local ssh process for tunnel '${tunnelName}' (pid: ${proc.pid})`);
+            }
+        } catch (e) {
+            logger.error(`Error while killing local ssh process for tunnel '${tunnelName}'`, e);
+        }
+        activeTunnelProcesses.delete(tunnelName);
+    }
+
     if (activeTunnels.has(tunnelName)) {
         try {
             const conn = activeTunnels.get(tunnelName);
-            if (conn) conn.end();
-        } catch (e) {}
+            if (conn) {
+                conn.end();
+                logger.info(`Called conn.end() for tunnel '${tunnelName}'`);
+                conn.on('close', () => {
+                    logger.info(`SSH2 Client connection closed for tunnel '${tunnelName}'`);
+                });
+            }
+        } catch (e) {
+            logger.error(`Error while closing SSH2 Client for tunnel '${tunnelName}'`, e);
+        }
         activeTunnels.delete(tunnelName);
     }
 
@@ -238,7 +264,8 @@ function cleanupTunnelResources(tunnelName: string): void {
         if (verification?.timeout) clearTimeout(verification.timeout);
         try {
             verification?.conn.end();
-        } catch (e) {}
+        } catch (e) {
+        }
         tunnelVerifications.delete(tunnelName);
     }
 
@@ -260,6 +287,11 @@ function cleanupTunnelResources(tunnelName: string): void {
         clearTimeout(activeRetryTimers.get(tunnelName)!);
         activeRetryTimers.delete(tunnelName);
     }
+
+    if (countdownIntervals.has(tunnelName)) {
+        clearInterval(countdownIntervals.get(tunnelName)!);
+        countdownIntervals.delete(tunnelName);
+    }
 }
 
 function resetRetryState(tunnelName: string): void {
@@ -270,6 +302,11 @@ function resetRetryState(tunnelName: string): void {
     if (activeRetryTimers.has(tunnelName)) {
         clearTimeout(activeRetryTimers.get(tunnelName)!);
         activeRetryTimers.delete(tunnelName);
+    }
+
+    if (countdownIntervals.has(tunnelName)) {
+        clearInterval(countdownIntervals.get(tunnelName)!);
+        countdownIntervals.delete(tunnelName);
     }
 
     ['', '_confirm', '_retry', '_verify_retry'].forEach(suffix => {
@@ -287,7 +324,8 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
             const verification = tunnelVerifications.get(tunnelName);
             if (verification?.timeout) clearTimeout(verification.timeout);
             verification?.conn.end();
-        } catch (e) {}
+        } catch (e) {
+        }
         tunnelVerifications.delete(tunnelName);
     }
 
@@ -375,7 +413,7 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
                 status: CONNECTION_STATES.RETRYING,
                 retryCount: retryCount,
                 maxRetries: maxRetries,
-                nextRetryIn: retryInterval/1000
+                nextRetryIn: retryInterval / 1000
             });
 
             if (activeRetryTimers.has(tunnelName)) {
@@ -383,11 +421,42 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
                 activeRetryTimers.delete(tunnelName);
             }
 
+            const initialNextRetryIn = Math.ceil(retryInterval / 1000);
+            let currentNextRetryIn = initialNextRetryIn;
+
+            // Set initial WAITING status with countdown
+            broadcastTunnelStatus(tunnelName, {
+                connected: false,
+                status: CONNECTION_STATES.WAITING,
+                retryCount: retryCount,
+                maxRetries: maxRetries,
+                nextRetryIn: currentNextRetryIn
+            });
+
+            // Update countdown every second
+            const countdownInterval = setInterval(() => {
+                currentNextRetryIn--;
+                if (currentNextRetryIn > 0) {
+                    broadcastTunnelStatus(tunnelName, {
+                        connected: false,
+                        status: CONNECTION_STATES.WAITING,
+                        retryCount: retryCount,
+                        maxRetries: maxRetries,
+                        nextRetryIn: currentNextRetryIn
+                    });
+                }
+            }, 1000);
+
+            countdownIntervals.set(tunnelName, countdownInterval);
+
             const timer = setTimeout(() => {
+                clearInterval(countdownInterval);
+                countdownIntervals.delete(tunnelName);
                 activeRetryTimers.delete(tunnelName);
 
                 if (!manualDisconnects.has(tunnelName)) {
                     activeTunnels.delete(tunnelName);
+
                     connectSSHTunnel(tunnelConfig, retryCount);
                 }
             }, retryInterval);
@@ -437,7 +506,8 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
             clearTimeout(verification.timeout);
             try {
                 verification.conn.end();
-            } catch (e) {}
+            } catch (e) {
+            }
             tunnelVerifications.delete(tunnelName);
         }
 
@@ -452,7 +522,7 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
             }
         } else {
             logger.error(`Verification failed for '${tunnelName}': ${failureReason}`);
-            
+
             if (!manualDisconnects.has(tunnelName)) {
                 broadcastTunnelStatus(tunnelName, {
                     connected: false,
@@ -468,7 +538,7 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
 
     function attemptVerification() {
         const testCmd = `nc -z localhost ${tunnelConfig.sourcePort}`;
-        
+
         verificationConn.exec(testCmd, (err, stream) => {
             if (err) {
                 cleanupVerification(false, `Verification command failed: ${err.message}`);
@@ -554,6 +624,18 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
         if (tunnelConfig.sourceKeyPassword) {
             connOptions.passphrase = tunnelConfig.sourceKeyPassword;
         }
+        // Add key type handling if specified
+        if (tunnelConfig.sourceKeyType && tunnelConfig.sourceKeyType !== 'auto') {
+            connOptions.privateKeyType = tunnelConfig.sourceKeyType;
+        }
+    } else if (tunnelConfig.sourceAuthMethod === "key") {
+        logger.error(`SSH key authentication requested but no key provided for tunnel '${tunnelName}'`);
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
+            status: CONNECTION_STATES.FAILED,
+            reason: "SSH key authentication requested but no key provided"
+        });
+        return;
     } else {
         connOptions.password = tunnelConfig.sourcePassword;
     }
@@ -577,7 +659,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
         conn.exec('echo "ping"', (err, stream) => {
             if (err) {
                 clearInterval(pingInterval);
-                
+
                 if (!manualDisconnects.has(tunnelName)) {
                     broadcastTunnelStatus(tunnelName, {
                         connected: false,
@@ -585,7 +667,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
                         reason: "Ping failed"
                     });
                 }
-                
+
                 activeTunnels.delete(tunnelName);
                 handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
                 return;
@@ -594,7 +676,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
             stream.on('close', (code: number) => {
                 if (code !== 0) {
                     clearInterval(pingInterval);
-                    
+
                     if (!manualDisconnects.has(tunnelName)) {
                         broadcastTunnelStatus(tunnelName, {
                             connected: false,
@@ -602,7 +684,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
                             reason: "Ping command failed"
                         });
                     }
-                    
+
                     activeTunnels.delete(tunnelName);
                     handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
                 }
@@ -610,7 +692,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
 
             stream.on('error', (err: Error) => {
                 clearInterval(pingInterval);
-                
+
                 if (!manualDisconnects.has(tunnelName)) {
                     broadcastTunnelStatus(tunnelName, {
                         connected: false,
@@ -618,7 +700,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
                         reason: "Ping stream error"
                     });
                 }
-                
+
                 activeTunnels.delete(tunnelName);
                 handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
             });
@@ -644,17 +726,22 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
     const isRetryAfterRemoteClosure = remoteClosureEvents.get(tunnelName) && retryAttempt > 0;
 
-    broadcastTunnelStatus(tunnelName, {
-        connected: false,
-        status: CONNECTION_STATES.CONNECTING,
-        retryCount: retryAttempt > 0 ? retryAttempt : undefined,
-        isRemoteRetry: !!isRetryAfterRemoteClosure
-    });
+    // Only set status to CONNECTING if we're not already in WAITING state
+    const currentStatus = connectionStatus.get(tunnelName);
+
+    if (!currentStatus || currentStatus.status !== CONNECTION_STATES.WAITING) {
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
+            status: CONNECTION_STATES.CONNECTING,
+            retryCount: retryAttempt > 0 ? retryAttempt : undefined,
+            isRemoteRetry: !!isRetryAfterRemoteClosure
+        });
+    }
 
     if (!tunnelConfig || !tunnelConfig.sourceIP || !tunnelConfig.sourceUsername || !tunnelConfig.sourceSSHPort) {
         logger.error(`Invalid connection details for '${tunnelName}'`);
-        broadcastTunnelStatus(tunnelName, { 
-            connected: false, 
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
             status: CONNECTION_STATES.FAILED,
             reason: "Missing required connection details"
         });
@@ -671,7 +758,8 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
             try {
                 conn.end();
-            } catch (e) {}
+            } catch (e) {
+            }
 
             activeTunnels.delete(tunnelName);
 
@@ -751,16 +839,22 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
         let tunnelCmd: string;
         if (tunnelConfig.endpointAuthMethod === "key" && tunnelConfig.endpointSSHKey) {
-            tunnelCmd = `ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
+            // For SSH key authentication, we need to create a temporary key file
+            const keyFilePath = `/tmp/tunnel_key_${tunnelName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            tunnelCmd = `echo '${tunnelConfig.endpointSSHKey}' > ${keyFilePath} && chmod 600 ${keyFilePath} && ssh -4 -i ${keyFilePath} -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} && rm -f ${keyFilePath}`;
         } else {
-            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
+            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -4 -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
         }
+
 
         conn.exec(tunnelCmd, (err, stream) => {
             if (err) {
                 logger.error(`Connection error for '${tunnelName}': ${err.message}`);
 
-                try { conn.end(); } catch(e) {}
+                try {
+                    conn.end();
+                } catch (e) {
+                }
 
                 activeTunnels.delete(tunnelName);
 
@@ -793,7 +887,8 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
                         const verification = tunnelVerifications.get(tunnelName);
                         if (verification?.timeout) clearTimeout(verification.timeout);
                         verification?.conn.end();
-                    } catch (e) {}
+                    } catch (e) {
+                    }
                     tunnelVerifications.delete(tunnelName);
                 }
 
@@ -828,13 +923,24 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
                 }
             });
 
+            stream.stdout?.on("data", (data: Buffer) => {
+                // Ignore stdout data
+            });
+
+            stream.on("error", (err: Error) => {
+                // Ignore stream errors
+            });
+
             stream.stderr.on("data", (data) => {
-                const errorMsg = data.toString();
+                const errorMsg = data.toString().trim();
 
                 const isNonRetryableError = errorMsg.includes("Permission denied") ||
                     errorMsg.includes("Authentication failed") ||
                     errorMsg.includes("failed for listen port") ||
-                    errorMsg.includes("address already in use");
+                    errorMsg.includes("address already in use") ||
+                    errorMsg.includes("bind: Address already in use") ||
+                    errorMsg.includes("channel 0: open failed") ||
+                    errorMsg.includes("remote port forwarding failed");
 
                 const isRemoteHostClosure = errorMsg.includes("closed by remote host") ||
                     errorMsg.includes("connection reset by peer") ||
@@ -923,15 +1029,79 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     };
 
     if (tunnelConfig.sourceAuthMethod === "key" && tunnelConfig.sourceSSHKey) {
+
+        // Validate SSH key format
+        if (!tunnelConfig.sourceSSHKey.includes('-----BEGIN')) {
+            logger.error(`Invalid SSH key format for tunnel '${tunnelName}'. Key should start with '-----BEGIN'`);
+            broadcastTunnelStatus(tunnelName, {
+                connected: false,
+                status: CONNECTION_STATES.FAILED,
+                reason: "Invalid SSH key format"
+            });
+            return;
+        }
+
         connOptions.privateKey = tunnelConfig.sourceSSHKey;
         if (tunnelConfig.sourceKeyPassword) {
             connOptions.passphrase = tunnelConfig.sourceKeyPassword;
         }
+        // Add key type handling if specified
+        if (tunnelConfig.sourceKeyType && tunnelConfig.sourceKeyType !== 'auto') {
+            connOptions.privateKeyType = tunnelConfig.sourceKeyType;
+        }
+    } else if (tunnelConfig.sourceAuthMethod === "key") {
+        logger.error(`SSH key authentication requested but no key provided for tunnel '${tunnelName}'`);
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
+            status: CONNECTION_STATES.FAILED,
+            reason: "SSH key authentication requested but no key provided"
+        });
+        return;
     } else {
         connOptions.password = tunnelConfig.sourcePassword;
     }
 
-    conn.connect(connOptions);
+
+    // Test basic network connectivity first
+    const testSocket = new net.Socket();
+    testSocket.setTimeout(5000);
+
+    testSocket.on('connect', () => {
+        testSocket.destroy();
+
+        // Only update status to CONNECTING if we're not already in WAITING state
+        const currentStatus = connectionStatus.get(tunnelName);
+        if (!currentStatus || currentStatus.status !== CONNECTION_STATES.WAITING) {
+            broadcastTunnelStatus(tunnelName, {
+                connected: false,
+                status: CONNECTION_STATES.CONNECTING,
+                retryCount: retryAttempt > 0 ? retryAttempt : undefined,
+                isRemoteRetry: !!isRetryAfterRemoteClosure
+            });
+        }
+
+        conn.connect(connOptions);
+    });
+
+    testSocket.on('timeout', () => {
+        testSocket.destroy();
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
+            status: CONNECTION_STATES.FAILED,
+            reason: "Network connectivity test failed - server not reachable"
+        });
+    });
+
+    testSocket.on('error', (err: any) => {
+        testSocket.destroy();
+        broadcastTunnelStatus(tunnelName, {
+            connected: false,
+            status: CONNECTION_STATES.FAILED,
+            reason: `Network connectivity test failed - ${err.message}`
+        });
+    });
+
+    testSocket.connect(tunnelConfig.sourceSSHPort, tunnelConfig.sourceIP);
 }
 
 // Express API endpoints
@@ -940,46 +1110,47 @@ app.get('/status', (req, res) => {
 });
 
 app.get('/status/:tunnelName', (req, res) => {
-    const { tunnelName } = req.params;
+    const {tunnelName} = req.params;
     const status = connectionStatus.get(tunnelName);
-    
+
     if (!status) {
-        return res.status(404).json({ error: 'Tunnel not found' });
+        return res.status(404).json({error: 'Tunnel not found'});
     }
-    
-    res.json({ name: tunnelName, status });
+
+    res.json({name: tunnelName, status});
 });
 
 app.post('/connect', (req, res) => {
     const tunnelConfig: TunnelConfig = req.body;
-    
+
     if (!tunnelConfig || !tunnelConfig.name) {
-        return res.status(400).json({ error: 'Invalid tunnel configuration' });
+        return res.status(400).json({error: 'Invalid tunnel configuration'});
     }
 
     const tunnelName = tunnelConfig.name;
-    
+
+
     // Reset retry state for new connection
     manualDisconnects.delete(tunnelName);
     retryCounters.delete(tunnelName);
     retryExhaustedTunnels.delete(tunnelName);
-    
+
     // Store tunnel config
     tunnelConfigs.set(tunnelName, tunnelConfig);
-    
+
     // Start connection
     connectSSHTunnel(tunnelConfig, 0);
-    
-    res.json({ message: 'Connection request received', tunnelName });
+
+    res.json({message: 'Connection request received', tunnelName});
 });
 
 app.post('/disconnect', (req, res) => {
-    const { tunnelName } = req.body;
-    
+    const {tunnelName} = req.body;
+
     if (!tunnelName) {
-        return res.status(400).json({ error: 'Tunnel name required' });
+        return res.status(400).json({error: 'Tunnel name required'});
     }
-    
+
     manualDisconnects.add(tunnelName);
     retryCounters.delete(tunnelName);
     retryExhaustedTunnels.delete(tunnelName);
@@ -1003,7 +1174,7 @@ app.post('/disconnect', (req, res) => {
         manualDisconnects.delete(tunnelName);
     }, 5000);
 
-    res.json({ message: 'Disconnect request received', tunnelName });
+    res.json({message: 'Disconnect request received', tunnelName});
 });
 
 // Auto-start functionality
@@ -1026,8 +1197,8 @@ async function initializeAutoStartTunnels(): Promise<void> {
                 for (const tunnelConnection of host.tunnelConnections) {
                     if (tunnelConnection.autoStart) {
                         // Find the endpoint host
-                        const endpointHost = hosts.find(h => 
-                            h.name === tunnelConnection.endpointHost || 
+                        const endpointHost = hosts.find(h =>
+                            h.name === tunnelConnection.endpointHost ||
                             `${h.username}@${h.ip}` === tunnelConnection.endpointHost
                         );
 
@@ -1071,7 +1242,7 @@ async function initializeAutoStartTunnels(): Promise<void> {
         // Start each auto-start tunnel
         for (const tunnelConfig of autoStartTunnels) {
             tunnelConfigs.set(tunnelConfig.name, tunnelConfig);
-            
+
             // Start the tunnel with a delay to avoid overwhelming the system
             setTimeout(() => {
                 connectSSHTunnel(tunnelConfig, 0);
@@ -1103,44 +1274,44 @@ app.get('/tunnels', (req, res) => {
 
 // Update tunnel configuration
 app.put('/tunnel/:name', (req, res) => {
-    const { name } = req.params;
+    const {name} = req.params;
     const tunnelConfig: TunnelConfig = req.body;
-    
+
     if (!tunnelConfig || !tunnelConfig.name) {
-        return res.status(400).json({ error: 'Invalid tunnel configuration' });
+        return res.status(400).json({error: 'Invalid tunnel configuration'});
     }
 
     tunnelConfigs.set(name, tunnelConfig);
-    
+
     // If tunnel is currently connected, disconnect and reconnect with new config
     if (activeTunnels.has(name)) {
         manualDisconnects.add(name);
         handleDisconnect(name, tunnelConfig, false);
-        
+
         setTimeout(() => {
             manualDisconnects.delete(name);
             connectSSHTunnel(tunnelConfig, 0);
         }, 2000);
     }
-    
-    res.json({ message: 'Tunnel configuration updated', name });
+
+    res.json({message: 'Tunnel configuration updated', name});
 });
 
 // Delete tunnel configuration
 app.delete('/tunnel/:name', (req, res) => {
-    const { name } = req.params;
-    
+    const {name} = req.params;
+
     // Disconnect if active
     if (activeTunnels.has(name)) {
         manualDisconnects.add(name);
         const tunnelConfig = tunnelConfigs.get(name) || null;
         handleDisconnect(name, tunnelConfig, false);
     }
-    
+
     // Remove from configurations
     tunnelConfigs.delete(name);
-    
-    res.json({ message: 'Tunnel deleted', name });
+
+    res.json({message: 'Tunnel deleted', name});
 });
 
 // Start the server

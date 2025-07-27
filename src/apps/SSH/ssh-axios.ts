@@ -44,6 +44,43 @@ interface SSHHost {
     updatedAt: string;
 }
 
+interface TunnelConfig {
+    name: string;
+    hostName: string;
+    sourceIP: string;
+    sourceSSHPort: number;
+    sourceUsername: string;
+    sourcePassword?: string;
+    sourceAuthMethod: string;
+    sourceSSHKey?: string;
+    sourceKeyPassword?: string;
+    sourceKeyType?: string;
+    endpointIP: string;
+    endpointSSHPort: number;
+    endpointUsername: string;
+    endpointPassword?: string;
+    endpointAuthMethod: string;
+    endpointSSHKey?: string;
+    endpointKeyPassword?: string;
+    endpointKeyType?: string;
+    sourcePort: number;
+    endpointPort: number;
+    maxRetries: number;
+    retryInterval: number;
+    autoStart: boolean;
+    isPinned: boolean;
+}
+
+interface TunnelStatus {
+    status: string;
+    reason?: string;
+    errorType?: string;
+    retryCount?: number;
+    maxRetries?: number;
+    nextRetryIn?: number;
+    retryExhausted?: boolean;
+}
+
 // Determine the base URL based on environment
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const baseURL = isLocalhost ? 'http://localhost:8081' : window.location.origin;
@@ -51,6 +88,13 @@ const baseURL = isLocalhost ? 'http://localhost:8081' : window.location.origin;
 // Create axios instance with base configuration
 const api = axios.create({
     baseURL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// Create tunnel API instance
+const tunnelApi = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
@@ -64,6 +108,14 @@ function getCookie(name: string): string | undefined {
 
 // Add request interceptor to include JWT token
 api.interceptors.request.use((config) => {
+    const token = getCookie('jwt'); // Adjust based on your token storage
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+tunnelApi.interceptors.request.use((config) => {
     const token = getCookie('jwt'); // Adjust based on your token storage
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -119,22 +171,22 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
         // Handle file upload for SSH key
         if (hostData.authType === 'key' && hostData.key instanceof File) {
             const formData = new FormData();
-            
+
             // Add the file
             formData.append('key', hostData.key);
-            
+
             // Add all other data as JSON string
             const dataWithoutFile = { ...submitData };
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
-            
+
             // Submit with FormData
             const response = await api.post('/ssh/host', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            
+
             return response.data;
         } else {
             // Submit with JSON
@@ -182,17 +234,17 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
         if (hostData.authType === 'key' && hostData.key instanceof File) {
             const formData = new FormData();
             formData.append('key', hostData.key);
-            
+
             const dataWithoutFile = { ...submitData };
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
-            
+
             const response = await api.put(`/ssh/host/${hostId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            
+
             return response.data;
         } else {
             const response = await api.put(`/ssh/host/${hostId}`, submitData);
@@ -226,4 +278,45 @@ export async function getSSHHostById(hostId: number): Promise<SSHHost> {
     }
 }
 
-export { api }; 
+// Tunnel-related functions
+
+// Get tunnel statuses
+export async function getTunnelStatuses(): Promise<Record<string, TunnelStatus>> {
+    try {
+        // Determine the tunnel API URL based on environment
+        const tunnelUrl = isLocalhost ? 'http://localhost:8083/status' : `${baseURL}/ssh_tunnel/status`;
+        const response = await tunnelApi.get(tunnelUrl);
+        return response.data || {};
+    } catch (error) {
+        console.error('Error fetching tunnel statuses:', error);
+        throw error;
+    }
+}
+
+// Connect tunnel
+export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
+    try {
+        // Determine the tunnel API URL based on environment
+        const tunnelUrl = isLocalhost ? 'http://localhost:8083/connect' : `${baseURL}/ssh_tunnel/connect`;
+        const response = await tunnelApi.post(tunnelUrl, tunnelConfig);
+        return response.data;
+    } catch (error) {
+        console.error('Error connecting tunnel:', error);
+        throw error;
+    }
+}
+
+// Disconnect tunnel
+export async function disconnectTunnel(tunnelName: string): Promise<any> {
+    try {
+        // Determine the tunnel API URL based on environment
+        const tunnelUrl = isLocalhost ? 'http://localhost:8083/disconnect' : `${baseURL}/ssh_tunnel/disconnect`;
+        const response = await tunnelApi.post(tunnelUrl, { tunnelName });
+        return response.data;
+    } catch (error) {
+        console.error('Error disconnecting tunnel:', error);
+        throw error;
+    }
+}
+
+export { api };

@@ -13,6 +13,7 @@ const CONNECTION_STATES = {
     FAILED: "failed",
     UNSTABLE: "unstable",
     RETRYING: "retrying",
+    WAITING: "waiting",
     DISCONNECTING: "disconnecting"
 };
 
@@ -77,6 +78,7 @@ export function SSHTunnelObject({
             case "CONNECTING":
             case "VERIFYING":
             case "RETRYING":
+            case "WAITING":
                 return "bg-yellow-500";
             case "FAILED":
                 return "bg-red-500";
@@ -88,27 +90,12 @@ export function SSHTunnelObject({
     };
 
     const getStatusText = (state: string) => {
-        const upperState = state.toUpperCase();
-        switch (upperState) {
-            case "CONNECTED":
-                return "Connected";
-            case "CONNECTING":
-                return "Connecting";
-            case "VERIFYING":
-                return "Verifying";
-            case "FAILED":
-                return "Failed";
-            case "UNSTABLE":
-                return "Unstable";
-            case "RETRYING":
-                return "Retrying";
-            default:
-                return "Disconnected";
-        }
+        // Just capitalize the first letter of the status from backend
+        return state.charAt(0).toUpperCase() + state.slice(1);
     };
 
     const isConnected = connectionState === "CONNECTED" || connectionState === "connected";
-    const isConnecting = ["CONNECTING", "VERIFYING", "RETRYING", "connecting", "verifying", "retrying"].includes(connectionState);
+    const isConnecting = ["CONNECTING", "VERIFYING", "RETRYING", "WAITING", "connecting", "verifying", "retrying", "waiting"].includes(connectionState);
     const isDisconnecting = connectionState === "DISCONNECTING" || connectionState === "disconnecting";
 
     return (
@@ -193,9 +180,9 @@ export function SSHTunnelObject({
                 )}
                 
                 {/* Retry Info */}
-                {connectionState === "RETRYING" && statusRetryCount && statusMaxRetries && (
+                {(connectionState === "retrying" || connectionState === "waiting") && statusRetryCount && statusMaxRetries && (
                     <div className="mb-2 text-xs text-yellow-600 bg-yellow-500/10 rounded px-2 py-1 border border-yellow-500/20">
-                        Retry {statusRetryCount}/{statusMaxRetries}
+                        {connectionState === "waiting" ? "Waiting" : "Retry"} {statusRetryCount}/{statusMaxRetries}
                         {statusNextRetryIn && (
                             <span> • Next retry in {statusNextRetryIn}s</span>
                         )}
@@ -213,7 +200,7 @@ export function SSHTunnelObject({
                         {isConnecting ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Connecting...
+                                {getStatusText(connectionState)}...
                             </>
                         ) : isConnected ? (
                             "Connected"

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
 import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
-import { getSSHHosts } from "@/apps/SSH/ssh-axios";
-import axios from "axios";
+import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel } from "@/apps/SSH/ssh-axios";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;
@@ -76,8 +75,7 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
     // Poll backend for tunnel statuses
     const fetchTunnelStatuses = useCallback(async () => {
         try {
-            const res = await axios.get('http://localhost:8083/status');
-            const statusData = res.data || {};
+            const statusData = await getTunnelStatuses();
             
             // Convert tunnel statuses to host statuses
             const newHostStatuses: Record<number, HostStatus> = {};
@@ -95,37 +93,17 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
                 });
                 
                 if (hostTunnelStatuses.length > 0) {
-                    // Determine overall host status based on tunnel statuses
-                    const connectedTunnels = hostTunnelStatuses.filter(s => s.status === 'connected');
-                    const failedTunnels = hostTunnelStatuses.filter(s => s.status === 'failed');
-                    const connectingTunnels = hostTunnelStatuses.filter(s => 
-                        ['connecting', 'verifying', 'retrying'].includes(s.status)
-                    );
-                    
-                    let overallStatus: string;
-                    let statusReason: string | undefined;
-                    
-                    if (connectingTunnels.length > 0) {
-                        overallStatus = 'connecting';
-                    } else if (failedTunnels.length === hostTunnelStatuses.length) {
-                        overallStatus = 'failed';
-                        statusReason = failedTunnels[0]?.reason;
-                    } else if (connectedTunnels.length === hostTunnelStatuses.length) {
-                        overallStatus = 'connected';
-                    } else if (connectedTunnels.length > 0) {
-                        overallStatus = 'connected';
-                    } else {
-                        overallStatus = 'disconnected';
-                    }
+                    // Just use the first tunnel's status for now - simplify
+                    const firstTunnelStatus = hostTunnelStatuses[0];
                     
                     newHostStatuses[host.id] = {
-                        connectionState: overallStatus,
-                        statusReason,
-                        statusErrorType: failedTunnels[0]?.errorType,
-                        statusRetryCount: connectingTunnels.find(s => s.status === 'retrying')?.retryCount,
-                        statusMaxRetries: connectingTunnels.find(s => s.status === 'retrying')?.maxRetries,
-                        statusNextRetryIn: connectingTunnels.find(s => s.status === 'retrying')?.nextRetryIn,
-                        statusRetryExhausted: failedTunnels.some(s => s.retryExhausted),
+                        connectionState: firstTunnelStatus.status,
+                        statusReason: firstTunnelStatus.reason,
+                        statusErrorType: firstTunnelStatus.errorType,
+                        statusRetryCount: firstTunnelStatus.retryCount,
+                        statusMaxRetries: firstTunnelStatus.maxRetries,
+                        statusNextRetryIn: firstTunnelStatus.nextRetryIn,
+                        statusRetryExhausted: firstTunnelStatus.retryExhausted,
                     };
                 } else {
                     // Set default disconnected status
@@ -159,11 +137,7 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
             return;
         }
 
-        // Immediately set to CONNECTING for instant UI feedback
-        setHostStatuses(prev => ({
-            ...prev,
-            [hostId]: { ...prev[hostId], connectionState: "connecting" }
-        }));
+        // Let the backend handle the status updates
 
         try {
             // For each tunnel connection, create a tunnel configuration
@@ -206,14 +180,10 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
                     isPinned: host.pin
                 };
 
-                await axios.post('http://localhost:8083/connect', tunnelConfig);
+                await connectTunnel(tunnelConfig);
             }
         } catch (err) {
-            // Reset status on error
-            setHostStatuses(prev => ({
-                ...prev,
-                [hostId]: { ...prev[hostId], connectionState: "failed", statusReason: "Failed to connect" }
-            }));
+            // Let the backend handle error status updates
         }
     };
 
@@ -221,17 +191,13 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
         const host = hosts.find(h => h.id === hostId);
         if (!host) return;
 
-        // Immediately set to DISCONNECTING for instant UI feedback
-        setHostStatuses(prev => ({
-            ...prev,
-            [hostId]: { ...prev[hostId], connectionState: "disconnecting" }
-        }));
+        // Let the backend handle the status updates
 
         try {
             // Disconnect all tunnels for this host
             for (const tunnelConnection of host.tunnelConnections) {
                 const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`;
-                await axios.post('http://localhost:8083/disconnect', { tunnelName });
+                await disconnectTunnel(tunnelName);
             }
         } catch (err) {
             // Silent error handling

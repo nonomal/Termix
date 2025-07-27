@@ -83,11 +83,11 @@ wss.on('connection', (ws: WebSocket) => {
             key?: string;
             keyPassword?: string;
             keyType?: string;
-            authMethod?: string;
+            authType?: string;
         };
     }) {
         const { cols, rows, hostConfig } = data;
-        const { ip, port, username, password, key, keyPassword, keyType, authMethod } = hostConfig;
+        const { ip, port, username, password, key, keyPassword, keyType, authType } = hostConfig;
 
         if (!username || typeof username !== 'string' || username.trim() === '') {
             logger.error('Invalid username provided');
@@ -216,11 +216,18 @@ wss.on('connection', (ws: WebSocket) => {
                 ]
             }
         };
-        if (authMethod === 'key' && key) {
+        if (authType === 'key' && key) {
             connectConfig.privateKey = key;
             if (keyPassword) {
                 connectConfig.passphrase = keyPassword;
             }
+            if (keyType && keyType !== 'auto') {
+                connectConfig.privateKeyType = keyType;
+            }
+        } else if (authType === 'key') {
+            logger.error('SSH key authentication requested but no key provided');
+            ws.send(JSON.stringify({ type: 'error', message: 'SSH key authentication requested but no key provided' }));
+            return;
         } else {
             connectConfig.password = password;
         }
