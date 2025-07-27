@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
 import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
-import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel } from "@/apps/SSH/ssh-axios";
+import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel } from "@/apps/SSH/ssh-axios";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;
@@ -39,16 +39,6 @@ interface SSHHost {
     updatedAt: string;
 }
 
-interface HostStatus {
-    connectionState?: string;
-    statusReason?: string;
-    statusErrorType?: string;
-    statusRetryCount?: number;
-    statusMaxRetries?: number;
-    statusNextRetryIn?: number;
-    statusRetryExhausted?: boolean;
-}
-
 interface TunnelStatus {
     status: string;
     reason?: string;
@@ -61,7 +51,8 @@ interface TunnelStatus {
 
 export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactElement {
     const [hosts, setHosts] = useState<SSHHost[]>([]);
-    const [hostStatuses, setHostStatuses] = useState<Record<number, HostStatus>>({});
+    const [tunnelStatuses, setTunnelStatuses] = useState<Record<string, TunnelStatus>>({});
+    const [tunnelActions, setTunnelActions] = useState<Record<string, boolean>>({}); // Track loading states
 
     const fetchHosts = useCallback(async () => {
         try {
@@ -76,48 +67,11 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
     const fetchTunnelStatuses = useCallback(async () => {
         try {
             const statusData = await getTunnelStatuses();
-            
-            // Convert tunnel statuses to host statuses
-            const newHostStatuses: Record<number, HostStatus> = {};
-            
-            hosts.forEach(host => {
-                // Find all tunnel statuses for this host
-                const hostName = host.name || `${host.username}@${host.ip}`;
-                const hostTunnelStatuses: TunnelStatus[] = [];
-                
-                // Look for tunnel statuses that start with this host name
-                Object.entries(statusData).forEach(([tunnelName, status]) => {
-                    if (tunnelName.startsWith(hostName + '_')) {
-                        hostTunnelStatuses.push(status as any);
-                    }
-                });
-                
-                if (hostTunnelStatuses.length > 0) {
-                    // Just use the first tunnel's status for now - simplify
-                    const firstTunnelStatus = hostTunnelStatuses[0];
-                    
-                    newHostStatuses[host.id] = {
-                        connectionState: firstTunnelStatus.status,
-                        statusReason: firstTunnelStatus.reason,
-                        statusErrorType: firstTunnelStatus.errorType,
-                        statusRetryCount: firstTunnelStatus.retryCount,
-                        statusMaxRetries: firstTunnelStatus.maxRetries,
-                        statusNextRetryIn: firstTunnelStatus.nextRetryIn,
-                        statusRetryExhausted: firstTunnelStatus.retryExhausted,
-                    };
-                } else {
-                    // Set default disconnected status
-                    newHostStatuses[host.id] = {
-                        connectionState: 'disconnected'
-                    };
-                }
-            });
-            
-            setHostStatuses(newHostStatuses);
+            setTunnelStatuses(statusData);
         } catch (err) {
             // Silent error handling
         }
-    }, [hosts]);
+    }, []);
 
     useEffect(() => {
         fetchHosts();
@@ -131,76 +85,66 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
         return () => clearInterval(interval);
     }, [fetchTunnelStatuses]);
 
-    const handleConnect = async (hostId: number) => {
-        const host = hosts.find(h => h.id === hostId);
-        if (!host || !host.tunnelConnections || host.tunnelConnections.length === 0) {
-            return;
-        }
-
-        // Let the backend handle the status updates
-
+    const handleTunnelAction = async (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => {
+        const tunnel = host.tunnelConnections[tunnelIndex];
+        const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnel.sourcePort}_${tunnel.endpointPort}`;
+        
+        setTunnelActions(prev => ({ ...prev, [tunnelName]: true }));
+        
         try {
-            // For each tunnel connection, create a tunnel configuration
-            for (const tunnelConnection of host.tunnelConnections) {
+            if (action === 'connect') {
                 // Find the endpoint host configuration
                 const endpointHost = hosts.find(h => 
-                    h.name === tunnelConnection.endpointHost || 
-                    `${h.username}@${h.ip}` === tunnelConnection.endpointHost
+                    h.name === tunnel.endpointHost || 
+                    `${h.username}@${h.ip}` === tunnel.endpointHost
                 );
 
                 if (!endpointHost) {
-                    continue;
+                    throw new Error('Endpoint host not found');
                 }
 
                 // Create tunnel configuration
                 const tunnelConfig = {
-                    name: `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`,
+                    name: tunnelName,
                     hostName: host.name || `${host.username}@${host.ip}`,
                     sourceIP: host.ip,
                     sourceSSHPort: host.port,
                     sourceUsername: host.username,
-                    sourcePassword: host.password,
+                    sourcePassword: host.authType === 'password' ? host.password : undefined,
                     sourceAuthMethod: host.authType,
-                    sourceSSHKey: host.key,
-                    sourceKeyPassword: host.keyPassword,
-                    sourceKeyType: host.keyType,
+                    sourceSSHKey: host.authType === 'key' ? host.key : undefined,
+                    sourceKeyPassword: host.authType === 'key' ? host.keyPassword : undefined,
+                    sourceKeyType: host.authType === 'key' ? host.keyType : undefined,
                     endpointIP: endpointHost.ip,
                     endpointSSHPort: endpointHost.port,
                     endpointUsername: endpointHost.username,
-                    endpointPassword: endpointHost.password,
+                    endpointPassword: endpointHost.authType === 'password' ? endpointHost.password : undefined,
                     endpointAuthMethod: endpointHost.authType,
-                    endpointSSHKey: endpointHost.key,
-                    endpointKeyPassword: endpointHost.keyPassword,
-                    endpointKeyType: endpointHost.keyType,
-                    sourcePort: tunnelConnection.sourcePort,
-                    endpointPort: tunnelConnection.endpointPort,
-                    maxRetries: tunnelConnection.maxRetries,
-                    retryInterval: tunnelConnection.retryInterval * 1000, // Convert to milliseconds
-                    autoStart: tunnelConnection.autoStart,
+                    endpointSSHKey: endpointHost.authType === 'key' ? endpointHost.key : undefined,
+                    endpointKeyPassword: endpointHost.authType === 'key' ? endpointHost.keyPassword : undefined,
+                    endpointKeyType: endpointHost.authType === 'key' ? endpointHost.keyType : undefined,
+                    sourcePort: tunnel.sourcePort,
+                    endpointPort: tunnel.endpointPort,
+                    maxRetries: tunnel.maxRetries,
+                    retryInterval: tunnel.retryInterval * 1000, // Convert to milliseconds
+                    autoStart: tunnel.autoStart,
                     isPinned: host.pin
                 };
 
                 await connectTunnel(tunnelConfig);
-            }
-        } catch (err) {
-            // Let the backend handle error status updates
-        }
-    };
-
-    const handleDisconnect = async (hostId: number) => {
-        const host = hosts.find(h => h.id === hostId);
-        if (!host) return;
-
-        // Let the backend handle the status updates
-
-        try {
-            // Disconnect all tunnels for this host
-            for (const tunnelConnection of host.tunnelConnections) {
-                const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`;
+            } else if (action === 'disconnect') {
                 await disconnectTunnel(tunnelName);
+            } else if (action === 'cancel') {
+                await cancelTunnel(tunnelName);
             }
+            
+            // Refresh statuses after action
+            await fetchTunnelStatuses();
         } catch (err) {
-            // Silent error handling
+            console.error(`Failed to ${action} tunnel:`, err);
+            // Let the backend handle error status updates
+        } finally {
+            setTunnelActions(prev => ({ ...prev, [tunnelName]: false }));
         }
     };
 
@@ -214,9 +158,9 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
             <div className="flex-1 overflow-auto">
                 <SSHTunnelViewer 
                     hosts={hosts}
-                    hostStatuses={hostStatuses}
-                    onConnect={handleConnect}
-                    onDisconnect={handleDisconnect}
+                    tunnelStatuses={tunnelStatuses}
+                    tunnelActions={tunnelActions}
+                    onTunnelAction={handleTunnelAction}
                 />
             </div>
         </div>

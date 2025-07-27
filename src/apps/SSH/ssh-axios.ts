@@ -280,7 +280,7 @@ export async function getSSHHostById(hostId: number): Promise<SSHHost> {
 
 // Tunnel-related functions
 
-// Get tunnel statuses
+// Get all tunnel statuses (per-tunnel)
 export async function getTunnelStatuses(): Promise<Record<string, TunnelStatus>> {
     try {
         // Determine the tunnel API URL based on environment
@@ -293,7 +293,13 @@ export async function getTunnelStatuses(): Promise<Record<string, TunnelStatus>>
     }
 }
 
-// Connect tunnel
+// Get status for a specific tunnel by tunnel name
+export async function getTunnelStatusByName(tunnelName: string): Promise<TunnelStatus | undefined> {
+    const statuses = await getTunnelStatuses();
+    return statuses[tunnelName];
+}
+
+// Connect tunnel (per-tunnel)
 export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
     try {
         // Determine the tunnel API URL based on environment
@@ -306,7 +312,7 @@ export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
     }
 }
 
-// Disconnect tunnel
+// Disconnect tunnel (per-tunnel)
 export async function disconnectTunnel(tunnelName: string): Promise<any> {
     try {
         // Determine the tunnel API URL based on environment
@@ -315,6 +321,18 @@ export async function disconnectTunnel(tunnelName: string): Promise<any> {
         return response.data;
     } catch (error) {
         console.error('Error disconnecting tunnel:', error);
+        throw error;
+    }
+}
+
+export async function cancelTunnel(tunnelName: string): Promise<any> {
+    try {
+        // Determine the tunnel API URL based on environment
+        const tunnelUrl = isLocalhost ? 'http://localhost:8083/cancel' : `${baseURL}/ssh_tunnel/cancel`;
+        const response = await tunnelApi.post(tunnelUrl, { tunnelName });
+        return response.data;
+    } catch (error) {
+        console.error('Error canceling tunnel:', error);
         throw error;
     }
 }

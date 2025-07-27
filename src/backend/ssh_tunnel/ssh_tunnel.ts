@@ -1,22 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import {Client} from 'ssh2';
-import {exec, spawn, ChildProcess} from 'child_process';
+import {ChildProcess} from 'child_process';
 import chalk from 'chalk';
 import axios from 'axios';
 import * as net from 'net';
 
 const app = express();
 app.use(cors({
-    origin: [
-        'http://localhost:5173', // Vite dev server
-        'http://localhost:3000', // Common React dev port
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-        '*', // Allow all for dev, remove in prod
-    ],
-    credentials: true,
-    methods: 'GET,POST,PUT,DELETE,OPTIONS',
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
 }));
 app.use(express.json());
@@ -58,7 +51,6 @@ const activeRetryTimers = new Map<string, NodeJS.Timeout>(); // tunnelName -> re
 const countdownIntervals = new Map<string, NodeJS.Timeout>(); // tunnelName -> countdown interval
 const retryExhaustedTunnels = new Set<string>(); // tunnelNames
 const remoteClosureEvents = new Map<string, number>(); // tunnelName -> count
-const hostConfigs = new Map<string, HostConfig>(); // hostName -> hostConfig
 const tunnelConfigs = new Map<string, TunnelConfig>(); // tunnelName -> tunnelConfig
 const activeTunnelProcesses = new Map<string, ChildProcess>(); // tunnelName -> ChildProcess
 
@@ -227,15 +219,29 @@ function classifyError(errorMessage: string): ErrorType {
     return ERROR_TYPES.UNKNOWN;
 }
 
+// Helper to build a unique marker for each tunnel
+function getTunnelMarker(tunnelName: string) {
+    return `TUNNEL_MARKER_${tunnelName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+}
+
 // Cleanup and disconnect functions
 function cleanupTunnelResources(tunnelName: string): void {
-    // Kill any local ssh process for this tunnel
+    // Fire-and-forget remote pkill (do not block local cleanup)
+    const tunnelConfig = tunnelConfigs.get(tunnelName);
+    if (tunnelConfig) {
+        killRemoteTunnelByMarker(tunnelConfig, tunnelName, (err) => {
+            if (err) {
+                logger.error(`Failed to kill remote tunnel for '${tunnelName}': ${err.message}`);
+            }
+        });
+    }
+
+    // Local cleanup (always run immediately)
     if (activeTunnelProcesses.has(tunnelName)) {
         try {
             const proc = activeTunnelProcesses.get(tunnelName);
             if (proc) {
                 proc.kill('SIGTERM');
-                logger.info(`Killed local ssh process for tunnel '${tunnelName}' (pid: ${proc.pid})`);
             }
         } catch (e) {
             logger.error(`Error while killing local ssh process for tunnel '${tunnelName}'`, e);
@@ -248,10 +254,6 @@ function cleanupTunnelResources(tunnelName: string): void {
             const conn = activeTunnels.get(tunnelName);
             if (conn) {
                 conn.end();
-                logger.info(`Called conn.end() for tunnel '${tunnelName}'`);
-                conn.on('close', () => {
-                    logger.info(`SSH2 Client connection closed for tunnel '${tunnelName}'`);
-                });
             }
         } catch (e) {
             logger.error(`Error while closing SSH2 Client for tunnel '${tunnelName}'`, e);
@@ -711,6 +713,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
 // Main SSH tunnel connection function
 function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     const tunnelName = tunnelConfig.name;
+    const tunnelMarker = getTunnelMarker(tunnelName);
 
     if (manualDisconnects.has(tunnelName)) {
         return;
@@ -728,7 +731,6 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
     // Only set status to CONNECTING if we're not already in WAITING state
     const currentStatus = connectionStatus.get(tunnelName);
-
     if (!currentStatus || currentStatus.status !== CONNECTION_STATES.WAITING) {
         broadcastTunnelStatus(tunnelName, {
             connected: false,
@@ -841,20 +843,16 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
         if (tunnelConfig.endpointAuthMethod === "key" && tunnelConfig.endpointSSHKey) {
             // For SSH key authentication, we need to create a temporary key file
             const keyFilePath = `/tmp/tunnel_key_${tunnelName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            tunnelCmd = `echo '${tunnelConfig.endpointSSHKey}' > ${keyFilePath} && chmod 600 ${keyFilePath} && ssh -4 -i ${keyFilePath} -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} && rm -f ${keyFilePath}`;
+            tunnelCmd = `echo '${tunnelConfig.endpointSSHKey}' > ${keyFilePath} && chmod 600 ${keyFilePath} && ssh -i ${keyFilePath} -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker} && rm -f ${keyFilePath}`;
         } else {
-            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -4 -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
+            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker}`;
         }
-
 
         conn.exec(tunnelCmd, (err, stream) => {
             if (err) {
                 logger.error(`Connection error for '${tunnelName}': ${err.message}`);
 
-                try {
-                    conn.end();
-                } catch (e) {
-                }
+                conn.end();
 
                 activeTunnels.delete(tunnelName);
 
@@ -1029,7 +1027,6 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     };
 
     if (tunnelConfig.sourceAuthMethod === "key" && tunnelConfig.sourceSSHKey) {
-
         // Validate SSH key format
         if (!tunnelConfig.sourceSSHKey.includes('-----BEGIN')) {
             logger.error(`Invalid SSH key format for tunnel '${tunnelName}'. Key should start with '-----BEGIN'`);
@@ -1060,7 +1057,6 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     } else {
         connOptions.password = tunnelConfig.sourcePassword;
     }
-
 
     // Test basic network connectivity first
     const testSocket = new net.Socket();
@@ -1102,6 +1098,87 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     });
 
     testSocket.connect(tunnelConfig.sourceSSHPort, tunnelConfig.sourceIP);
+}
+
+// Add a helper to kill the tunnel by marker
+function killRemoteTunnelByMarker(tunnelConfig: TunnelConfig, tunnelName: string, callback: (err?: Error) => void) {
+    const tunnelMarker = getTunnelMarker(tunnelName);
+    const conn = new Client();
+    const connOptions: any = {
+        host: tunnelConfig.sourceIP,
+        port: tunnelConfig.sourceSSHPort,
+        username: tunnelConfig.sourceUsername,
+        keepaliveInterval: 5000,
+        keepaliveCountMax: 10,
+        readyTimeout: 10000,
+        tcpKeepAlive: true,
+        algorithms: {
+            kex: [
+                'diffie-hellman-group14-sha256',
+                'diffie-hellman-group14-sha1',
+                'diffie-hellman-group1-sha1',
+                'diffie-hellman-group-exchange-sha256',
+                'diffie-hellman-group-exchange-sha1',
+                'ecdh-sha2-nistp256',
+                'ecdh-sha2-nistp384',
+                'ecdh-sha2-nistp521'
+            ],
+            cipher: [
+                'aes128-ctr',
+                'aes192-ctr',
+                'aes256-ctr',
+                'aes128-gcm@openssh.com',
+                'aes256-gcm@openssh.com',
+                'aes128-cbc',
+                'aes192-cbc',
+                'aes256-cbc',
+                '3des-cbc'
+            ],
+            hmac: [
+                'hmac-sha2-256',
+                'hmac-sha2-512',
+                'hmac-sha1',
+                'hmac-md5'
+            ],
+            compress: [
+                'none',
+                'zlib@openssh.com',
+                'zlib'
+            ]
+        }
+    };
+    if (tunnelConfig.sourceAuthMethod === "key" && tunnelConfig.sourceSSHKey) {
+        connOptions.privateKey = tunnelConfig.sourceSSHKey;
+        if (tunnelConfig.sourceKeyPassword) {
+            connOptions.passphrase = tunnelConfig.sourceKeyPassword;
+        }
+        if (tunnelConfig.sourceKeyType && tunnelConfig.sourceKeyType !== 'auto') {
+            connOptions.privateKeyType = tunnelConfig.sourceKeyType;
+        }
+    } else {
+        connOptions.password = tunnelConfig.sourcePassword;
+    }
+    conn.on('ready', () => {
+        // Use pkill to kill the tunnel by marker
+        const killCmd = `pkill -f '${tunnelMarker}'`;
+        conn.exec(killCmd, (err, stream) => {
+            if (err) {
+                conn.end();
+                callback(err);
+                return;
+            }
+            stream.on('close', () => {
+                conn.end();
+                callback();
+            });
+            stream.on('data', () => {});
+            stream.stderr.on('data', () => {});
+        });
+    });
+    conn.on('error', (err) => {
+        callback(err);
+    });
+    conn.connect(connOptions);
 }
 
 // Express API endpoints
@@ -1177,11 +1254,51 @@ app.post('/disconnect', (req, res) => {
     res.json({message: 'Disconnect request received', tunnelName});
 });
 
+app.post('/cancel', (req, res) => {
+    const {tunnelName} = req.body;
+
+    if (!tunnelName) {
+        return res.status(400).json({error: 'Tunnel name required'});
+    }
+
+    // Cancel retry operations
+    retryCounters.delete(tunnelName);
+    retryExhaustedTunnels.delete(tunnelName);
+
+    if (activeRetryTimers.has(tunnelName)) {
+        clearTimeout(activeRetryTimers.get(tunnelName)!);
+        activeRetryTimers.delete(tunnelName);
+    }
+
+    if (countdownIntervals.has(tunnelName)) {
+        clearInterval(countdownIntervals.get(tunnelName)!);
+        countdownIntervals.delete(tunnelName);
+    }
+
+    // Set status to disconnected
+    broadcastTunnelStatus(tunnelName, {
+        connected: false,
+        status: CONNECTION_STATES.DISCONNECTED,
+        manualDisconnect: true
+    });
+
+    // Clean up any existing tunnel resources
+    const tunnelConfig = tunnelConfigs.get(tunnelName) || null;
+    handleDisconnect(tunnelName, tunnelConfig, false);
+
+    // Clear manual disconnect flag after a delay
+    setTimeout(() => {
+        manualDisconnects.delete(tunnelName);
+    }, 5000);
+
+    res.json({message: 'Cancel request received', tunnelName});
+});
+
 // Auto-start functionality
 async function initializeAutoStartTunnels(): Promise<void> {
     try {
-        // Fetch hosts with auto-start tunnel connections
-        const response = await axios.get('http://localhost:8081/ssh/host', {
+        // Fetch hosts with auto-start tunnel connections from the new internal endpoint
+        const response = await axios.get('http://localhost:8081/ssh/host/internal', {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Internal-Request': '1'
@@ -1225,7 +1342,7 @@ async function initializeAutoStartTunnels(): Promise<void> {
                                 sourcePort: tunnelConnection.sourcePort,
                                 endpointPort: tunnelConnection.endpointPort,
                                 maxRetries: tunnelConnection.maxRetries,
-                                retryInterval: tunnelConnection.retryInterval * 1000, // Convert to milliseconds
+                                retryInterval: tunnelConnection.retryInterval * 1000,
                                 autoStart: tunnelConnection.autoStart,
                                 isPinned: host.pin
                             };
@@ -1249,72 +1366,10 @@ async function initializeAutoStartTunnels(): Promise<void> {
             }, 1000);
         }
     } catch (error: any) {
-        if (error.response?.status === 401) {
-            logger.warn('Authentication required for auto-start tunnels. Skipping auto-start initialization.');
-        } else {
-            logger.error('Failed to initialize auto-start tunnels:', error.message);
-        }
+        logger.error('Failed to initialize auto-start tunnels:', error.message);
     }
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        activeTunnels: activeTunnels.size,
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Get all tunnel configurations
-app.get('/tunnels', (req, res) => {
-    const tunnels = Array.from(tunnelConfigs.values());
-    res.json(tunnels);
-});
-
-// Update tunnel configuration
-app.put('/tunnel/:name', (req, res) => {
-    const {name} = req.params;
-    const tunnelConfig: TunnelConfig = req.body;
-
-    if (!tunnelConfig || !tunnelConfig.name) {
-        return res.status(400).json({error: 'Invalid tunnel configuration'});
-    }
-
-    tunnelConfigs.set(name, tunnelConfig);
-
-    // If tunnel is currently connected, disconnect and reconnect with new config
-    if (activeTunnels.has(name)) {
-        manualDisconnects.add(name);
-        handleDisconnect(name, tunnelConfig, false);
-
-        setTimeout(() => {
-            manualDisconnects.delete(name);
-            connectSSHTunnel(tunnelConfig, 0);
-        }, 2000);
-    }
-
-    res.json({message: 'Tunnel configuration updated', name});
-});
-
-// Delete tunnel configuration
-app.delete('/tunnel/:name', (req, res) => {
-    const {name} = req.params;
-
-    // Disconnect if active
-    if (activeTunnels.has(name)) {
-        manualDisconnects.add(name);
-        const tunnelConfig = tunnelConfigs.get(name) || null;
-        handleDisconnect(name, tunnelConfig, false);
-    }
-
-    // Remove from configurations
-    tunnelConfigs.delete(name);
-
-    res.json({message: 'Tunnel deleted', name});
-});
-
-// Start the server
 const PORT = 8083;
 app.listen(PORT, () => {
     setTimeout(() => {

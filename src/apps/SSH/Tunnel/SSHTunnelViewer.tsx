@@ -5,6 +5,15 @@ import { Separator } from "@/components/ui/separator.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Search } from "lucide-react";
 
+interface TunnelConnection {
+    sourcePort: number;
+    endpointPort: number;
+    endpointHost: string;
+    maxRetries: number;
+    retryInterval: number;
+    autoStart: boolean;
+}
+
 interface SSHHost {
     id: number;
     name: string;
@@ -19,33 +28,33 @@ interface SSHHost {
     enableTunnel: boolean;
     enableConfigEditor: boolean;
     defaultPath: string;
-    tunnelConnections: any[];
+    tunnelConnections: TunnelConnection[];
     createdAt: string;
     updatedAt: string;
 }
 
-interface HostStatus {
-    connectionState?: string;
-    statusReason?: string;
-    statusErrorType?: string;
-    statusRetryCount?: number;
-    statusMaxRetries?: number;
-    statusNextRetryIn?: number;
-    statusRetryExhausted?: boolean;
+interface TunnelStatus {
+    status: string;
+    reason?: string;
+    errorType?: string;
+    retryCount?: number;
+    maxRetries?: number;
+    nextRetryIn?: number;
+    retryExhausted?: boolean;
 }
 
 interface SSHTunnelViewerProps {
     hosts: SSHHost[];
-    hostStatuses?: Record<number, HostStatus>;
-    onConnect?: (hostId: number) => void;
-    onDisconnect?: (hostId: number) => void;
+    tunnelStatuses: Record<string, TunnelStatus>;
+    tunnelActions: Record<string, boolean>;
+    onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<void>;
 }
 
 export function SSHTunnelViewer({ 
     hosts = [], 
-    hostStatuses = {},
-    onConnect,
-    onDisconnect
+    tunnelStatuses = {},
+    tunnelActions = {},
+    onTunnelAction
 }: SSHTunnelViewerProps): React.ReactElement {
     const [searchQuery, setSearchQuery] = React.useState("");
     const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -55,14 +64,6 @@ export function SSHTunnelViewer({
         const handler = setTimeout(() => setDebouncedSearch(searchQuery), 200);
         return () => clearTimeout(handler);
     }, [searchQuery]);
-
-    const handleConnect = (hostId: number) => {
-        onConnect?.(hostId);
-    };
-
-    const handleDisconnect = (hostId: number) => {
-        onDisconnect?.(hostId);
-    };
 
     // Filter hosts by search query
     const filteredHosts = React.useMemo(() => {
@@ -169,15 +170,9 @@ export function SSHTunnelViewer({
                                             <div key={host.id} className="w-full">
                                                 <SSHTunnelObject
                                                     host={host}
-                                                    connectionState={hostStatuses[host.id]?.connectionState as any}
-                                                    statusReason={hostStatuses[host.id]?.statusReason}
-                                                    statusErrorType={hostStatuses[host.id]?.statusErrorType}
-                                                    statusRetryCount={hostStatuses[host.id]?.statusRetryCount}
-                                                    statusMaxRetries={hostStatuses[host.id]?.statusMaxRetries}
-                                                    statusNextRetryIn={hostStatuses[host.id]?.statusNextRetryIn}
-                                                    statusRetryExhausted={hostStatuses[host.id]?.statusRetryExhausted}
-                                                    onConnect={() => handleConnect(host.id)}
-                                                    onDisconnect={() => handleDisconnect(host.id)}
+                                                    tunnelStatuses={tunnelStatuses}
+                                                    tunnelActions={tunnelActions}
+                                                    onTunnelAction={onTunnelAction}
                                                 />
                                             </div>
                                         ))}

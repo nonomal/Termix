@@ -83,6 +83,37 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
     }
 }
 
+// Helper to check if request is from localhost
+function isLocalhost(req: Request) {
+    const ip = req.ip || req.connection?.remoteAddress;
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
+
+// Internal-only endpoint for autostart (no JWT)
+router.get('/host/internal', async (req: Request, res: Response) => {
+    if (!isLocalhost(req) && req.headers['x-internal-request'] !== '1') {
+        logger.warn('Unauthorized attempt to access internal SSH host endpoint');
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    try {
+        const data = await db.select().from(sshData);
+        // Convert tags to array, booleans to bool, tunnelConnections to array
+        const result = data.map((row: any) => ({
+            ...row,
+            tags: typeof row.tags === 'string' ? (row.tags ? row.tags.split(',').filter(Boolean) : []) : [],
+            pin: !!row.pin,
+            enableTerminal: !!row.enableTerminal,
+            enableTunnel: !!row.enableTunnel,
+            tunnelConnections: row.tunnelConnections ? JSON.parse(row.tunnelConnections) : [],
+            enableConfigEditor: !!row.enableConfigEditor,
+        }));
+        res.json(result);
+    } catch (err) {
+        logger.error('Failed to fetch SSH data (internal)', err);
+        res.status(500).json({ error: 'Failed to fetch SSH data' });
+    }
+});
+
 // Route: Create SSH data (requires JWT)
 // POST /ssh/host
 router.post('/host', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
