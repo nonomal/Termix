@@ -59,7 +59,7 @@ interface SSHTunnelObjectProps {
     host: SSHHost;
     tunnelStatuses: Record<string, TunnelStatus>;
     tunnelActions: Record<string, boolean>;
-    onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<void>;
+    onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<any>;
 }
 
 export function SSHTunnelObject({ 
@@ -68,6 +68,7 @@ export function SSHTunnelObject({
     tunnelActions,
     onTunnelAction
 }: SSHTunnelObjectProps): React.ReactElement {
+
     const getTunnelStatus = (tunnelIndex: number): TunnelStatus | undefined => {
         const tunnel = host.tunnelConnections[tunnelIndex];
         const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnel.sourcePort}_${tunnel.endpointPort}`;
@@ -220,32 +221,34 @@ export function SSHTunnelObject({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                            <div className="flex items-center gap-1 flex-shrink-0">
                                                 {tunnel.autoStart && (
                                                     <Badge variant="outline" className="text-xs px-2 py-1">
                                                         <Zap className="h-3 w-3 mr-1" />
                                                         Auto
                                                     </Badge>
                                                 )}
-                                                {/* Action Button */}
+                                                {/* Action Buttons */}
                                                 {!isActionLoading && (
-                                                    <>
+                                                    <div className="flex flex-col gap-1">
                                                         {isConnected ? (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => onTunnelAction('disconnect', host, tunnelIndex)}
-                                                                className="h-8 px-3 text-red-600 dark:text-red-400 border-red-500/30 dark:border-red-400/30 hover:bg-red-500/10 dark:hover:bg-red-400/10 hover:border-red-500/50 dark:hover:border-red-400/50"
-                                                            >
-                                                                <Square className="h-3 w-3 mr-1" />
-                                                                Disconnect
-                                                            </Button>
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => onTunnelAction('disconnect', host, tunnelIndex)}
+                                                                    className="h-7 px-2 text-red-600 dark:text-red-400 border-red-500/30 dark:border-red-400/30 hover:bg-red-500/10 dark:hover:bg-red-400/10 hover:border-red-500/50 dark:hover:border-red-400/50 text-xs"
+                                                                >
+                                                                    <Square className="h-3 w-3 mr-1" />
+                                                                    Disconnect
+                                                                </Button>
+                                                            </>
                                                         ) : isRetrying || isWaiting ? (
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
                                                                 onClick={() => onTunnelAction('cancel', host, tunnelIndex)}
-                                                                className="h-8 px-3 text-orange-600 dark:text-orange-400 border-orange-500/30 dark:border-orange-400/30 hover:bg-orange-500/10 dark:hover:bg-orange-400/10 hover:border-orange-500/50 dark:hover:border-orange-400/50"
+                                                                className="h-7 px-2 text-orange-600 dark:text-orange-400 border-orange-500/30 dark:border-orange-400/30 hover:bg-orange-500/10 dark:hover:bg-orange-400/10 hover:border-orange-500/50 dark:hover:border-orange-400/50 text-xs"
                                                             >
                                                                 <X className="h-3 w-3 mr-1" />
                                                                 Cancel
@@ -256,20 +259,20 @@ export function SSHTunnelObject({
                                                                 variant="outline"
                                                                 onClick={() => onTunnelAction('connect', host, tunnelIndex)}
                                                                 disabled={isConnecting || isDisconnecting}
-                                                                className="h-8 px-3 text-green-600 dark:text-green-400 border-green-500/30 dark:border-green-400/30 hover:bg-green-500/10 dark:hover:bg-green-400/10 hover:border-green-500/50 dark:hover:border-green-400/50"
+                                                                className="h-7 px-2 text-green-600 dark:text-green-400 border-green-500/30 dark:border-green-400/30 hover:bg-green-500/10 dark:hover:bg-green-400/10 hover:border-green-500/50 dark:hover:border-green-400/50 text-xs"
                                                             >
                                                                 <Play className="h-3 w-3 mr-1" />
                                                                 Connect
                                                             </Button>
                                                         )}
-                                                    </>
+                                                    </div>
                                                 )}
                                                 {isActionLoading && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         disabled
-                                                        className="h-8 px-3 text-muted-foreground border-border"
+                                                        className="h-7 px-2 text-muted-foreground border-border text-xs"
                                                     >
                                                         <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                                                         {isConnected ? 'Disconnecting...' : isRetrying || isWaiting ? 'Canceling...' : 'Connecting...'}

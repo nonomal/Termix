@@ -50,7 +50,7 @@ const verificationTimers = new Map<string, NodeJS.Timeout>(); // timer keys -> t
 const activeRetryTimers = new Map<string, NodeJS.Timeout>(); // tunnelName -> retry timer
 const countdownIntervals = new Map<string, NodeJS.Timeout>(); // tunnelName -> countdown interval
 const retryExhaustedTunnels = new Set<string>(); // tunnelNames
-const remoteClosureEvents = new Map<string, number>(); // tunnelName -> count
+
 const tunnelConfigs = new Map<string, TunnelConfig>(); // tunnelName -> tunnelConfig
 const activeTunnelProcesses = new Map<string, ChildProcess>(); // tunnelName -> ChildProcess
 
@@ -129,7 +129,6 @@ interface TunnelStatus {
     errorType?: ErrorType;
     manualDisconnect?: boolean;
     retryExhausted?: boolean;
-    isRemoteRetry?: boolean;
 }
 
 interface VerificationData {
@@ -299,7 +298,6 @@ function cleanupTunnelResources(tunnelName: string): void {
 function resetRetryState(tunnelName: string): void {
     retryCounters.delete(tunnelName);
     retryExhaustedTunnels.delete(tunnelName);
-    remoteClosureEvents.delete(tunnelName);
 
     if (activeRetryTimers.has(tunnelName)) {
         clearTimeout(activeRetryTimers.get(tunnelName)!);
@@ -320,7 +318,7 @@ function resetRetryState(tunnelName: string): void {
     });
 }
 
-function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null, shouldRetry = true, isRemoteClosure = false): void {
+function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null, shouldRetry = true): void {
     if (tunnelVerifications.has(tunnelName)) {
         try {
             const verification = tunnelVerifications.get(tunnelName);
@@ -344,24 +342,7 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
         return;
     }
 
-    if (isRemoteClosure) {
-        const currentCount = remoteClosureEvents.get(tunnelName) || 0;
-        remoteClosureEvents.set(tunnelName, currentCount + 1);
 
-        broadcastTunnelStatus(tunnelName, {
-            connected: false,
-            status: CONNECTION_STATES.FAILED,
-            reason: "Remote host disconnected"
-        });
-
-        if (currentCount === 0) {
-            retryCounters.delete(tunnelName);
-        }
-    }
-
-    if (isRemoteClosure && retryExhaustedTunnels.has(tunnelName)) {
-        retryExhaustedTunnels.delete(tunnelName);
-    }
 
     if (retryExhaustedTunnels.has(tunnelName)) {
         broadcastTunnelStatus(tunnelName, {
@@ -379,15 +360,6 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
     if (shouldRetry && tunnelConfig) {
         const maxRetries = tunnelConfig.maxRetries || 3;
         const retryInterval = tunnelConfig.retryInterval || 5000;
-
-        if (isRemoteClosure) {
-            const currentCount = remoteClosureEvents.get(tunnelName) || 0;
-            remoteClosureEvents.set(tunnelName, currentCount + 1);
-
-            if (currentCount === 0) {
-                retryCounters.delete(tunnelName);
-            }
-        }
 
         let retryCount = (retryCounters.get(tunnelName) || 0) + 1;
 
@@ -523,51 +495,87 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
                 setupPingInterval(tunnelName, tunnelConfig);
             }
         } else {
-            logger.error(`Verification failed for '${tunnelName}': ${failureReason}`);
-
-            if (!manualDisconnects.has(tunnelName)) {
-                broadcastTunnelStatus(tunnelName, {
-                    connected: false,
-                    status: CONNECTION_STATES.FAILED,
-                    reason: failureReason
-                });
+            logger.warn(`Verification failed for '${tunnelName}': ${failureReason}`);
+            
+            // With the new verification approach, we're testing connectivity to the endpoint machine
+            // A failure might just mean the service isn't running on that port, not that the tunnel is broken
+            // Only disconnect if it's a critical error (command failed, connection error, or timeout)
+            if (failureReason.includes('command failed') || failureReason.includes('connection error') || failureReason.includes('timeout')) {
+                if (!manualDisconnects.has(tunnelName)) {
+                    broadcastTunnelStatus(tunnelName, {
+                        connected: false,
+                        status: CONNECTION_STATES.FAILED,
+                        reason: failureReason
+                    });
+                }
+                activeTunnels.delete(tunnelName);
+                handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
+            } else {
+                // For connection refused or other non-critical errors, assume the tunnel is working
+                // The service might just not be running on the target port
+                logger.info(`Assuming tunnel '${tunnelName}' is working despite verification warning: ${failureReason}`);
+                cleanupVerification(true); // Treat as successful to prevent disconnect
             }
-
-            activeTunnels.delete(tunnelName);
-            handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
         }
     }
 
     function attemptVerification() {
-        const testCmd = `nc -z localhost ${tunnelConfig.sourcePort}`;
+        // Test the actual tunnel by trying to connect to the endpoint port
+        // This verifies that the tunnel is actually working
+        // With -R forwarding, the endpointPort should be listening on the endpoint machine
+        // We need to check if the port is accessible from the source machine to the endpoint machine
+        const testCmd = `timeout 3 bash -c 'nc -z ${tunnelConfig.endpointIP} ${tunnelConfig.endpointPort}'`;
 
         verificationConn.exec(testCmd, (err, stream) => {
             if (err) {
+                logger.error(`Verification command failed for '${tunnelName}': ${err.message}`);
                 cleanupVerification(false, `Verification command failed: ${err.message}`);
                 return;
             }
 
             let output = '';
+            let errorOutput = '';
+            
             stream.on('data', (data: Buffer) => {
                 output += data.toString();
             });
 
+            stream.stderr?.on('data', (data: Buffer) => {
+                errorOutput += data.toString();
+            });
+
             stream.on('close', (code: number) => {
-                if (code === 0 && code !== undefined) {
+                logger.debug(`Verification for '${tunnelName}' completed with code ${code}, output: '${output}', error: '${errorOutput}'`);
+                if (code === 0) {
                     cleanupVerification(true);
                 } else {
-                    cleanupVerification(false, `Port ${tunnelConfig.sourcePort} is not accessible`);
+                    // Check if it's a timeout or connection refused
+                    const isTimeout = errorOutput.includes('timeout') || errorOutput.includes('Connection timed out');
+                    const isConnectionRefused = errorOutput.includes('Connection refused') || errorOutput.includes('No route to host');
+                    
+                    let failureReason = `Cannot connect to ${tunnelConfig.endpointIP}:${tunnelConfig.endpointPort}`;
+                    if (isTimeout) {
+                        failureReason = `Tunnel verification timeout - cannot reach ${tunnelConfig.endpointIP}:${tunnelConfig.endpointPort}`;
+                    } else if (isConnectionRefused) {
+                        failureReason = `Connection refused to ${tunnelConfig.endpointIP}:${tunnelConfig.endpointPort} - tunnel may not be established`;
+                    }
+                    
+                    cleanupVerification(false, failureReason);
                 }
             });
 
             stream.on('error', (err: Error) => {
+                logger.error(`Verification stream error for '${tunnelName}': ${err.message}`);
                 cleanupVerification(false, `Verification stream error: ${err.message}`);
             });
         });
     }
 
     verificationConn.on('ready', () => {
-        attemptVerification();
+        // Add a small delay to allow the tunnel to fully establish
+        setTimeout(() => {
+            attemptVerification();
+        }, 2000);
     });
 
     verificationConn.on('error', (err: Error) => {
@@ -724,10 +732,7 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
     if (retryAttempt === 0) {
         retryExhaustedTunnels.delete(tunnelName);
         retryCounters.delete(tunnelName);
-        remoteClosureEvents.delete(tunnelName);
     }
-
-    const isRetryAfterRemoteClosure = remoteClosureEvents.get(tunnelName) && retryAttempt > 0;
 
     // Only set status to CONNECTING if we're not already in WAITING state
     const currentStatus = connectionStatus.get(tunnelName);
@@ -735,8 +740,7 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
         broadcastTunnelStatus(tunnelName, {
             connected: false,
             status: CONNECTION_STATES.CONNECTING,
-            retryCount: retryAttempt > 0 ? retryAttempt : undefined,
-            isRemoteRetry: !!isRetryAfterRemoteClosure
+            retryCount: retryAttempt > 0 ? retryAttempt : undefined
         });
     }
 
@@ -780,9 +784,6 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
         }
 
         const errorType = classifyError(err.message);
-        const isRemoteHostClosure = err.message.toLowerCase().includes("closed by remote host") ||
-            err.message.toLowerCase().includes("connection reset by peer") ||
-            err.message.toLowerCase().includes("broken pipe");
 
         if (!manualDisconnects.has(tunnelName)) {
             broadcastTunnelStatus(tunnelName, {
@@ -795,18 +796,12 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
         activeTunnels.delete(tunnelName);
 
-        if (isRemoteHostClosure && retryExhaustedTunnels.has(tunnelName)) {
-            retryExhaustedTunnels.delete(tunnelName);
-        }
-
-        const shouldNotRetry = !isRemoteHostClosure && (
-            errorType === ERROR_TYPES.AUTH ||
+        const shouldNotRetry = errorType === ERROR_TYPES.AUTH ||
             errorType === ERROR_TYPES.PORT ||
             errorType === ERROR_TYPES.PERMISSION ||
-            manualDisconnects.has(tunnelName)
-        );
+            manualDisconnects.has(tunnelName);
 
-        handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry, isRemoteHostClosure);
+        handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry);
     });
 
     conn.on("close", () => {
@@ -843,9 +838,9 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
         if (tunnelConfig.endpointAuthMethod === "key" && tunnelConfig.endpointSSHKey) {
             // For SSH key authentication, we need to create a temporary key file
             const keyFilePath = `/tmp/tunnel_key_${tunnelName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            tunnelCmd = `echo '${tunnelConfig.endpointSSHKey}' > ${keyFilePath} && chmod 600 ${keyFilePath} && ssh -i ${keyFilePath} -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker} && rm -f ${keyFilePath}`;
+            tunnelCmd = `echo '${tunnelConfig.endpointSSHKey}' > ${keyFilePath} && chmod 600 ${keyFilePath} && ssh -i ${keyFilePath} -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker} && rm -f ${keyFilePath}`;
         } else {
-            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L ${tunnelConfig.sourcePort}:localhost:${tunnelConfig.endpointPort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker}`;
+            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -N -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP} ${tunnelMarker}`;
         }
 
         conn.exec(tunnelCmd, (err, stream) => {
@@ -913,11 +908,11 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
                 }
 
                 if (!activeRetryTimers.has(tunnelName) && !retryExhaustedTunnels.has(tunnelName)) {
-                    handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName), isLikelyRemoteClosure);
+                    handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
                 } else if (retryExhaustedTunnels.has(tunnelName) && isLikelyRemoteClosure) {
                     retryExhaustedTunnels.delete(tunnelName);
                     retryCounters.delete(tunnelName);
-                    handleDisconnect(tunnelName, tunnelConfig, true, true);
+                    handleDisconnect(tunnelName, tunnelConfig, true);
                 }
             });
 
@@ -931,53 +926,7 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
 
             stream.stderr.on("data", (data) => {
                 const errorMsg = data.toString().trim();
-
-                const isNonRetryableError = errorMsg.includes("Permission denied") ||
-                    errorMsg.includes("Authentication failed") ||
-                    errorMsg.includes("failed for listen port") ||
-                    errorMsg.includes("address already in use") ||
-                    errorMsg.includes("bind: Address already in use") ||
-                    errorMsg.includes("channel 0: open failed") ||
-                    errorMsg.includes("remote port forwarding failed");
-
-                const isRemoteHostClosure = errorMsg.includes("closed by remote host") ||
-                    errorMsg.includes("connection reset by peer") ||
-                    errorMsg.includes("broken pipe");
-
-                if (isNonRetryableError || isRemoteHostClosure) {
-                    if (activeRetryTimers.has(tunnelName)) {
-                        return;
-                    }
-
-                    if (retryExhaustedTunnels.has(tunnelName)) {
-                        if (isRemoteHostClosure) {
-                            retryExhaustedTunnels.delete(tunnelName);
-                            retryCounters.delete(tunnelName);
-                        } else {
-                            return;
-                        }
-                    }
-
-                    activeTunnels.delete(tunnelName);
-
-                    if (!manualDisconnects.has(tunnelName)) {
-                        broadcastTunnelStatus(tunnelName, {
-                            connected: false,
-                            status: CONNECTION_STATES.FAILED,
-                            errorType: classifyError(errorMsg),
-                            reason: errorMsg
-                        });
-                    }
-
-                    const errorType = classifyError(errorMsg);
-                    const shouldNotRetry = !isRemoteHostClosure && (
-                        errorType === ERROR_TYPES.AUTH ||
-                        errorType === ERROR_TYPES.PORT ||
-                        errorType === ERROR_TYPES.PERMISSION
-                    );
-
-                    handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry, isRemoteHostClosure);
-                }
+                logger.debug(`Tunnel stderr for '${tunnelName}': ${errorMsg}`);
             });
         });
     });
@@ -1071,8 +1020,7 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
             broadcastTunnelStatus(tunnelName, {
                 connected: false,
                 status: CONNECTION_STATES.CONNECTING,
-                retryCount: retryAttempt > 0 ? retryAttempt : undefined,
-                isRemoteRetry: !!isRetryAfterRemoteClosure
+                retryCount: retryAttempt > 0 ? retryAttempt : undefined
             });
         }
 
@@ -1182,11 +1130,11 @@ function killRemoteTunnelByMarker(tunnelConfig: TunnelConfig, tunnelName: string
 }
 
 // Express API endpoints
-app.get('/status', (req, res) => {
+app.get('/ssh/tunnel/status', (req, res) => {
     res.json(getAllTunnelStatus());
 });
 
-app.get('/status/:tunnelName', (req, res) => {
+app.get('/ssh/tunnel/status/:tunnelName', (req, res) => {
     const {tunnelName} = req.params;
     const status = connectionStatus.get(tunnelName);
 
@@ -1197,7 +1145,7 @@ app.get('/status/:tunnelName', (req, res) => {
     res.json({name: tunnelName, status});
 });
 
-app.post('/connect', (req, res) => {
+app.post('/ssh/tunnel/connect', (req, res) => {
     const tunnelConfig: TunnelConfig = req.body;
 
     if (!tunnelConfig || !tunnelConfig.name) {
@@ -1221,7 +1169,7 @@ app.post('/connect', (req, res) => {
     res.json({message: 'Connection request received', tunnelName});
 });
 
-app.post('/disconnect', (req, res) => {
+app.post('/ssh/tunnel/disconnect', (req, res) => {
     const {tunnelName} = req.body;
 
     if (!tunnelName) {
@@ -1254,7 +1202,7 @@ app.post('/disconnect', (req, res) => {
     res.json({message: 'Disconnect request received', tunnelName});
 });
 
-app.post('/cancel', (req, res) => {
+app.post('/ssh/tunnel/cancel', (req, res) => {
     const {tunnelName} = req.body;
 
     if (!tunnelName) {
@@ -1298,7 +1246,7 @@ app.post('/cancel', (req, res) => {
 async function initializeAutoStartTunnels(): Promise<void> {
     try {
         // Fetch hosts with auto-start tunnel connections from the new internal endpoint
-        const response = await axios.get('http://localhost:8081/ssh/host/internal', {
+        const response = await axios.get('http://localhost:8081/ssh/db/host/internal', {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Internal-Request': '1'

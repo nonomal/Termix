@@ -83,22 +83,28 @@ interface TunnelStatus {
 
 // Determine the base URL based on environment
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const baseURL = isLocalhost ? 'http://localhost:8081' : window.location.origin;
 
-// Create axios instance with base configuration
-const api = axios.create({
-    baseURL,
+// Create separate axios instances for different services
+const sshHostApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8081' : window.location.origin,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Create tunnel API instance
 const tunnelApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8083' : window.location.origin,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
+const configEditorApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8084' : window.location.origin,
+    headers: {
+        'Content-Type': 'application/json',
+    }
+})
 
 function getCookie(name: string): string | undefined {
     const value = `; ${document.cookie}`;
@@ -106,27 +112,30 @@ function getCookie(name: string): string | undefined {
     if (parts.length === 2) return parts.pop()?.split(';').shift();
 }
 
-// Add request interceptor to include JWT token
-api.interceptors.request.use((config) => {
-    const token = getCookie('jwt'); // Adjust based on your token storage
+// Add request interceptor to include JWT token for SSH Host API
+sshHostApi.interceptors.request.use((config) => {
+    const token = getCookie('jwt');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
 });
 
+// Add request interceptor to include JWT token for Tunnel API
 tunnelApi.interceptors.request.use((config) => {
-    const token = getCookie('jwt'); // Adjust based on your token storage
+    const token = getCookie('jwt');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
 });
+
+// Host-related functions (use port 8081 for localhost)
 
 // Get all SSH hosts
 export async function getSSHHosts(): Promise<SSHHost[]> {
     try {
-        const response = await api.get('/ssh/host');
+        const response = await sshHostApi.get('/ssh/db/host');
         return response.data;
     } catch (error) {
         console.error('Error fetching SSH hosts:', error);
@@ -181,7 +190,7 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
             formData.append('data', JSON.stringify(dataWithoutFile));
 
             // Submit with FormData
-            const response = await api.post('/ssh/host', formData, {
+            const response = await sshHostApi.post('/ssh/db/host', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -190,7 +199,7 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
             return response.data;
         } else {
             // Submit with JSON
-            const response = await api.post('/ssh/host', submitData);
+            const response = await sshHostApi.post('/ssh/db/host', submitData);
             return response.data;
         }
     } catch (error) {
@@ -239,7 +248,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
 
-            const response = await api.put(`/ssh/host/${hostId}`, formData, {
+            const response = await sshHostApi.put(`/ssh/db/host/${hostId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -247,7 +256,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
 
             return response.data;
         } else {
-            const response = await api.put(`/ssh/host/${hostId}`, submitData);
+            const response = await sshHostApi.put(`/ssh/db/host/${hostId}`, submitData);
             return response.data;
         }
     } catch (error) {
@@ -259,7 +268,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
 // Delete SSH host
 export async function deleteSSHHost(hostId: number): Promise<any> {
     try {
-        const response = await api.delete(`/ssh/host/${hostId}`);
+        const response = await sshHostApi.delete(`/ssh/db/host/${hostId}`);
         return response.data;
     } catch (error) {
         console.error('Error deleting SSH host:', error);
@@ -270,7 +279,7 @@ export async function deleteSSHHost(hostId: number): Promise<any> {
 // Get SSH host by ID
 export async function getSSHHostById(hostId: number): Promise<SSHHost> {
     try {
-        const response = await api.get(`/ssh/host/${hostId}`);
+        const response = await sshHostApi.get(`/ssh/db/host/${hostId}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching SSH host:', error);
@@ -278,14 +287,12 @@ export async function getSSHHostById(hostId: number): Promise<SSHHost> {
     }
 }
 
-// Tunnel-related functions
+// Tunnel-related functions (use port 8083 for localhost)
 
 // Get all tunnel statuses (per-tunnel)
 export async function getTunnelStatuses(): Promise<Record<string, TunnelStatus>> {
     try {
-        // Determine the tunnel API URL based on environment
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/status' : `${baseURL}/ssh_tunnel/status`;
-        const response = await tunnelApi.get(tunnelUrl);
+        const response = await tunnelApi.get('/ssh/tunnel/status');
         return response.data || {};
     } catch (error) {
         console.error('Error fetching tunnel statuses:', error);
@@ -302,9 +309,7 @@ export async function getTunnelStatusByName(tunnelName: string): Promise<TunnelS
 // Connect tunnel (per-tunnel)
 export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
     try {
-        // Determine the tunnel API URL based on environment
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/connect' : `${baseURL}/ssh_tunnel/connect`;
-        const response = await tunnelApi.post(tunnelUrl, tunnelConfig);
+        const response = await tunnelApi.post('/ssh/tunnel/connect', tunnelConfig);
         return response.data;
     } catch (error) {
         console.error('Error connecting tunnel:', error);
@@ -315,9 +320,7 @@ export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
 // Disconnect tunnel (per-tunnel)
 export async function disconnectTunnel(tunnelName: string): Promise<any> {
     try {
-        // Determine the tunnel API URL based on environment
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/disconnect' : `${baseURL}/ssh_tunnel/disconnect`;
-        const response = await tunnelApi.post(tunnelUrl, { tunnelName });
+        const response = await tunnelApi.post('/ssh/tunnel/disconnect', { tunnelName });
         return response.data;
     } catch (error) {
         console.error('Error disconnecting tunnel:', error);
@@ -327,9 +330,7 @@ export async function disconnectTunnel(tunnelName: string): Promise<any> {
 
 export async function cancelTunnel(tunnelName: string): Promise<any> {
     try {
-        // Determine the tunnel API URL based on environment
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/cancel' : `${baseURL}/ssh_tunnel/cancel`;
-        const response = await tunnelApi.post(tunnelUrl, { tunnelName });
+        const response = await tunnelApi.post('/ssh/tunnel/cancel', { tunnelName });
         return response.data;
     } catch (error) {
         console.error('Error canceling tunnel:', error);
@@ -337,4 +338,6 @@ export async function cancelTunnel(tunnelName: string): Promise<any> {
     }
 }
 
-export { api };
+// Config-related functions (use port 8084 for localhost)
+
+export { sshHostApi, tunnelApi, configEditorApi };

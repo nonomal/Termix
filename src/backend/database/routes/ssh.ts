@@ -90,7 +90,7 @@ function isLocalhost(req: Request) {
 }
 
 // Internal-only endpoint for autostart (no JWT)
-router.get('/host/internal', async (req: Request, res: Response) => {
+router.get('/db/host/internal', async (req: Request, res: Response) => {
     if (!isLocalhost(req) && req.headers['x-internal-request'] !== '1') {
         logger.warn('Unauthorized attempt to access internal SSH host endpoint');
         return res.status(403).json({ error: 'Forbidden' });
@@ -116,7 +116,7 @@ router.get('/host/internal', async (req: Request, res: Response) => {
 
 // Route: Create SSH data (requires JWT)
 // POST /ssh/host
-router.post('/host', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
+router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
     let hostData: any;
     
     // Check if this is a multipart form data request (file upload)
@@ -191,7 +191,7 @@ router.post('/host', authenticateJWT, upload.single('key'), async (req: Request,
 
 // Route: Update SSH data (requires JWT)
 // PUT /ssh/host/:id
-router.put('/host/:id', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
+router.put('/db/host/:id', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
     let hostData: any;
     
     // Check if this is a multipart form data request (file upload)
@@ -268,7 +268,7 @@ router.put('/host/:id', authenticateJWT, upload.single('key'), async (req: Reque
 
 // Route: Get SSH data for the authenticated user (requires JWT)
 // GET /ssh/host
-router.get('/host', authenticateJWT, async (req: Request, res: Response) => {
+router.get('/db/host', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for SSH data fetch');
@@ -298,7 +298,7 @@ router.get('/host', authenticateJWT, async (req: Request, res: Response) => {
 
 // Route: Get SSH host by ID (requires JWT)
 // GET /ssh/host/:id
-router.get('/host/:id', authenticateJWT, async (req: Request, res: Response) => {
+router.get('/db/host/:id', authenticateJWT, async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).userId;
     
@@ -337,7 +337,7 @@ router.get('/host/:id', authenticateJWT, async (req: Request, res: Response) => 
 
 // Route: Get all unique folders for the authenticated user (requires JWT)
 // GET /ssh/folders
-router.get('/folders', authenticateJWT, async (req: Request, res: Response) => {
+router.get('/db/folders', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for SSH folder fetch');
@@ -367,7 +367,7 @@ router.get('/folders', authenticateJWT, async (req: Request, res: Response) => {
 
 // Route: Delete SSH host by id (requires JWT)
 // DELETE /ssh/host/:id
-router.delete('/host/:id', authenticateJWT, async (req: Request, res: Response) => {
+router.delete('/db/host/:id', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { id } = req.params;
     if (!isNonEmptyString(userId) || !id) {

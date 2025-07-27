@@ -6,11 +6,9 @@ import { Client as SSHClient } from 'ssh2';
 import chalk from "chalk";
 
 const app = express();
-const PORT = 8084;
 
 app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true,
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -287,4 +285,5 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
+const PORT = 8084;
 app.listen(PORT, () => {});

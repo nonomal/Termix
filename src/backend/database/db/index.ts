@@ -31,12 +31,14 @@ const logger = {
     }
 };
 
-const dbDir = path.resolve('./db/data');
+const dataDir = process.env.DATA_DIR || './db/data';
+const dbDir = path.resolve(dataDir);
 if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const sqlite = new Database('./db/data/db.sqlite');
+const dbPath = path.join(dataDir, 'db.sqlite');
+const sqlite = new Database(dbPath);
 
 // Create tables using Drizzle schema
 sqlite.exec(`

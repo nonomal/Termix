@@ -51,8 +51,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ github.ref_name }}-${{ hashFiles('docker/Dockerfile') }}
           restore-keys: |
+            ${{ runner.os }}-buildx-${{ github.ref_name }}-
             ${{ runner.os }}-buildx-
 
       - name: Login to Docker Registry
@@ -65,10 +66,14 @@ jobs:
       - name: Determine Docker image tag
         run: |
           echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-          if [ "${{ github.event.inputs.tag_name }}" == "" ]; then
-            IMAGE_TAG="${{ github.ref_name }}-development-latest"
-          else
+          if [ "${{ github.event.inputs.tag_name }}" != "" ]; then
             IMAGE_TAG="${{ github.event.inputs.tag_name }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            IMAGE_TAG="latest"
+          elif [ "${{ github.ref }}" == "refs/heads/development" ]; then
+            IMAGE_TAG="development-latest"
+          else
+            IMAGE_TAG="${{ github.ref_name }}-development-latest"
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
@@ -94,12 +99,6 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-      - name: Notify via ntfy
-        if: success()
-        run: |
-          curl -d "Docker image build and push completed successfully for tag: ${{ env.IMAGE_TAG }}" \
-          https://ntfy.karmaa.site/termix-build
 
       - name: Delete all untagged image versions
         if: success()

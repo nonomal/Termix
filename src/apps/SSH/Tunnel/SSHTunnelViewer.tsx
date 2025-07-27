@@ -47,7 +47,7 @@ interface SSHTunnelViewerProps {
     hosts: SSHHost[];
     tunnelStatuses: Record<string, TunnelStatus>;
     tunnelActions: Record<string, boolean>;
-    onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<void>;
+    onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<any>;
 }
 
 export function SSHTunnelViewer({ 
