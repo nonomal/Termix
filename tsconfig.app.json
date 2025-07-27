@@ -15,7 +15,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - Made much less strict */
+    /* Linting - Made extremely permissive */
     "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -29,6 +29,8 @@
     "noPropertyAccessFromIndexSignature": false,
     "allowUnusedLabels": true,
     "allowUnreachableCode": true,
+    "noImplicitOverride": false,
+    "noEmitOnError": false,
 
     /* shadcn */
     "baseUrl": ".",
