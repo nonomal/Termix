@@ -2,81 +2,120 @@ import React from "react";
 import { SSHTunnelObject } from "./SSHTunnelObject.tsx";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Search } from "lucide-react";
+
+interface SSHHost {
+    id: number;
+    name: string;
+    ip: string;
+    port: number;
+    username: string;
+    folder: string;
+    tags: string[];
+    pin: boolean;
+    authType: string;
+    enableTerminal: boolean;
+    enableTunnel: boolean;
+    enableConfigEditor: boolean;
+    defaultPath: string;
+    tunnelConnections: any[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface HostStatus {
+    connectionState?: string;
+    statusReason?: string;
+    statusErrorType?: string;
+    statusRetryCount?: number;
+    statusMaxRetries?: number;
+    statusNextRetryIn?: number;
+    statusRetryExhausted?: boolean;
+}
 
 interface SSHTunnelViewerProps {
-    tunnels: Array<{
-        id: number;
-        name: string;
-        folder: string;
-        sourcePort: number;
-        endpointPort: number;
-        sourceIP: string;
-        sourceSSHPort: number;
-        sourceUsername: string;
-        sourcePassword: string;
-        sourceAuthMethod: string;
-        sourceSSHKey: string;
-        sourceKeyPassword: string;
-        sourceKeyType: string;
-        endpointIP: string;
-        endpointSSHPort: number;
-        endpointUsername: string;
-        endpointPassword: string;
-        endpointAuthMethod: string;
-        endpointSSHKey: string;
-        endpointKeyPassword: string;
-        endpointKeyType: string;
-        maxRetries: number;
-        retryInterval: number;
-        connectionState?: string;
-        autoStart: boolean;
-        isPinned: boolean;
-    }>;
-    onConnect?: (tunnelId: string) => void;
-    onDisconnect?: (tunnelId: string) => void;
-    onDeleteTunnel?: (tunnelId: string) => void;
-    onEditTunnel?: (tunnelId: string) => void;
+    hosts: SSHHost[];
+    hostStatuses?: Record<number, HostStatus>;
+    onConnect?: (hostId: number) => void;
+    onDisconnect?: (hostId: number) => void;
 }
 
 export function SSHTunnelViewer({ 
-    tunnels = [], 
-    onConnect, 
-    onDisconnect,
-    onDeleteTunnel,
-    onEditTunnel
+    hosts = [], 
+    hostStatuses = {},
+    onConnect,
+    onDisconnect
 }: SSHTunnelViewerProps): React.ReactElement {
-    const handleConnect = (tunnelId: string) => {
-        onConnect?.(tunnelId);
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const [debouncedSearch, setDebouncedSearch] = React.useState("");
+
+    // Debounce search
+    React.useEffect(() => {
+        const handler = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
+
+    const handleConnect = (hostId: number) => {
+        onConnect?.(hostId);
     };
 
-    const handleDisconnect = (tunnelId: string) => {
-        onDisconnect?.(tunnelId);
+    const handleDisconnect = (hostId: number) => {
+        onDisconnect?.(hostId);
     };
 
-    // Group tunnels by folder and sort
-    const tunnelsByFolder = React.useMemo(() => {
-        const map: Record<string, typeof tunnels> = {};
-        tunnels.forEach(tunnel => {
-            const folder = tunnel.folder && tunnel.folder.trim() ? tunnel.folder : 'No Folder';
+    // Filter hosts by search query
+    const filteredHosts = React.useMemo(() => {
+        if (!debouncedSearch.trim()) return hosts;
+        
+        const query = debouncedSearch.trim().toLowerCase();
+        return hosts.filter(host => {
+            const searchableText = [
+                host.name || '',
+                host.username,
+                host.ip,
+                host.folder || '',
+                ...(host.tags || []),
+                host.authType,
+                host.defaultPath || ''
+            ].join(' ').toLowerCase();
+            return searchableText.includes(query);
+        });
+    }, [hosts, debouncedSearch]);
+
+    // Filter hosts to only show those with enableTunnel: true and tunnelConnections
+    const tunnelHosts = React.useMemo(() => {
+        return filteredHosts.filter(host => 
+            host.enableTunnel && 
+            host.tunnelConnections && 
+            host.tunnelConnections.length > 0
+        );
+    }, [filteredHosts]);
+
+    // Group hosts by folder and sort
+    const hostsByFolder = React.useMemo(() => {
+        const map: Record<string, SSHHost[]> = {};
+        tunnelHosts.forEach(host => {
+            const folder = host.folder && host.folder.trim() ? host.folder : 'Uncategorized';
             if (!map[folder]) map[folder] = [];
-            map[folder].push(tunnel);
+            map[folder].push(host);
         });
         return map;
-    }, [tunnels]);
+    }, [tunnelHosts]);
 
     const sortedFolders = React.useMemo(() => {
-        const folders = Object.keys(tunnelsByFolder);
+        const folders = Object.keys(hostsByFolder);
         folders.sort((a, b) => {
-            if (a === 'No Folder') return -1;
-            if (b === 'No Folder') return 1;
+            if (a === 'Uncategorized') return -1;
+            if (b === 'Uncategorized') return 1;
             return a.localeCompare(b);
         });
         return folders;
-    }, [tunnelsByFolder]);
+    }, [hostsByFolder]);
 
-    const getSortedTunnels = (arr: typeof tunnels) => {
-        const pinned = arr.filter(t => t.isPinned).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        const rest = arr.filter(t => !t.isPinned).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const getSortedHosts = (arr: SSHHost[]) => {
+        const pinned = arr.filter(h => h.pin).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        const rest = arr.filter(h => !h.pin).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         return [...pinned, ...rest];
     };
 
@@ -93,14 +132,28 @@ export function SSHTunnelViewer({
                     </p>
                 </div>
 
+                {/* Search Bar */}
+                <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search hosts by name, username, IP, folder, tags..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+
                 {/* Accordion Layout */}
-                {tunnels.length === 0 ? (
+                {tunnelHosts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <h3 className="text-lg font-semibold text-foreground mb-2">
                             No SSH Tunnels
                         </h3>
                         <p className="text-muted-foreground max-w-md">
-                            Create your first SSH tunnel to get started. Use the sidebar to add a new tunnel configuration.
+                            {searchQuery.trim() ? 
+                                "No hosts match your search criteria." :
+                                "Create your first SSH tunnel to get started. Use the SSH Manager to add hosts with tunnel connections."
+                            }
                         </p>
                     </div>
                 ) : (
@@ -112,16 +165,19 @@ export function SSHTunnelViewer({
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col gap-1 px-3 pb-2 pt-1">
                                     <div className="grid grid-cols-4 gap-6 w-full">
-                                        {getSortedTunnels(tunnelsByFolder[folder]).map((tunnel, tunnelIndex) => (
-                                            <div key={tunnel.id} className="w-full">
+                                        {getSortedHosts(hostsByFolder[folder]).map((host, hostIndex) => (
+                                            <div key={host.id} className="w-full">
                                                 <SSHTunnelObject
-                                                    hostConfig={tunnel}
-                                                    connectionState={tunnel.connectionState as any}
-                                                    isPinned={tunnel.isPinned}
-                                                    onConnect={() => handleConnect(tunnel.id.toString())}
-                                                    onDisconnect={() => handleDisconnect(tunnel.id.toString())}
-                                                    onDelete={() => onDeleteTunnel?.(tunnel.id.toString())}
-                                                    onEdit={() => onEditTunnel?.(tunnel.id.toString())}
+                                                    host={host}
+                                                    connectionState={hostStatuses[host.id]?.connectionState as any}
+                                                    statusReason={hostStatuses[host.id]?.statusReason}
+                                                    statusErrorType={hostStatuses[host.id]?.statusErrorType}
+                                                    statusRetryCount={hostStatuses[host.id]?.statusRetryCount}
+                                                    statusMaxRetries={hostStatuses[host.id]?.statusMaxRetries}
+                                                    statusNextRetryIn={hostStatuses[host.id]?.statusNextRetryIn}
+                                                    statusRetryExhausted={hostStatuses[host.id]?.statusRetryExhausted}
+                                                    onConnect={() => handleConnect(host.id)}
+                                                    onDisconnect={() => handleDisconnect(host.id)}
                                                 />
                                             </div>
                                         ))}

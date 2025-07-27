@@ -1,90 +1,75 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
 import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
+import { getSSHHosts } from "@/apps/SSH/ssh-axios";
 import axios from "axios";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;
 }
 
-interface SSHTunnel {
-    id: number;
-    name: string;
-    folder: string;
+interface TunnelConnection {
     sourcePort: number;
     endpointPort: number;
-    sourceIP: string;
-    sourceSSHPort: number;
-    sourceUsername: string;
-    sourcePassword: string;
-    sourceAuthMethod: string;
-    sourceSSHKey: string;
-    sourceKeyPassword: string;
-    sourceKeyType: string;
-    endpointIP: string;
-    endpointSSHPort: number;
-    endpointUsername: string;
-    endpointPassword: string;
-    endpointAuthMethod: string;
-    endpointSSHKey: string;
-    endpointKeyPassword: string;
-    endpointKeyType: string;
+    endpointHost: string;
     maxRetries: number;
     retryInterval: number;
-    connectionState: string;
     autoStart: boolean;
-    isPinned: boolean;
+}
+
+interface SSHHost {
+    id: number;
+    name: string;
+    ip: string;
+    port: number;
+    username: string;
+    folder: string;
+    tags: string[];
+    pin: boolean;
+    authType: string;
+    password?: string;
+    key?: string;
+    keyPassword?: string;
+    keyType?: string;
+    enableTerminal: boolean;
+    enableTunnel: boolean;
+    enableConfigEditor: boolean;
+    defaultPath: string;
+    tunnelConnections: TunnelConnection[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface HostStatus {
+    connectionState?: string;
+    statusReason?: string;
+    statusErrorType?: string;
+    statusRetryCount?: number;
+    statusMaxRetries?: number;
+    statusNextRetryIn?: number;
+    statusRetryExhausted?: boolean;
+}
+
+interface TunnelStatus {
+    status: string;
+    reason?: string;
+    errorType?: string;
+    retryCount?: number;
+    maxRetries?: number;
+    nextRetryIn?: number;
+    retryExhausted?: boolean;
 }
 
 export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactElement {
-    const [tunnels, setTunnels] = useState<SSHTunnel[]>([]);
-    const [tunnelsLoading, setTunnelsLoading] = useState(false);
-    const [tunnelsError, setTunnelsError] = useState<string | null>(null);
-    const [tunnelStatusMap, setTunnelStatusMap] = useState<Record<string, any>>({});
-    const sidebarRef = React.useRef<any>(null);
+    const [hosts, setHosts] = useState<SSHHost[]>([]);
+    const [hostStatuses, setHostStatuses] = useState<Record<number, HostStatus>>({});
 
-    const fetchTunnels = useCallback(async () => {
-        setTunnelsLoading(true);
-        setTunnelsError(null);
+    const fetchHosts = useCallback(async () => {
         try {
-            const jwt = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1];
-            const res = await axios.get(
-                (window.location.hostname === 'localhost' ? 'http://localhost:8081' : '') + '/ssh_tunnel/tunnel',
-                { headers: { Authorization: `Bearer ${jwt}` } }
-            );
-            const tunnelData = res.data || [];
-            setTunnels(tunnelData.map((tunnel: any) => ({
-                id: tunnel.id,
-                name: tunnel.name,
-                folder: tunnel.folder || '',
-                sourcePort: tunnel.sourcePort,
-                endpointPort: tunnel.endpointPort,
-                sourceIP: tunnel.sourceIP,
-                sourceSSHPort: tunnel.sourceSSHPort,
-                sourceUsername: tunnel.sourceUsername || '',
-                sourcePassword: tunnel.sourcePassword || '',
-                sourceAuthMethod: tunnel.sourceAuthMethod || 'password',
-                sourceSSHKey: tunnel.sourceSSHKey || '',
-                sourceKeyPassword: tunnel.sourceKeyPassword || '',
-                sourceKeyType: tunnel.sourceKeyType || '',
-                endpointIP: tunnel.endpointIP,
-                endpointSSHPort: tunnel.endpointSSHPort,
-                endpointUsername: tunnel.endpointUsername || '',
-                endpointPassword: tunnel.endpointPassword || '',
-                endpointAuthMethod: tunnel.endpointAuthMethod || 'password',
-                endpointSSHKey: tunnel.endpointSSHKey || '',
-                endpointKeyPassword: tunnel.endpointKeyPassword || '',
-                endpointKeyType: tunnel.endpointKeyType || '',
-                maxRetries: tunnel.maxRetries || 3,
-                retryInterval: tunnel.retryInterval || 5000,
-                connectionState: tunnel.connectionState || 'DISCONNECTED',
-                autoStart: tunnel.autoStart || false,
-                isPinned: tunnel.isPinned || false
-            })));
-        } catch (err: any) {
-            setTunnelsError('Failed to load tunnels');
-        } finally {
-            setTunnelsLoading(false);
+            const hostsData = await getSSHHosts();
+            setHosts(hostsData);
+        } catch (err) {
+            // Silent error handling
         }
     }, []);
 
@@ -92,17 +77,75 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
     const fetchTunnelStatuses = useCallback(async () => {
         try {
             const res = await axios.get('http://localhost:8083/status');
-            setTunnelStatusMap(res.data || {});
+            const statusData = res.data || {};
+            
+            // Convert tunnel statuses to host statuses
+            const newHostStatuses: Record<number, HostStatus> = {};
+            
+            hosts.forEach(host => {
+                // Find all tunnel statuses for this host
+                const hostName = host.name || `${host.username}@${host.ip}`;
+                const hostTunnelStatuses: TunnelStatus[] = [];
+                
+                // Look for tunnel statuses that start with this host name
+                Object.entries(statusData).forEach(([tunnelName, status]) => {
+                    if (tunnelName.startsWith(hostName + '_')) {
+                        hostTunnelStatuses.push(status as any);
+                    }
+                });
+                
+                if (hostTunnelStatuses.length > 0) {
+                    // Determine overall host status based on tunnel statuses
+                    const connectedTunnels = hostTunnelStatuses.filter(s => s.status === 'connected');
+                    const failedTunnels = hostTunnelStatuses.filter(s => s.status === 'failed');
+                    const connectingTunnels = hostTunnelStatuses.filter(s => 
+                        ['connecting', 'verifying', 'retrying'].includes(s.status)
+                    );
+                    
+                    let overallStatus: string;
+                    let statusReason: string | undefined;
+                    
+                    if (connectingTunnels.length > 0) {
+                        overallStatus = 'connecting';
+                    } else if (failedTunnels.length === hostTunnelStatuses.length) {
+                        overallStatus = 'failed';
+                        statusReason = failedTunnels[0]?.reason;
+                    } else if (connectedTunnels.length === hostTunnelStatuses.length) {
+                        overallStatus = 'connected';
+                    } else if (connectedTunnels.length > 0) {
+                        overallStatus = 'connected';
+                    } else {
+                        overallStatus = 'disconnected';
+                    }
+                    
+                    newHostStatuses[host.id] = {
+                        connectionState: overallStatus,
+                        statusReason,
+                        statusErrorType: failedTunnels[0]?.errorType,
+                        statusRetryCount: connectingTunnels.find(s => s.status === 'retrying')?.retryCount,
+                        statusMaxRetries: connectingTunnels.find(s => s.status === 'retrying')?.maxRetries,
+                        statusNextRetryIn: connectingTunnels.find(s => s.status === 'retrying')?.nextRetryIn,
+                        statusRetryExhausted: failedTunnels.some(s => s.retryExhausted),
+                    };
+                } else {
+                    // Set default disconnected status
+                    newHostStatuses[host.id] = {
+                        connectionState: 'disconnected'
+                    };
+                }
+            });
+            
+            setHostStatuses(newHostStatuses);
         } catch (err) {
-            // Optionally handle error
+            // Silent error handling
         }
-    }, []);
+    }, [hosts]);
 
     useEffect(() => {
-        fetchTunnels();
-        const interval = setInterval(fetchTunnels, 10000);
+        fetchHosts();
+        const interval = setInterval(fetchHosts, 10000);
         return () => clearInterval(interval);
-    }, [fetchTunnels]);
+    }, [fetchHosts]);
 
     useEffect(() => {
         fetchTunnelStatuses();
@@ -110,94 +153,88 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
         return () => clearInterval(interval);
     }, [fetchTunnelStatuses]);
 
-    // Merge backend status into tunnels
-    const tunnelsWithStatus = tunnels.map(tunnel => {
-        const status = tunnelStatusMap[tunnel.name] || {};
-        return {
-            ...tunnel,
-            connectionState: status.status ? status.status.toUpperCase() : tunnel.connectionState,
-            statusReason: status.reason || '',
-            statusErrorType: status.errorType || '',
-            statusManualDisconnect: status.manualDisconnect || false,
-            statusRetryCount: status.retryCount,
-            statusMaxRetries: status.maxRetries,
-            statusNextRetryIn: status.nextRetryIn,
-            statusRetryExhausted: status.retryExhausted,
-        };
-    });
+    const handleConnect = async (hostId: number) => {
+        const host = hosts.find(h => h.id === hostId);
+        if (!host || !host.tunnelConnections || host.tunnelConnections.length === 0) {
+            return;
+        }
 
-    const handleConnect = async (tunnelId: string) => {
         // Immediately set to CONNECTING for instant UI feedback
-        setTunnels(prev => prev.map(t =>
-            t.id.toString() === tunnelId
-                ? { ...t, connectionState: "CONNECTING" }
-                : t
-        ));
-        const tunnel = tunnels.find(t => t.id.toString() === tunnelId);
-        if (!tunnel) return;
+        setHostStatuses(prev => ({
+            ...prev,
+            [hostId]: { ...prev[hostId], connectionState: "connecting" }
+        }));
+
         try {
-            await axios.post('http://localhost:8083/connect', {
-                ...tunnel,
-                name: tunnel.name
-            });
-            // No need to update state here; polling will update real status
+            // For each tunnel connection, create a tunnel configuration
+            for (const tunnelConnection of host.tunnelConnections) {
+                // Find the endpoint host configuration
+                const endpointHost = hosts.find(h => 
+                    h.name === tunnelConnection.endpointHost || 
+                    `${h.username}@${h.ip}` === tunnelConnection.endpointHost
+                );
+
+                if (!endpointHost) {
+                    continue;
+                }
+
+                // Create tunnel configuration
+                const tunnelConfig = {
+                    name: `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`,
+                    hostName: host.name || `${host.username}@${host.ip}`,
+                    sourceIP: host.ip,
+                    sourceSSHPort: host.port,
+                    sourceUsername: host.username,
+                    sourcePassword: host.password,
+                    sourceAuthMethod: host.authType,
+                    sourceSSHKey: host.key,
+                    sourceKeyPassword: host.keyPassword,
+                    sourceKeyType: host.keyType,
+                    endpointIP: endpointHost.ip,
+                    endpointSSHPort: endpointHost.port,
+                    endpointUsername: endpointHost.username,
+                    endpointPassword: endpointHost.password,
+                    endpointAuthMethod: endpointHost.authType,
+                    endpointSSHKey: endpointHost.key,
+                    endpointKeyPassword: endpointHost.keyPassword,
+                    endpointKeyType: endpointHost.keyType,
+                    sourcePort: tunnelConnection.sourcePort,
+                    endpointPort: tunnelConnection.endpointPort,
+                    maxRetries: tunnelConnection.maxRetries,
+                    retryInterval: tunnelConnection.retryInterval * 1000, // Convert to milliseconds
+                    autoStart: tunnelConnection.autoStart,
+                    isPinned: host.pin
+                };
+
+                await axios.post('http://localhost:8083/connect', tunnelConfig);
+            }
         } catch (err) {
-            // Optionally handle error
+            // Reset status on error
+            setHostStatuses(prev => ({
+                ...prev,
+                [hostId]: { ...prev[hostId], connectionState: "failed", statusReason: "Failed to connect" }
+            }));
         }
     };
 
-    const handleDisconnect = async (tunnelId: string) => {
+    const handleDisconnect = async (hostId: number) => {
+        const host = hosts.find(h => h.id === hostId);
+        if (!host) return;
+
         // Immediately set to DISCONNECTING for instant UI feedback
-        setTunnels(prev => prev.map(t =>
-            t.id.toString() === tunnelId
-                ? { ...t, connectionState: "DISCONNECTING" }
-                : t
-        ));
-        const tunnel = tunnels.find(t => t.id.toString() === tunnelId);
-        if (!tunnel) return;
+        setHostStatuses(prev => ({
+            ...prev,
+            [hostId]: { ...prev[hostId], connectionState: "disconnecting" }
+        }));
+
         try {
-            await axios.post('http://localhost:8083/disconnect', {
-                tunnelName: tunnel.name
-            });
-            // No need to update state here; polling will update real status
+            // Disconnect all tunnels for this host
+            for (const tunnelConnection of host.tunnelConnections) {
+                const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`;
+                await axios.post('http://localhost:8083/disconnect', { tunnelName });
+            }
         } catch (err) {
-            // Optionally handle error
-        }
-    };
-
-    const handleDeleteTunnel = async (tunnelId: string) => {
-        try {
-            const jwt = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1];
-            await axios.delete(
-                (window.location.hostname === 'localhost' ? 'http://localhost:8081' : '') + `/ssh_tunnel/tunnel/${tunnelId}`,
-                { headers: { Authorization: `Bearer ${jwt}` } }
-            );
-            fetchTunnels();
-        } catch (err: any) {
-            console.error('Failed to delete tunnel:', err);
-        }
-    };
-
-    const handleEditTunnel = async (tunnelId: string, data: any) => {
-        try {
-            const jwt = document.cookie.split('; ').find(row => row.startsWith('jwt='))?.split('=')[1];
-            await axios.put(
-                (window.location.hostname === 'localhost' ? 'http://localhost:8081' : '') + `/ssh_tunnel/tunnel/${tunnelId}`,
-                data,
-                { headers: { Authorization: `Bearer ${jwt}` } }
-            );
-            fetchTunnels();
-        } catch (err: any) {
-            console.error('Failed to edit tunnel:', err);
-        }
-    };
-
-    const handleEditTunnelClick = (tunnelId: string) => {
-        // Find the tunnel data and pass it to the sidebar
-        const tunnel = tunnels.find(t => t.id.toString() === tunnelId);
-        if (tunnel && sidebarRef.current) {
-            // Call the sidebar's openEditSheet function
-            sidebarRef.current.openEditSheet(tunnel);
+            // Silent error handling
         }
     };
 
@@ -205,19 +242,15 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
         <div className="flex h-screen w-full">
             <div className="w-64 flex-shrink-0">
                 <SSHTunnelSidebar 
-                    ref={sidebarRef}
                     onSelectView={onSelectView} 
-                    onTunnelAdded={fetchTunnels}
-                    onEditTunnel={handleEditTunnelClick}
                 />
             </div>
             <div className="flex-1 overflow-auto">
                 <SSHTunnelViewer 
-                    tunnels={tunnelsWithStatus}
+                    hosts={hosts}
+                    hostStatuses={hostStatuses}
                     onConnect={handleConnect}
                     onDisconnect={handleDisconnect}
-                    onDeleteTunnel={handleDeleteTunnel}
-                    onEditTunnel={handleEditTunnelClick}
                 />
             </div>
         </div>

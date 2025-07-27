@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import {
     CornerDownLeft,
-    Hammer
+    Hammer, Pin
 } from "lucide-react"
 
 import {
@@ -131,10 +131,16 @@ export function SSHSidebar({ onSelectView, onHostConnect, allTabs, runCommandOnT
         if (!debouncedSearch.trim()) return hosts;
         const q = debouncedSearch.trim().toLowerCase();
         return hosts.filter(h => {
-            const name = (h.name || "").toLowerCase();
-            const ip = (h.ip || "").toLowerCase();
-            const tags = Array.isArray(h.tags) ? h.tags : [];
-            return name.includes(q) || ip.includes(q) || tags.some((tag: string) => tag.toLowerCase().includes(q));
+            const searchableText = [
+                h.name || '',
+                h.username,
+                h.ip,
+                h.folder || '',
+                ...(h.tags || []),
+                h.authType,
+                h.defaultPath || ''
+            ].join(' ').toLowerCase();
+            return searchableText.includes(q);
         });
     }, [hosts, debouncedSearch]);
 
@@ -214,7 +220,7 @@ export function SSHSidebar({ onSelectView, onHostConnect, allTabs, runCommandOnT
                                             <Input
                                                 value={search}
                                                 onChange={e => setSearch(e.target.value)}
-                                                placeholder="Search hosts..."
+                                                placeholder="Search hosts by name, username, IP, folder, tags..."
                                                 className="w-full h-8 text-sm bg-background border border-border rounded"
                                                 autoComplete="off"
                                             />
@@ -343,7 +349,9 @@ const HostMenuItem = React.memo(function HostMenuItem({ host, onHostConnect }: {
                          onClick={() => onHostConnect(host)}
                     >
                         <div className="flex items-center w-full">
-                            {host.pin && <span className="text-yellow-400 mr-1 flex-shrink-0">★</span>}
+                            {host.pin &&
+                                <Pin className="h-3.5 mr-1 w-3.5 mt-0.5 text-yellow-500 flex-shrink-0" />
+                            }
                             <span className="font-medium truncate">{host.name || host.ip}</span>
                         </div>
                     </div>

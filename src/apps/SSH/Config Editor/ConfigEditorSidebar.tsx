@@ -471,7 +471,9 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
         filteredSshByFolder[folder] = hosts.filter(conn => {
             const q = debouncedSearch.trim().toLowerCase();
             if (!q) return true;
-            return (conn.name || '').toLowerCase().includes(q) || (conn.ip || '').toLowerCase().includes(q);
+            return (conn.name || '').toLowerCase().includes(q) || (conn.ip || '').toLowerCase().includes(q) ||
+                   (conn.username || '').toLowerCase().includes(q) || (conn.folder || '').toLowerCase().includes(q) ||
+                   (conn.tags || '').toLowerCase().includes(q);
         });
     });
 
@@ -926,7 +928,7 @@ const ConfigEditorSidebar = forwardRef(function ConfigEditorSidebar(
                                                     <Input
                                                         value={search}
                                                         onChange={e => setSearch(e.target.value)}
-                                                        placeholder="Search hosts..."
+                                                        placeholder="Search hosts by name, username, IP, folder, tags..."
                                                         className="w-full h-8 text-sm bg-background border border-border rounded"
                                                         autoComplete="off"
                                                     />

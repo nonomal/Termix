@@ -46,21 +46,55 @@ const logger = {
     }
 };
 
-// State management
-const activeTunnels = new Map<string, Client>();
-const retryCounters = new Map<string, number>();
-const connectionStatus = new Map<string, TunnelStatus>();
-const tunnelVerifications = new Map<string, VerificationData>();
-const manualDisconnects = new Set<string>();
-const verificationTimers = new Map<string, NodeJS.Timeout>();
-const activeRetryTimers = new Map<string, NodeJS.Timeout>();
-const retryExhaustedTunnels = new Set<string>();
-const remoteClosureEvents = new Map<string, number>();
-const hostConfigs = new Map<string, HostConfig>();
+// State management for host-based tunnels
+const activeTunnels = new Map<string, Client>(); // tunnelName -> Client
+const retryCounters = new Map<string, number>(); // tunnelName -> retryCount
+const connectionStatus = new Map<string, TunnelStatus>(); // tunnelName -> status
+const tunnelVerifications = new Map<string, VerificationData>(); // tunnelName -> verification
+const manualDisconnects = new Set<string>(); // tunnelNames
+const verificationTimers = new Map<string, NodeJS.Timeout>(); // timer keys -> timeout
+const activeRetryTimers = new Map<string, NodeJS.Timeout>(); // tunnelName -> retry timer
+const retryExhaustedTunnels = new Set<string>(); // tunnelNames
+const remoteClosureEvents = new Map<string, number>(); // tunnelName -> count
+const hostConfigs = new Map<string, HostConfig>(); // hostName -> hostConfig
+const tunnelConfigs = new Map<string, TunnelConfig>(); // tunnelName -> tunnelConfig
 
 // Types
-interface HostConfig {
+interface TunnelConnection {
+    sourcePort: number;
+    endpointPort: number;
+    endpointHost: string;
+    maxRetries: number;
+    retryInterval: number;
+    autoStart: boolean;
+}
+
+interface SSHHost {
+    id: number;
     name: string;
+    ip: string;
+    port: number;
+    username: string;
+    folder: string;
+    tags: string[];
+    pin: boolean;
+    authType: string;
+    password?: string;
+    key?: string;
+    keyPassword?: string;
+    keyType?: string;
+    enableTerminal: boolean;
+    enableTunnel: boolean;
+    enableConfigEditor: boolean;
+    defaultPath: string;
+    tunnelConnections: TunnelConnection[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface TunnelConfig {
+    name: string;
+    hostName: string;
     sourceIP: string;
     sourceSSHPort: number;
     sourceUsername: string;
@@ -83,6 +117,11 @@ interface HostConfig {
     retryInterval: number;
     autoStart: boolean;
     isPinned: boolean;
+}
+
+interface HostConfig {
+    host: SSHHost;
+    tunnels: TunnelConfig[];
 }
 
 interface TunnelStatus {
@@ -135,8 +174,6 @@ function broadcastTunnelStatus(tunnelName: string, status: TunnelStatus): void {
         status.reason = "Max retries exhausted";
     }
 
-    // In Express, we'll use a different approach for broadcasting
-    // For now, we'll store the status and provide endpoints to fetch it
     connectionStatus.set(tunnelName, status);
 }
 
@@ -244,7 +281,7 @@ function resetRetryState(tunnelName: string): void {
     });
 }
 
-function handleDisconnect(tunnelName: string, hostConfig: HostConfig | null, shouldRetry = true, isRemoteClosure = false): void {
+function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null, shouldRetry = true, isRemoteClosure = false): void {
     if (tunnelVerifications.has(tunnelName)) {
         try {
             const verification = tunnelVerifications.get(tunnelName);
@@ -299,9 +336,9 @@ function handleDisconnect(tunnelName: string, hostConfig: HostConfig | null, sho
         return;
     }
 
-    if (shouldRetry && hostConfig) {
-        const maxRetries = hostConfig.maxRetries || 3;
-        const retryInterval = hostConfig.retryInterval || 5000;
+    if (shouldRetry && tunnelConfig) {
+        const maxRetries = tunnelConfig.maxRetries || 3;
+        const retryInterval = tunnelConfig.retryInterval || 5000;
 
         if (isRemoteClosure) {
             const currentCount = remoteClosureEvents.get(tunnelName) || 0;
@@ -351,7 +388,7 @@ function handleDisconnect(tunnelName: string, hostConfig: HostConfig | null, sho
 
                 if (!manualDisconnects.has(tunnelName)) {
                     activeTunnels.delete(tunnelName);
-                    connectSSHTunnel(hostConfig, retryCount);
+                    connectSSHTunnel(tunnelConfig, retryCount);
                 }
             }, retryInterval);
 
@@ -368,7 +405,7 @@ function handleDisconnect(tunnelName: string, hostConfig: HostConfig | null, sho
 }
 
 // Tunnel verification function
-function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPeriodic = false): void {
+function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, isPeriodic = false): void {
     if (manualDisconnects.has(tunnelName) || !activeTunnels.has(tunnelName)) {
         return;
     }
@@ -411,7 +448,7 @@ function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPe
             });
 
             if (!isPeriodic) {
-                setupPingInterval(tunnelName, hostConfig);
+                setupPingInterval(tunnelName, tunnelConfig);
             }
         } else {
             logger.error(`Verification failed for '${tunnelName}': ${failureReason}`);
@@ -425,12 +462,12 @@ function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPe
             }
 
             activeTunnels.delete(tunnelName);
-            handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+            handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
         }
     }
 
     function attemptVerification() {
-        const testCmd = `nc -z localhost ${hostConfig.sourcePort}`;
+        const testCmd = `nc -z localhost ${tunnelConfig.sourcePort}`;
         
         verificationConn.exec(testCmd, (err, stream) => {
             if (err) {
@@ -447,7 +484,7 @@ function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPe
                 if (code === 0 && code !== undefined) {
                     cleanupVerification(true);
                 } else {
-                    cleanupVerification(false, `Port ${hostConfig.sourcePort} is not accessible`);
+                    cleanupVerification(false, `Port ${tunnelConfig.sourcePort} is not accessible`);
                 }
             });
 
@@ -472,9 +509,9 @@ function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPe
     });
 
     const connOptions: any = {
-        host: hostConfig.sourceIP,
-        port: hostConfig.sourceSSHPort,
-        username: hostConfig.sourceUsername,
+        host: tunnelConfig.sourceIP,
+        port: tunnelConfig.sourceSSHPort,
+        username: tunnelConfig.sourceUsername,
         readyTimeout: 10000,
         algorithms: {
             kex: [
@@ -512,19 +549,19 @@ function verifyTunnelConnection(tunnelName: string, hostConfig: HostConfig, isPe
         }
     };
 
-    if (hostConfig.sourceAuthMethod === "key" && hostConfig.sourceSSHKey) {
-        connOptions.privateKey = hostConfig.sourceSSHKey;
-        if (hostConfig.sourceKeyPassword) {
-            connOptions.passphrase = hostConfig.sourceKeyPassword;
+    if (tunnelConfig.sourceAuthMethod === "key" && tunnelConfig.sourceSSHKey) {
+        connOptions.privateKey = tunnelConfig.sourceSSHKey;
+        if (tunnelConfig.sourceKeyPassword) {
+            connOptions.passphrase = tunnelConfig.sourceKeyPassword;
         }
     } else {
-        connOptions.password = hostConfig.sourcePassword;
+        connOptions.password = tunnelConfig.sourcePassword;
     }
 
     verificationConn.connect(connOptions);
 }
 
-function setupPingInterval(tunnelName: string, hostConfig: HostConfig): void {
+function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void {
     const pingInterval = setInterval(() => {
         if (!activeTunnels.has(tunnelName) || manualDisconnects.has(tunnelName)) {
             clearInterval(pingInterval);
@@ -550,7 +587,7 @@ function setupPingInterval(tunnelName: string, hostConfig: HostConfig): void {
                 }
                 
                 activeTunnels.delete(tunnelName);
-                handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+                handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
                 return;
             }
 
@@ -567,7 +604,7 @@ function setupPingInterval(tunnelName: string, hostConfig: HostConfig): void {
                     }
                     
                     activeTunnels.delete(tunnelName);
-                    handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+                    handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
                 }
             });
 
@@ -583,15 +620,15 @@ function setupPingInterval(tunnelName: string, hostConfig: HostConfig): void {
                 }
                 
                 activeTunnels.delete(tunnelName);
-                handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+                handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
             });
         });
     }, 30000); // Ping every 30 seconds
 }
 
 // Main SSH tunnel connection function
-function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
-    const tunnelName = hostConfig.name;
+function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
+    const tunnelName = tunnelConfig.name;
 
     if (manualDisconnects.has(tunnelName)) {
         return;
@@ -614,7 +651,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
         isRemoteRetry: !!isRetryAfterRemoteClosure
     });
 
-    if (!hostConfig || !hostConfig.sourceIP || !hostConfig.sourceUsername || !hostConfig.sourceSSHPort) {
+    if (!tunnelConfig || !tunnelConfig.sourceIP || !tunnelConfig.sourceUsername || !tunnelConfig.sourceSSHPort) {
         logger.error(`Invalid connection details for '${tunnelName}'`);
         broadcastTunnelStatus(tunnelName, { 
             connected: false, 
@@ -639,7 +676,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
             activeTunnels.delete(tunnelName);
 
             if (!activeRetryTimers.has(tunnelName)) {
-                handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+                handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
             }
         }
     }, 15000);
@@ -679,7 +716,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
             manualDisconnects.has(tunnelName)
         );
 
-        handleDisconnect(tunnelName, hostConfig, !shouldNotRetry, isRemoteHostClosure);
+        handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry, isRemoteHostClosure);
     });
 
     conn.on("close", () => {
@@ -699,7 +736,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
             }
 
             if (!activeRetryTimers.has(tunnelName)) {
-                handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName));
+                handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
             }
         }
     });
@@ -713,10 +750,10 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
         }
 
         let tunnelCmd: string;
-        if (hostConfig.endpointAuthMethod === "key" && hostConfig.endpointSSHKey) {
-            tunnelCmd = `ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${hostConfig.endpointPort}:localhost:${hostConfig.sourcePort} ${hostConfig.endpointUsername}@${hostConfig.endpointIP}`;
+        if (tunnelConfig.endpointAuthMethod === "key" && tunnelConfig.endpointSSHKey) {
+            tunnelCmd = `ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
         } else {
-            tunnelCmd = `sshpass -p '${hostConfig.endpointPassword || ''}' ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${hostConfig.endpointPort}:localhost:${hostConfig.sourcePort} ${hostConfig.endpointUsername}@${hostConfig.endpointIP}`;
+            tunnelCmd = `sshpass -p '${tunnelConfig.endpointPassword || ''}' ssh -T -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -R ${tunnelConfig.endpointPort}:localhost:${tunnelConfig.sourcePort} ${tunnelConfig.endpointUsername}@${tunnelConfig.endpointIP}`;
         }
 
         conn.exec(tunnelCmd, (err, stream) => {
@@ -732,7 +769,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
                     errorType === ERROR_TYPES.PORT ||
                     errorType === ERROR_TYPES.PERMISSION;
 
-                handleDisconnect(tunnelName, hostConfig, !shouldNotRetry);
+                handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry);
                 return;
             }
 
@@ -740,7 +777,7 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
 
             setTimeout(() => {
                 if (!manualDisconnects.has(tunnelName) && activeTunnels.has(tunnelName)) {
-                    verifyTunnelConnection(tunnelName, hostConfig, false);
+                    verifyTunnelConnection(tunnelName, tunnelConfig, false);
                 }
             }, 2000);
 
@@ -783,11 +820,11 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
                 }
 
                 if (!activeRetryTimers.has(tunnelName) && !retryExhaustedTunnels.has(tunnelName)) {
-                    handleDisconnect(tunnelName, hostConfig, !manualDisconnects.has(tunnelName), isLikelyRemoteClosure);
+                    handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName), isLikelyRemoteClosure);
                 } else if (retryExhaustedTunnels.has(tunnelName) && isLikelyRemoteClosure) {
                     retryExhaustedTunnels.delete(tunnelName);
                     retryCounters.delete(tunnelName);
-                    handleDisconnect(tunnelName, hostConfig, true, true);
+                    handleDisconnect(tunnelName, tunnelConfig, true, true);
                 }
             });
 
@@ -835,16 +872,16 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
                         errorType === ERROR_TYPES.PERMISSION
                     );
 
-                    handleDisconnect(tunnelName, hostConfig, !shouldNotRetry, isRemoteHostClosure);
+                    handleDisconnect(tunnelName, tunnelConfig, !shouldNotRetry, isRemoteHostClosure);
                 }
             });
         });
     });
 
     const connOptions: any = {
-        host: hostConfig.sourceIP,
-        port: hostConfig.sourceSSHPort,
-        username: hostConfig.sourceUsername,
+        host: tunnelConfig.sourceIP,
+        port: tunnelConfig.sourceSSHPort,
+        username: tunnelConfig.sourceUsername,
         keepaliveInterval: 5000,
         keepaliveCountMax: 10,
         readyTimeout: 10000,
@@ -885,13 +922,13 @@ function connectSSHTunnel(hostConfig: HostConfig, retryAttempt = 0): void {
         }
     };
 
-    if (hostConfig.sourceAuthMethod === "key" && hostConfig.sourceSSHKey) {
-        connOptions.privateKey = hostConfig.sourceSSHKey;
-        if (hostConfig.sourceKeyPassword) {
-            connOptions.passphrase = hostConfig.sourceKeyPassword;
+    if (tunnelConfig.sourceAuthMethod === "key" && tunnelConfig.sourceSSHKey) {
+        connOptions.privateKey = tunnelConfig.sourceSSHKey;
+        if (tunnelConfig.sourceKeyPassword) {
+            connOptions.passphrase = tunnelConfig.sourceKeyPassword;
         }
     } else {
-        connOptions.password = hostConfig.sourcePassword;
+        connOptions.password = tunnelConfig.sourcePassword;
     }
 
     conn.connect(connOptions);
@@ -914,24 +951,24 @@ app.get('/status/:tunnelName', (req, res) => {
 });
 
 app.post('/connect', (req, res) => {
-    const hostConfig: HostConfig = req.body;
+    const tunnelConfig: TunnelConfig = req.body;
     
-    if (!hostConfig || !hostConfig.name) {
+    if (!tunnelConfig || !tunnelConfig.name) {
         return res.status(400).json({ error: 'Invalid tunnel configuration' });
     }
 
-    const tunnelName = hostConfig.name;
+    const tunnelName = tunnelConfig.name;
     
     // Reset retry state for new connection
     manualDisconnects.delete(tunnelName);
     retryCounters.delete(tunnelName);
     retryExhaustedTunnels.delete(tunnelName);
     
-    // Store host config
-    hostConfigs.set(tunnelName, hostConfig);
+    // Store tunnel config
+    tunnelConfigs.set(tunnelName, tunnelConfig);
     
     // Start connection
-    connectSSHTunnel(hostConfig, 0);
+    connectSSHTunnel(tunnelConfig, 0);
     
     res.json({ message: 'Connection request received', tunnelName });
 });
@@ -958,8 +995,8 @@ app.post('/disconnect', (req, res) => {
         manualDisconnect: true
     });
 
-    const hostConfig = hostConfigs.get(tunnelName) || null;
-    handleDisconnect(tunnelName, hostConfig, false);
+    const tunnelConfig = tunnelConfigs.get(tunnelName) || null;
+    handleDisconnect(tunnelName, tunnelConfig, false);
 
     // Clear manual disconnect flag after a delay
     setTimeout(() => {
@@ -972,55 +1009,80 @@ app.post('/disconnect', (req, res) => {
 // Auto-start functionality
 async function initializeAutoStartTunnels(): Promise<void> {
     try {
-        // Fetch auto-start tunnels from database
-        const response = await axios.get('http://localhost:8081/ssh_tunnel/tunnel?allAutoStart=1', {
+        // Fetch hosts with auto-start tunnel connections
+        const response = await axios.get('http://localhost:8081/ssh/host', {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Internal-Request': '1'
             }
         });
 
-        const tunnels = response.data || [];
-        const autoStartTunnels = tunnels.filter((tunnel: any) => tunnel.autoStart);
+        const hosts: SSHHost[] = response.data || [];
+        const autoStartTunnels: TunnelConfig[] = [];
+
+        // Process each host and extract auto-start tunnel connections
+        for (const host of hosts) {
+            if (host.enableTunnel && host.tunnelConnections) {
+                for (const tunnelConnection of host.tunnelConnections) {
+                    if (tunnelConnection.autoStart) {
+                        // Find the endpoint host
+                        const endpointHost = hosts.find(h => 
+                            h.name === tunnelConnection.endpointHost || 
+                            `${h.username}@${h.ip}` === tunnelConnection.endpointHost
+                        );
+
+                        if (endpointHost) {
+                            const tunnelConfig: TunnelConfig = {
+                                name: `${host.name || `${host.username}@${host.ip}`}_${tunnelConnection.sourcePort}_${tunnelConnection.endpointPort}`,
+                                hostName: host.name || `${host.username}@${host.ip}`,
+                                sourceIP: host.ip,
+                                sourceSSHPort: host.port,
+                                sourceUsername: host.username,
+                                sourcePassword: host.password,
+                                sourceAuthMethod: host.authType,
+                                sourceSSHKey: host.key,
+                                sourceKeyPassword: host.keyPassword,
+                                sourceKeyType: host.keyType,
+                                endpointIP: endpointHost.ip,
+                                endpointSSHPort: endpointHost.port,
+                                endpointUsername: endpointHost.username,
+                                endpointPassword: endpointHost.password,
+                                endpointAuthMethod: endpointHost.authType,
+                                endpointSSHKey: endpointHost.key,
+                                endpointKeyPassword: endpointHost.keyPassword,
+                                endpointKeyType: endpointHost.keyType,
+                                sourcePort: tunnelConnection.sourcePort,
+                                endpointPort: tunnelConnection.endpointPort,
+                                maxRetries: tunnelConnection.maxRetries,
+                                retryInterval: tunnelConnection.retryInterval * 1000, // Convert to milliseconds
+                                autoStart: tunnelConnection.autoStart,
+                                isPinned: host.pin
+                            };
+
+                            autoStartTunnels.push(tunnelConfig);
+                        }
+                    }
+                }
+            }
+        }
 
         logger.info(`Found ${autoStartTunnels.length} auto-start tunnels`);
 
-        for (const tunnel of autoStartTunnels) {
-            const hostConfig: HostConfig = {
-                name: tunnel.name,
-                sourceIP: tunnel.sourceIP,
-                sourceSSHPort: tunnel.sourceSSHPort,
-                sourceUsername: tunnel.sourceUsername,
-                sourcePassword: tunnel.sourcePassword,
-                sourceAuthMethod: tunnel.sourceAuthMethod,
-                sourceSSHKey: tunnel.sourceSSHKey,
-                sourceKeyPassword: tunnel.sourceKeyPassword,
-                sourceKeyType: tunnel.sourceKeyType,
-                endpointIP: tunnel.endpointIP,
-                endpointSSHPort: tunnel.endpointSSHPort,
-                endpointUsername: tunnel.endpointUsername,
-                endpointPassword: tunnel.endpointPassword,
-                endpointAuthMethod: tunnel.endpointAuthMethod,
-                endpointSSHKey: tunnel.endpointSSHKey,
-                endpointKeyPassword: tunnel.endpointKeyPassword,
-                endpointKeyType: tunnel.endpointKeyType,
-                sourcePort: tunnel.sourcePort,
-                endpointPort: tunnel.endpointPort,
-                maxRetries: tunnel.maxRetries || 3,
-                retryInterval: tunnel.retryInterval || 5000,
-                autoStart: tunnel.autoStart,
-                isPinned: tunnel.isPinned || false
-            };
-
-            hostConfigs.set(tunnel.name, hostConfig);
+        // Start each auto-start tunnel
+        for (const tunnelConfig of autoStartTunnels) {
+            tunnelConfigs.set(tunnelConfig.name, tunnelConfig);
             
-            // Start the tunnel
+            // Start the tunnel with a delay to avoid overwhelming the system
             setTimeout(() => {
-                connectSSHTunnel(hostConfig, 0);
-            }, 1000); // Stagger startup to avoid overwhelming the system
+                connectSSHTunnel(tunnelConfig, 0);
+            }, 1000);
         }
-    } catch (error) {
-        logger.error('Failed to initialize auto-start tunnels:', error);
+    } catch (error: any) {
+        if (error.response?.status === 401) {
+            logger.warn('Authentication required for auto-start tunnels. Skipping auto-start initialization.');
+        } else {
+            logger.error('Failed to initialize auto-start tunnels:', error.message);
+        }
     }
 }
 
@@ -1035,29 +1097,29 @@ app.get('/health', (req, res) => {
 
 // Get all tunnel configurations
 app.get('/tunnels', (req, res) => {
-    const tunnels = Array.from(hostConfigs.values());
+    const tunnels = Array.from(tunnelConfigs.values());
     res.json(tunnels);
 });
 
 // Update tunnel configuration
 app.put('/tunnel/:name', (req, res) => {
     const { name } = req.params;
-    const hostConfig: HostConfig = req.body;
+    const tunnelConfig: TunnelConfig = req.body;
     
-    if (!hostConfig || !hostConfig.name) {
+    if (!tunnelConfig || !tunnelConfig.name) {
         return res.status(400).json({ error: 'Invalid tunnel configuration' });
     }
 
-    hostConfigs.set(name, hostConfig);
+    tunnelConfigs.set(name, tunnelConfig);
     
     // If tunnel is currently connected, disconnect and reconnect with new config
     if (activeTunnels.has(name)) {
         manualDisconnects.add(name);
-        handleDisconnect(name, hostConfig, false);
+        handleDisconnect(name, tunnelConfig, false);
         
         setTimeout(() => {
             manualDisconnects.delete(name);
-            connectSSHTunnel(hostConfig, 0);
+            connectSSHTunnel(tunnelConfig, 0);
         }, 2000);
     }
     
@@ -1071,12 +1133,12 @@ app.delete('/tunnel/:name', (req, res) => {
     // Disconnect if active
     if (activeTunnels.has(name)) {
         manualDisconnects.add(name);
-        const hostConfig = hostConfigs.get(name) || null;
-        handleDisconnect(name, hostConfig, false);
+        const tunnelConfig = tunnelConfigs.get(name) || null;
+        handleDisconnect(name, tunnelConfig, false);
     }
     
     // Remove from configurations
-    hostConfigs.delete(name);
+    tunnelConfigs.delete(name);
     
     res.json({ message: 'Tunnel deleted', name });
 });
@@ -1084,7 +1146,6 @@ app.delete('/tunnel/:name', (req, res) => {
 // Start the server
 const PORT = 8083;
 app.listen(PORT, () => {
-    // Initialize auto-start tunnels after a short delay
     setTimeout(() => {
         initializeAutoStartTunnels();
     }, 2000);
