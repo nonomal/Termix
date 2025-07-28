@@ -80,28 +80,41 @@ interface TunnelStatus {
     retryExhausted?: boolean;
 }
 
+interface ConfigEditorFile {
+    name: string;
+    path: string;
+    type?: 'file' | 'directory';
+    isSSH?: boolean;
+    sshSessionId?: string;
+}
+
+interface ConfigEditorShortcut {
+    name: string;
+    path: string;
+}
+
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const baseURL = isLocalhost ? 'http://localhost:8081' : window.location.origin;
 
-const api = axios.create({
-    baseURL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-const configEditorApi = axios.create({
-    baseURL: isLocalhost ? 'http://localhost:8084' : `${window.location.origin}/ssh`,
+const sshHostApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8081' : window.location.origin,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
 const tunnelApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8083' : window.location.origin,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
+const configEditorApi = axios.create({
+    baseURL: isLocalhost ? 'http://localhost:8084' : window.location.origin,
+    headers: {
+        'Content-Type': 'application/json',
+    }
+})
 
 function getCookie(name: string): string | undefined {
     const value = `; ${document.cookie}`;
@@ -109,15 +122,7 @@ function getCookie(name: string): string | undefined {
     if (parts.length === 2) return parts.pop()?.split(';').shift();
 }
 
-api.interceptors.request.use((config) => {
-    const token = getCookie('jwt');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
-configEditorApi.interceptors.request.use((config) => {
+sshHostApi.interceptors.request.use((config) => {
     const token = getCookie('jwt');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -133,9 +138,17 @@ tunnelApi.interceptors.request.use((config) => {
     return config;
 });
 
+configEditorApi.interceptors.request.use((config) => {
+    const token = getCookie('jwt');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 export async function getSSHHosts(): Promise<SSHHost[]> {
     try {
-        const response = await api.get('/ssh/db/host');
+        const response = await sshHostApi.get('/ssh/db/host');
         return response.data;
     } catch (error) {
         throw error;
@@ -180,7 +193,7 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
 
-            const response = await api.post('/ssh/db/host', formData, {
+            const response = await sshHostApi.post('/ssh/db/host', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -188,7 +201,7 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
 
             return response.data;
         } else {
-            const response = await api.post('/ssh/db/host', submitData);
+            const response = await sshHostApi.post('/ssh/db/host', submitData);
             return response.data;
         }
     } catch (error) {
@@ -233,7 +246,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
 
-            const response = await api.put(`/ssh/db/host/${hostId}`, formData, {
+            const response = await sshHostApi.put(`/ssh/db/host/${hostId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -241,7 +254,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
 
             return response.data;
         } else {
-            const response = await api.put(`/ssh/db/host/${hostId}`, submitData);
+            const response = await sshHostApi.put(`/ssh/db/host/${hostId}`, submitData);
             return response.data;
         }
     } catch (error) {
@@ -251,7 +264,7 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
 
 export async function deleteSSHHost(hostId: number): Promise<any> {
     try {
-        const response = await api.delete(`/ssh/db/host/${hostId}`);
+        const response = await sshHostApi.delete(`/ssh/db/host/${hostId}`);
         return response.data;
     } catch (error) {
         throw error;
@@ -260,7 +273,7 @@ export async function deleteSSHHost(hostId: number): Promise<any> {
 
 export async function getSSHHostById(hostId: number): Promise<SSHHost> {
     try {
-        const response = await api.get(`/ssh/db/host/${hostId}`);
+        const response = await sshHostApi.get(`/ssh/db/host/${hostId}`);
         return response.data;
     } catch (error) {
         throw error;
@@ -269,8 +282,7 @@ export async function getSSHHostById(hostId: number): Promise<SSHHost> {
 
 export async function getTunnelStatuses(): Promise<Record<string, TunnelStatus>> {
     try {
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/ssh/tunnel/status' : `${baseURL}/ssh_tunnel/status`;
-        const response = await tunnelApi.get(tunnelUrl);
+        const response = await tunnelApi.get('/ssh/tunnel/status');
         return response.data || {};
     } catch (error) {
         throw error;
@@ -284,8 +296,7 @@ export async function getTunnelStatusByName(tunnelName: string): Promise<TunnelS
 
 export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
     try {
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/ssh/tunnel/connect' : `${baseURL}/ssh_tunnel/connect`;
-        const response = await tunnelApi.post(tunnelUrl, tunnelConfig);
+        const response = await tunnelApi.post('/ssh/tunnel/connect', tunnelConfig);
         return response.data;
     } catch (error) {
         throw error;
@@ -294,8 +305,7 @@ export async function connectTunnel(tunnelConfig: TunnelConfig): Promise<any> {
 
 export async function disconnectTunnel(tunnelName: string): Promise<any> {
     try {
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/ssh/tunnel/disconnect' : `${baseURL}/ssh_tunnel/disconnect`;
-        const response = await tunnelApi.post(tunnelUrl, {tunnelName});
+        const response = await tunnelApi.post('/ssh/tunnel/disconnect', {tunnelName});
         return response.data;
     } catch (error) {
         throw error;
@@ -304,32 +314,16 @@ export async function disconnectTunnel(tunnelName: string): Promise<any> {
 
 export async function cancelTunnel(tunnelName: string): Promise<any> {
     try {
-        const tunnelUrl = isLocalhost ? 'http://localhost:8083/ssh/tunnel/cancel' : `${baseURL}/ssh_tunnel/cancel`;
-        const response = await tunnelApi.post(tunnelUrl, {tunnelName});
+        const response = await tunnelApi.post('/ssh/tunnel/cancel', {tunnelName});
         return response.data;
     } catch (error) {
         throw error;
     }
 }
 
-export {api, configEditorApi};
-
-interface ConfigEditorFile {
-    name: string;
-    path: string;
-    type?: 'file' | 'directory';
-    isSSH?: boolean;
-    sshSessionId?: string;
-}
-
-interface ConfigEditorShortcut {
-    name: string;
-    path: string;
-}
-
 export async function getConfigEditorRecent(hostId: number): Promise<ConfigEditorFile[]> {
     try {
-        const response = await api.get(`/ssh/config_editor/recent?hostId=${hostId}`);
+        const response = await sshHostApi.get(`/ssh/config_editor/recent?hostId=${hostId}`);
         return response.data || [];
     } catch (error) {
         return [];
@@ -344,7 +338,7 @@ export async function addConfigEditorRecent(file: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.post('/ssh/config_editor/recent', file);
+        const response = await sshHostApi.post('/ssh/config_editor/recent', file);
         return response.data;
     } catch (error) {
         throw error;
@@ -359,7 +353,7 @@ export async function removeConfigEditorRecent(file: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.delete('/ssh/config_editor/recent', {data: file});
+        const response = await sshHostApi.delete('/ssh/config_editor/recent', {data: file});
         return response.data;
     } catch (error) {
         throw error;
@@ -368,7 +362,7 @@ export async function removeConfigEditorRecent(file: {
 
 export async function getConfigEditorPinned(hostId: number): Promise<ConfigEditorFile[]> {
     try {
-        const response = await api.get(`/ssh/config_editor/pinned?hostId=${hostId}`);
+        const response = await sshHostApi.get(`/ssh/config_editor/pinned?hostId=${hostId}`);
         return response.data || [];
     } catch (error) {
         return [];
@@ -383,7 +377,7 @@ export async function addConfigEditorPinned(file: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.post('/ssh/config_editor/pinned', file);
+        const response = await sshHostApi.post('/ssh/config_editor/pinned', file);
         return response.data;
     } catch (error) {
         throw error;
@@ -398,7 +392,7 @@ export async function removeConfigEditorPinned(file: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.delete('/ssh/config_editor/pinned', {data: file});
+        const response = await sshHostApi.delete('/ssh/config_editor/pinned', {data: file});
         return response.data;
     } catch (error) {
         throw error;
@@ -407,7 +401,7 @@ export async function removeConfigEditorPinned(file: {
 
 export async function getConfigEditorShortcuts(hostId: number): Promise<ConfigEditorShortcut[]> {
     try {
-        const response = await api.get(`/ssh/config_editor/shortcuts?hostId=${hostId}`);
+        const response = await sshHostApi.get(`/ssh/config_editor/shortcuts?hostId=${hostId}`);
         return response.data || [];
     } catch (error) {
         return [];
@@ -422,7 +416,7 @@ export async function addConfigEditorShortcut(shortcut: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.post('/ssh/config_editor/shortcuts', shortcut);
+        const response = await sshHostApi.post('/ssh/config_editor/shortcuts', shortcut);
         return response.data;
     } catch (error) {
         throw error;
@@ -437,7 +431,7 @@ export async function removeConfigEditorShortcut(shortcut: {
     hostId: number
 }): Promise<any> {
     try {
-        const response = await api.delete('/ssh/config_editor/shortcuts', {data: shortcut});
+        const response = await sshHostApi.delete('/ssh/config_editor/shortcuts', {data: shortcut});
         return response.data;
     } catch (error) {
         throw error;
@@ -522,3 +516,5 @@ export async function writeSSHFile(sessionId: string, path: string, content: str
         throw error;
     }
 }
+
+export {sshHostApi, tunnelApi, configEditorApi};
