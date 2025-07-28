@@ -66,7 +66,23 @@ volumes:
 If you need help with Termix, you can join the [Discord](https://discord.gg/jVQGdvHDrf) server and visit the support channel. You can also open an issue or open a pull request on the [GitHub](https://github.com/LukeGus/Termix/issues) repo.
 
 # Show-off
-TBD
+
+<p align="center">
+  <img src="./repo-images/Image 1.png" width="400" alt="Termix Demo 1"/>
+  <img src="./repo-images/Image 2.png" width="400" alt="Termix Demo 2"/>
+</p>
+
+<p align="center">
+  <img src="./repo-images/Image 3.png" width="250" alt="Termix Demo 3"/>
+  <img src="./repo-images/Image 4.png" width="250" alt="Termix Demo 4"/>
+  <img src="./repo-images/Image 5.png" width="250" alt="Termix Demo 5"/>
+</p>
+
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/0f95495d-c5db-48f5-b18b-9ab48bb10d31" width="800" controls>
+    Your browser does not support the video tag.
+  </video>
+</p>
 
 # License
 Distributed under the Apache License Version 2.0. See LICENSE for more information.
