@@ -1,11 +1,9 @@
 import React from 'react';
-import { Card } from '@/components/ui/card.tsx';
-import { Button } from '@/components/ui/button.tsx';
-import { Trash2, Folder, File, Plus, Pin } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs.tsx';
-import { Input } from '@/components/ui/input.tsx';
-import { useState } from 'react';
-import { cn } from '@/lib/utils.ts';
+import {Button} from '@/components/ui/button.tsx';
+import {Trash2, Folder, File, Plus, Pin} from 'lucide-react';
+import {Tabs, TabsList, TabsTrigger, TabsContent} from '@/components/ui/tabs.tsx';
+import {Input} from '@/components/ui/input.tsx';
+import {useState} from 'react';
 
 interface FileItem {
     name: string;
@@ -34,31 +32,31 @@ interface ConfigHomeViewProps {
 }
 
 export function ConfigHomeView({
-    recent,
-    pinned,
-    shortcuts,
-    onOpenFile,
-    onRemoveRecent,
-    onPinFile,
-    onUnpinFile,
-    onOpenShortcut,
-    onRemoveShortcut,
-    onAddShortcut
-}: ConfigHomeViewProps) {
+                                   recent,
+                                   pinned,
+                                   shortcuts,
+                                   onOpenFile,
+                                   onRemoveRecent,
+                                   onPinFile,
+                                   onUnpinFile,
+                                   onOpenShortcut,
+                                   onRemoveShortcut,
+                                   onAddShortcut
+                               }: ConfigHomeViewProps) {
     const [tab, setTab] = useState<'recent' | 'pinned' | 'shortcuts'>('recent');
     const [newShortcut, setNewShortcut] = useState('');
 
 
-
     const renderFileCard = (file: FileItem, onRemove: () => void, onPin?: () => void, isPinned = false) => (
-        <div key={file.path} className="flex items-center gap-2 px-3 py-2 bg-[#18181b] border border-[#23232a] rounded hover:border-[#434345] transition-colors">
-            <div 
+        <div key={file.path}
+             className="flex items-center gap-2 px-3 py-2 bg-[#18181b] border border-[#23232a] rounded hover:border-[#434345] transition-colors">
+            <div
                 className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
                 onClick={() => onOpenFile(file)}
             >
-                {file.type === 'directory' ? 
-                    <Folder className="w-4 h-4 text-blue-400 flex-shrink-0" /> : 
-                    <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                {file.type === 'directory' ?
+                    <Folder className="w-4 h-4 text-blue-400 flex-shrink-0"/> :
+                    <File className="w-4 h-4 text-muted-foreground flex-shrink-0"/>
                 }
                 <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white break-words leading-tight">
@@ -68,23 +66,24 @@ export function ConfigHomeView({
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
                 {onPin && (
-                    <Button 
-                        size="sm" 
-                        variant="ghost" 
+                    <Button
+                        size="sm"
+                        variant="ghost"
                         className="h-6 px-1.5 bg-[#23232a] hover:bg-[#2d2d30] rounded-md"
                         onClick={onPin}
                     >
-                        <Pin className={`w-3 h-3 ${isPinned ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`} />
+                        <Pin
+                            className={`w-3 h-3 ${isPinned ? 'text-yellow-400 fill-current' : 'text-muted-foreground'}`}/>
                     </Button>
                 )}
                 {onRemove && (
-                    <Button 
-                        size="sm" 
-                        variant="ghost" 
+                    <Button
+                        size="sm"
+                        variant="ghost"
                         className="h-6 px-1.5 bg-[#23232a] hover:bg-[#2d2d30] rounded-md"
                         onClick={onRemove}
                     >
-                        <Trash2 className="w-3 h-3 text-red-500" />
+                        <Trash2 className="w-3 h-3 text-red-500"/>
                     </Button>
                 )}
             </div>
@@ -92,12 +91,13 @@ export function ConfigHomeView({
     );
 
     const renderShortcutCard = (shortcut: ShortcutItem) => (
-        <div key={shortcut.path} className="flex items-center gap-2 px-3 py-2 bg-[#18181b] border border-[#23232a] rounded hover:border-[#434345] transition-colors">
-            <div 
+        <div key={shortcut.path}
+             className="flex items-center gap-2 px-3 py-2 bg-[#18181b] border border-[#23232a] rounded hover:border-[#434345] transition-colors">
+            <div
                 className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
                 onClick={() => onOpenShortcut(shortcut)}
             >
-                <Folder className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                <Folder className="w-4 h-4 text-blue-400 flex-shrink-0"/>
                 <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white break-words leading-tight">
                         {shortcut.path}
@@ -105,13 +105,13 @@ export function ConfigHomeView({
                 </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-                <Button 
-                    size="sm" 
-                    variant="ghost" 
+                <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-6 px-1.5 bg-[#23232a] hover:bg-[#2d2d30] rounded-md"
                     onClick={() => onRemoveShortcut(shortcut)}
                 >
-                    <Trash2 className="w-3 h-3 text-red-500" />
+                    <Trash2 className="w-3 h-3 text-red-500"/>
                 </Button>
             </div>
         </div>
@@ -123,18 +123,19 @@ export function ConfigHomeView({
                 <TabsList className="mb-4 bg-[#18181b] border border-[#23232a]">
                     <TabsTrigger value="recent" className="data-[state=active]:bg-[#23232a]">Recent</TabsTrigger>
                     <TabsTrigger value="pinned" className="data-[state=active]:bg-[#23232a]">Pinned</TabsTrigger>
-                    <TabsTrigger value="shortcuts" className="data-[state=active]:bg-[#23232a]">Folder Shortcuts</TabsTrigger>
+                    <TabsTrigger value="shortcuts" className="data-[state=active]:bg-[#23232a]">Folder
+                        Shortcuts</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="recent" className="mt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {recent.length === 0 ? (
                             <div className="flex items-center justify-center py-8 col-span-full">
                                 <span className="text-sm text-muted-foreground">No recent files.</span>
                             </div>
-                        ) : recent.map((file) => 
+                        ) : recent.map((file) =>
                             renderFileCard(
-                                file, 
+                                file,
                                 () => onRemoveRecent(file),
                                 () => file.isPinned ? onUnpinFile(file) : onPinFile(file),
                                 file.isPinned
@@ -142,24 +143,24 @@ export function ConfigHomeView({
                         )}
                     </div>
                 </TabsContent>
-                
+
                 <TabsContent value="pinned" className="mt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {pinned.length === 0 ? (
                             <div className="flex items-center justify-center py-8 col-span-full">
                                 <span className="text-sm text-muted-foreground">No pinned files.</span>
                             </div>
-                        ) : pinned.map((file) => 
+                        ) : pinned.map((file) =>
                             renderFileCard(
-                                file, 
-                                undefined, // No remove function for pinned items
-                                () => onUnpinFile(file), // Use pin function for unpinning
+                                file,
+                                undefined,
+                                () => onUnpinFile(file),
                                 true
                             )
                         )}
                     </div>
                 </TabsContent>
-                
+
                 <TabsContent value="shortcuts" className="mt-0">
                     <div className="flex items-center gap-3 mb-4 p-3 bg-[#18181b] border border-[#23232a] rounded-lg">
                         <Input
@@ -185,7 +186,7 @@ export function ConfigHomeView({
                                 }
                             }}
                         >
-                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            <Plus className="w-3.5 h-3.5 mr-1"/>
                             Add
                         </Button>
                     </div>
@@ -194,7 +195,7 @@ export function ConfigHomeView({
                             <div className="flex items-center justify-center py-4 col-span-full">
                                 <span className="text-sm text-muted-foreground">No shortcuts.</span>
                             </div>
-                        ) : shortcuts.map((shortcut) => 
+                        ) : shortcuts.map((shortcut) =>
                             renderShortcutCard(shortcut)
                         )}
                     </div>

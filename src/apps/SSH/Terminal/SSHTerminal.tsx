@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { useXTerm } from 'react-xtermjs';
-import { FitAddon } from '@xterm/addon-fit';
-import { ClipboardAddon } from '@xterm/addon-clipboard';
+import {useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react';
+import {useXTerm} from 'react-xtermjs';
+import {FitAddon} from '@xterm/addon-fit';
+import {ClipboardAddon} from '@xterm/addon-clipboard';
 
 interface SSHTerminalProps {
     hostConfig: any;
@@ -12,10 +12,10 @@ interface SSHTerminalProps {
 }
 
 export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTerminal(
-    { hostConfig, isVisible, splitScreen = false },
+    {hostConfig, isVisible, splitScreen = false},
     ref
 ) {
-    const { instance: terminal, ref: xtermRef } = useXTerm();
+    const {instance: terminal, ref: xtermRef} = useXTerm();
     const fitAddonRef = useRef<FitAddon | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -34,7 +34,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
         },
         sendInput: (data: string) => {
             if (webSocketRef.current && webSocketRef.current.readyState === 1) {
-                webSocketRef.current.send(JSON.stringify({ type: 'input', data }));
+                webSocketRef.current.send(JSON.stringify({type: 'input', data}));
             }
         }
     }), []);
@@ -43,6 +43,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
         function handleWindowResize() {
             fitAddonRef.current?.fit();
         }
+
         window.addEventListener('resize', handleWindowResize);
         return () => window.removeEventListener('resize', handleWindowResize);
     }, []);
@@ -71,7 +72,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
 
         const onResize = () => {
             if (!xtermRef.current) return;
-            const { width, height } = xtermRef.current.getBoundingClientRect();
+            const {width, height} = xtermRef.current.getBoundingClientRect();
 
             if (width < 100 || height < 50) return;
 
@@ -84,7 +85,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
 
                 webSocketRef.current?.send(JSON.stringify({
                     type: 'resize',
-                    data: { cols, rows }
+                    data: {cols, rows}
                 }));
             }, 100);
         };
@@ -134,10 +135,8 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
                     } else if (msg.type === 'error') {
                         terminal.writeln(`\r\n[ERROR] ${msg.message}`);
                     } else if (msg.type === 'connected') {
-                        /* nothing for now */
                     }
                 } catch (err) {
-                    console.error('Failed to parse message', err);
                 }
             });
 

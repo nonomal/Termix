@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useState} from "react";
 import {SSHManagerSidebar} from "@/apps/SSH/Manager/SSHManagerSidebar.tsx";
 import {SSHManagerHostViewer} from "@/apps/SSH/Manager/SSHManagerHostViewer.tsx"
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
@@ -32,7 +32,7 @@ interface SSHHost {
     updatedAt: string;
 }
 
-export function SSHManager({ onSelectView }: ConfigEditorProps): React.ReactElement {
+export function SSHManager({onSelectView}: ConfigEditorProps): React.ReactElement {
     const [activeTab, setActiveTab] = useState("host_viewer");
     const [editingHost, setEditingHost] = useState<SSHHost | null>(null);
 
@@ -48,7 +48,6 @@ export function SSHManager({ onSelectView }: ConfigEditorProps): React.ReactElem
 
     const handleTabChange = (value: string) => {
         setActiveTab(value);
-        // Reset editingHost when switching to host_viewer
         if (value === "host_viewer") {
             setEditingHost(null);
         }
@@ -61,10 +60,12 @@ export function SSHManager({ onSelectView }: ConfigEditorProps): React.ReactElem
             />
 
             <div className="flex w-screen h-screen overflow-hidden">
-                <div className="w-[256px]" />
+                <div className="w-[256px]"/>
 
-                <div className="flex-1 bg-[#18181b] m-[35px] text-white p-4 rounded-md w-[1200px] border h-[calc(100vh-70px)] flex flex-col min-h-0">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col h-full min-h-0">
+                <div
+                    className="flex-1 bg-[#18181b] m-[35px] text-white p-4 rounded-md w-[1200px] border h-[calc(100vh-70px)] flex flex-col min-h-0">
+                    <Tabs value={activeTab} onValueChange={handleTabChange}
+                          className="flex-1 flex flex-col h-full min-h-0">
                         <TabsList>
                             <TabsTrigger value="host_viewer">Host Viewer</TabsTrigger>
                             <TabsTrigger value="add_host">
@@ -72,13 +73,13 @@ export function SSHManager({ onSelectView }: ConfigEditorProps): React.ReactElem
                             </TabsTrigger>
                         </TabsList>
                         <TabsContent value="host_viewer" className="flex-1 flex flex-col h-full min-h-0">
-                            <Separator className="p-0.25 mt-1 mb-1" />
+                            <Separator className="p-0.25 mt-1 mb-1"/>
                             <SSHManagerHostViewer onEditHost={handleEditHost}/>
                         </TabsContent>
                         <TabsContent value="add_host" className="flex-1 flex flex-col h-full min-h-0">
-                            <Separator className="p-0.25 mt-1 mb-1" />
+                            <Separator className="p-0.25 mt-1 mb-1"/>
                             <div className="flex flex-col h-full min-h-0">
-                                <SSHManagerHostEditor 
+                                <SSHManagerHostEditor
                                     editingHost={editingHost}
                                     onFormSubmit={handleFormSubmit}
                                 />

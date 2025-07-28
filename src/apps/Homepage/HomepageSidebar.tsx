@@ -69,7 +69,13 @@ const API = axios.create({
     baseURL: apiBase,
 });
 
-export function HomepageSidebar({onSelectView, getView, disabled, isAdmin, username}: SidebarProps): React.ReactElement {
+export function HomepageSidebar({
+                                    onSelectView,
+                                    getView,
+                                    disabled,
+                                    isAdmin,
+                                    username
+                                }: SidebarProps): React.ReactElement {
     const [adminSheetOpen, setAdminSheetOpen] = React.useState(false);
     const [allowRegistration, setAllowRegistration] = React.useState(true);
     const [regLoading, setRegLoading] = React.useState(false);
@@ -109,14 +115,16 @@ export function HomepageSidebar({onSelectView, getView, disabled, isAdmin, usern
                             <SidebarGroupContent>
                                 <SidebarMenu>
                                     <SidebarMenuItem key={"SSH Manager"}>
-                                        <SidebarMenuButton onClick={() => onSelectView("ssh_manager")} disabled={disabled}>
+                                        <SidebarMenuButton onClick={() => onSelectView("ssh_manager")}
+                                                           disabled={disabled}>
                                             <HardDrive/>
                                             <span>SSH Manager</span>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                     <div className="ml-5">
                                         <SidebarMenuItem key={"Terminal"}>
-                                            <SidebarMenuButton onClick={() => onSelectView("terminal")} disabled={disabled}>
+                                            <SidebarMenuButton onClick={() => onSelectView("terminal")}
+                                                               disabled={disabled}>
                                                 <Computer/>
                                                 <span>Terminal</span>
                                             </SidebarMenuButton>

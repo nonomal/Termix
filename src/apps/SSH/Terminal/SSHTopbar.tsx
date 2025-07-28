@@ -15,7 +15,14 @@ interface SSHTopbarProps {
     setCloseTab: (tab: number) => void;
 }
 
-export function SSHTopbar({ allTabs, currentTab, setActiveTab, allSplitScreenTab, setSplitScreenTab, setCloseTab }: SSHTopbarProps): React.ReactElement {
+export function SSHTopbar({
+                              allTabs,
+                              currentTab,
+                              setActiveTab,
+                              allSplitScreenTab,
+                              setSplitScreenTab,
+                              setCloseTab
+                          }: SSHTopbarProps): React.ReactElement {
     return (
         <div className="flex h-11.5 z-100" style={{
             position: 'absolute',

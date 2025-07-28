@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import {drizzle} from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as schema from './schema.js';
 import chalk from 'chalk';
@@ -34,108 +34,296 @@ const logger = {
 const dataDir = process.env.DATA_DIR || './db/data';
 const dbDir = path.resolve(dataDir);
 if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+    fs.mkdirSync(dbDir, {recursive: true});
 }
 
 const dbPath = path.join(dataDir, 'db.sqlite');
 const sqlite = new Database(dbPath);
 
-// Create tables using Drizzle schema
 sqlite.exec(`
-CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    username TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    is_admin INTEGER NOT NULL DEFAULT 0
-);
+    CREATE TABLE IF NOT EXISTS users
+    (
+        id
+        TEXT
+        PRIMARY
+        KEY,
+        username
+        TEXT
+        NOT
+        NULL,
+        password_hash
+        TEXT
+        NOT
+        NULL,
+        is_admin
+        INTEGER
+        NOT
+        NULL
+        DEFAULT
+        0
+    );
 
-CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS settings
+    (
+        key
+        TEXT
+        PRIMARY
+        KEY,
+        value
+        TEXT
+        NOT
+        NULL
+    );
 
-CREATE TABLE IF NOT EXISTS ssh_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    name TEXT,
-    ip TEXT NOT NULL,
-    port INTEGER NOT NULL,
-    username TEXT NOT NULL,
-    folder TEXT,
-    tags TEXT,
-    pin INTEGER NOT NULL DEFAULT 0,
-    auth_type TEXT NOT NULL,
-    password TEXT,
-    key TEXT,
-    key_password TEXT,
-    key_type TEXT,
-    enable_terminal INTEGER NOT NULL DEFAULT 1,
-    enable_tunnel INTEGER NOT NULL DEFAULT 1,
-    tunnel_connections TEXT,
-    enable_config_editor INTEGER NOT NULL DEFAULT 1,
-    default_path TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-);
+    CREATE TABLE IF NOT EXISTS ssh_data
+    (
+        id
+        INTEGER
+        PRIMARY
+        KEY
+        AUTOINCREMENT,
+        user_id
+        TEXT
+        NOT
+        NULL,
+        name
+        TEXT,
+        ip
+        TEXT
+        NOT
+        NULL,
+        port
+        INTEGER
+        NOT
+        NULL,
+        username
+        TEXT
+        NOT
+        NULL,
+        folder
+        TEXT,
+        tags
+        TEXT,
+        pin
+        INTEGER
+        NOT
+        NULL
+        DEFAULT
+        0,
+        auth_type
+        TEXT
+        NOT
+        NULL,
+        password
+        TEXT,
+        key
+        TEXT,
+        key_password
+        TEXT,
+        key_type
+        TEXT,
+        enable_terminal
+        INTEGER
+        NOT
+        NULL
+        DEFAULT
+        1,
+        enable_tunnel
+        INTEGER
+        NOT
+        NULL
+        DEFAULT
+        1,
+        tunnel_connections
+        TEXT,
+        enable_config_editor
+        INTEGER
+        NOT
+        NULL
+        DEFAULT
+        1,
+        default_path
+        TEXT,
+        created_at
+        TEXT
+        NOT
+        NULL
+        DEFAULT
+        CURRENT_TIMESTAMP,
+        updated_at
+        TEXT
+        NOT
+        NULL
+        DEFAULT
+        CURRENT_TIMESTAMP,
+        FOREIGN
+        KEY
+    (
+        user_id
+    ) REFERENCES users
+    (
+        id
+    )
+        );
 
-CREATE TABLE IF NOT EXISTS config_editor_recent (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    host_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    path TEXT NOT NULL,
-    last_opened TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(host_id) REFERENCES ssh_data(id)
-);
+    CREATE TABLE IF NOT EXISTS config_editor_recent
+    (
+        id
+        INTEGER
+        PRIMARY
+        KEY
+        AUTOINCREMENT,
+        user_id
+        TEXT
+        NOT
+        NULL,
+        host_id
+        INTEGER
+        NOT
+        NULL,
+        name
+        TEXT
+        NOT
+        NULL,
+        path
+        TEXT
+        NOT
+        NULL,
+        last_opened
+        TEXT
+        NOT
+        NULL
+        DEFAULT
+        CURRENT_TIMESTAMP,
+        FOREIGN
+        KEY
+    (
+        user_id
+    ) REFERENCES users
+    (
+        id
+    ),
+        FOREIGN KEY
+    (
+        host_id
+    ) REFERENCES ssh_data
+    (
+        id
+    )
+        );
 
-CREATE TABLE IF NOT EXISTS config_editor_pinned (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    host_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    path TEXT NOT NULL,
-    pinned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(host_id) REFERENCES ssh_data(id)
-);
+    CREATE TABLE IF NOT EXISTS config_editor_pinned
+    (
+        id
+        INTEGER
+        PRIMARY
+        KEY
+        AUTOINCREMENT,
+        user_id
+        TEXT
+        NOT
+        NULL,
+        host_id
+        INTEGER
+        NOT
+        NULL,
+        name
+        TEXT
+        NOT
+        NULL,
+        path
+        TEXT
+        NOT
+        NULL,
+        pinned_at
+        TEXT
+        NOT
+        NULL
+        DEFAULT
+        CURRENT_TIMESTAMP,
+        FOREIGN
+        KEY
+    (
+        user_id
+    ) REFERENCES users
+    (
+        id
+    ),
+        FOREIGN KEY
+    (
+        host_id
+    ) REFERENCES ssh_data
+    (
+        id
+    )
+        );
 
-CREATE TABLE IF NOT EXISTS config_editor_shortcuts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    host_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    path TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(host_id) REFERENCES ssh_data(id)
-);
+    CREATE TABLE IF NOT EXISTS config_editor_shortcuts
+    (
+        id
+        INTEGER
+        PRIMARY
+        KEY
+        AUTOINCREMENT,
+        user_id
+        TEXT
+        NOT
+        NULL,
+        host_id
+        INTEGER
+        NOT
+        NULL,
+        name
+        TEXT
+        NOT
+        NULL,
+        path
+        TEXT
+        NOT
+        NULL,
+        created_at
+        TEXT
+        NOT
+        NULL
+        DEFAULT
+        CURRENT_TIMESTAMP,
+        FOREIGN
+        KEY
+    (
+        user_id
+    ) REFERENCES users
+    (
+        id
+    ),
+        FOREIGN KEY
+    (
+        host_id
+    ) REFERENCES ssh_data
+    (
+        id
+    )
+        );
 `);
 
-// Function to safely add a column if it doesn't exist
 const addColumnIfNotExists = (table: string, column: string, definition: string) => {
     try {
-        // Try to select the column to see if it exists
-        sqlite.prepare(`SELECT ${column} FROM ${table} LIMIT 1`).get();
+        sqlite.prepare(`SELECT ${column}
+                        FROM ${table} LIMIT 1`).get();
     } catch (e) {
-        // Column doesn't exist, add it
         try {
-            sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
+            sqlite.exec(`ALTER TABLE ${table}
+                ADD COLUMN ${column} ${definition};`);
         } catch (alterError) {
             logger.warn(`Failed to add column ${column} to ${table}: ${alterError}`);
         }
     }
 };
 
-// Auto-migrate: Add any missing columns based on current schema
 const migrateSchema = () => {
     logger.info('Checking for schema updates...');
 
-    // Add missing columns to users table
     addColumnIfNotExists('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
-    
-    // Add missing columns to ssh_data table
+
     addColumnIfNotExists('ssh_data', 'name', 'TEXT');
     addColumnIfNotExists('ssh_data', 'folder', 'TEXT');
     addColumnIfNotExists('ssh_data', 'tags', 'TEXT');
@@ -153,7 +341,6 @@ const migrateSchema = () => {
     addColumnIfNotExists('ssh_data', 'created_at', 'TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
     addColumnIfNotExists('ssh_data', 'updated_at', 'TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
 
-    // Add missing columns to config_editor tables
     addColumnIfNotExists('config_editor_recent', 'host_id', 'INTEGER NOT NULL');
     addColumnIfNotExists('config_editor_pinned', 'host_id', 'INTEGER NOT NULL');
     addColumnIfNotExists('config_editor_shortcuts', 'host_id', 'INTEGER NOT NULL');
@@ -161,10 +348,8 @@ const migrateSchema = () => {
     logger.success('Schema migration completed');
 };
 
-// Run auto-migration
 migrateSchema();
 
-// Initialize default settings
 try {
     const row = sqlite.prepare("SELECT value FROM settings WHERE key = 'allow_registration'").get();
     if (!row) {
@@ -174,4 +359,4 @@ try {
     logger.warn('Could not initialize default settings');
 }
 
-export const db = drizzle(sqlite, { schema });
+export const db = drizzle(sqlite, {schema});

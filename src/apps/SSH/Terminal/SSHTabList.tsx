@@ -41,7 +41,6 @@ export function SSHTabList({
                         className={index < allTabs.length - 1 ? "mr-[0.5rem]" : ""}
                     >
                         <div className="inline-flex rounded-md shadow-sm" role="group">
-                            {/* Set Active Tab Button */}
                             <Button
                                 onClick={() => setActiveTab(terminal.id)}
                                 disabled={isSplit}
@@ -51,24 +50,22 @@ export function SSHTabList({
                                 {terminal.title}
                             </Button>
 
-                            {/* Split Screen Button */}
                             <Button
                                 onClick={() => setSplitScreenTab(terminal.id)}
                                 disabled={isSplitButtonDisabled || isActive}
                                 variant="outline"
                                 className="rounded-none p-0 !w-9 !h-9"
                             >
-                                <SeparatorVertical className="!w-5 !h-5" strokeWidth={2.5} />
+                                <SeparatorVertical className="!w-5 !h-5" strokeWidth={2.5}/>
                             </Button>
 
-                            {/* Close Tab Button */}
                             <Button
                                 onClick={() => setCloseTab(terminal.id)}
                                 disabled={(isSplitScreenActive && isActive) || isSplit}
                                 variant="outline"
                                 className="rounded-l-none p-0 !w-9 !h-9"
                             >
-                                <X className="!w-5 !h-5" strokeWidth={2.5} />
+                                <X className="!w-5 !h-5" strokeWidth={2.5}/>
                             </Button>
                         </div>
                     </div>

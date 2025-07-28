@@ -1,12 +1,12 @@
 import express from 'express';
-import { db } from '../db/index.js';
-import { users, settings } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import {db} from '../db/index.js';
+import {users, settings} from '../db/schema.js';
+import {eq} from 'drizzle-orm';
 import chalk from 'chalk';
 import bcrypt from 'bcryptjs';
-import { nanoid } from 'nanoid';
+import {nanoid} from 'nanoid';
 import jwt from 'jsonwebtoken';
-import type { Request, Response, NextFunction } from 'express';
+import type {Request, Response, NextFunction} from 'express';
 
 const dbIconSymbol = '🗄️';
 const getTimeStamp = (): string => chalk.gray(`[${new Date().toLocaleTimeString()}]`);
@@ -51,7 +51,7 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         logger.warn('Missing or invalid Authorization header');
-        return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+        return res.status(401).json({error: 'Missing or invalid Authorization header'});
     }
     const token = authHeader.split(' ')[1];
     const jwtSecret = process.env.JWT_SECRET || 'secret';
@@ -61,7 +61,7 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
         next();
     } catch (err) {
         logger.warn('Invalid or expired token');
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({error: 'Invalid or expired token'});
     }
 }
 
@@ -71,14 +71,14 @@ router.post('/create', async (req, res) => {
     try {
         const row = db.$client.prepare("SELECT value FROM settings WHERE key = 'allow_registration'").get();
         if (row && (row as any).value !== 'true') {
-            return res.status(403).json({ error: 'Registration is currently disabled' });
+            return res.status(403).json({error: 'Registration is currently disabled'});
         }
     } catch (e) {
     }
-    const { username, password } = req.body;
+    const {username, password} = req.body;
     if (!isNonEmptyString(username) || !isNonEmptyString(password)) {
         logger.warn('Invalid user creation attempt');
-        return res.status(400).json({ error: 'Invalid username or password' });
+        return res.status(400).json({error: 'Invalid username or password'});
     }
     try {
         const existing = await db
@@ -87,7 +87,7 @@ router.post('/create', async (req, res) => {
             .where(eq(users.username, username));
         if (existing && existing.length > 0) {
             logger.warn(`Attempt to create duplicate username: ${username}`);
-            return res.status(409).json({ error: 'Username already exists' });
+            return res.status(409).json({error: 'Username already exists'});
         }
         let isFirstUser = false;
         try {
@@ -99,22 +99,22 @@ router.post('/create', async (req, res) => {
         const saltRounds = parseInt(process.env.SALT || '10', 10);
         const password_hash = await bcrypt.hash(password, saltRounds);
         const id = nanoid();
-        await db.insert(users).values({ id, username, password_hash, is_admin: isFirstUser });
+        await db.insert(users).values({id, username, password_hash, is_admin: isFirstUser});
         logger.success(`User created: ${username} (is_admin: ${isFirstUser})`);
-        res.json({ message: 'User created', is_admin: isFirstUser });
+        res.json({message: 'User created', is_admin: isFirstUser});
     } catch (err) {
         logger.error('Failed to create user', err);
-        res.status(500).json({ error: 'Failed to create user' });
+        res.status(500).json({error: 'Failed to create user'});
     }
 });
 
 // Route: Get user JWT by username and password
 // POST /users/get
 router.post('/get', async (req, res) => {
-    const { username, password } = req.body;
+    const {username, password} = req.body;
     if (!isNonEmptyString(username) || !isNonEmptyString(password)) {
         logger.warn('Invalid get user attempt');
-        return res.status(400).json({ error: 'Invalid username or password' });
+        return res.status(400).json({error: 'Invalid username or password'});
     }
     try {
         const user = await db
@@ -123,20 +123,20 @@ router.post('/get', async (req, res) => {
             .where(eq(users.username, username));
         if (!user || user.length === 0) {
             logger.warn(`User not found: ${username}`);
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({error: 'User not found'});
         }
         const userRecord = user[0];
         const isMatch = await bcrypt.compare(password, userRecord.password_hash);
         if (!isMatch) {
             logger.warn(`Incorrect password for user: ${username}`);
-            return res.status(401).json({ error: 'Incorrect password' });
+            return res.status(401).json({error: 'Incorrect password'});
         }
         const jwtSecret = process.env.JWT_SECRET || 'secret';
-        const token = jwt.sign({ userId: userRecord.id }, jwtSecret, { expiresIn: '50d' });
-        res.json({ token });
+        const token = jwt.sign({userId: userRecord.id}, jwtSecret, {expiresIn: '50d'});
+        res.json({token});
     } catch (err) {
         logger.error('Failed to get user', err);
-        res.status(500).json({ error: 'Failed to get user' });
+        res.status(500).json({error: 'Failed to get user'});
     }
 });
 
@@ -146,7 +146,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId in JWT for /users/me');
-        return res.status(401).json({ error: 'Invalid userId' });
+        return res.status(401).json({error: 'Invalid userId'});
     }
     try {
         const user = await db
@@ -155,12 +155,12 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
             .where(eq(users.id, userId));
         if (!user || user.length === 0) {
             logger.warn(`User not found for /users/me: ${userId}`);
-            return res.status(401).json({ error: 'User not found' });
+            return res.status(401).json({error: 'User not found'});
         }
-        res.json({ username: user[0].username, is_admin: !!user[0].is_admin });
+        res.json({username: user[0].username, is_admin: !!user[0].is_admin});
     } catch (err) {
         logger.error('Failed to get username', err);
-        res.status(500).json({ error: 'Failed to get username' });
+        res.status(500).json({error: 'Failed to get username'});
     }
 });
 
@@ -170,10 +170,10 @@ router.get('/count', async (req, res) => {
     try {
         const countResult = db.$client.prepare('SELECT COUNT(*) as count FROM users').get();
         const count = (countResult as any)?.count || 0;
-        res.json({ count });
+        res.json({count});
     } catch (err) {
         logger.error('Failed to count users', err);
-        res.status(500).json({ error: 'Failed to count users' });
+        res.status(500).json({error: 'Failed to count users'});
     }
 });
 
@@ -182,10 +182,10 @@ router.get('/count', async (req, res) => {
 router.get('/db-health', async (req, res) => {
     try {
         db.$client.prepare('SELECT 1').get();
-        res.json({ status: 'ok' });
+        res.json({status: 'ok'});
     } catch (err) {
         logger.error('DB health check failed', err);
-        res.status(500).json({ error: 'Database not accessible' });
+        res.status(500).json({error: 'Database not accessible'});
     }
 });
 
@@ -194,10 +194,10 @@ router.get('/db-health', async (req, res) => {
 router.get('/registration-allowed', async (req, res) => {
     try {
         const row = db.$client.prepare("SELECT value FROM settings WHERE key = 'allow_registration'").get();
-        res.json({ allowed: row ? (row as any).value === 'true' : true });
+        res.json({allowed: row ? (row as any).value === 'true' : true});
     } catch (err) {
         logger.error('Failed to get registration allowed', err);
-        res.status(500).json({ error: 'Failed to get registration allowed' });
+        res.status(500).json({error: 'Failed to get registration allowed'});
     }
 });
 
@@ -208,17 +208,17 @@ router.patch('/registration-allowed', authenticateJWT, async (req, res) => {
     try {
         const user = await db.select().from(users).where(eq(users.id, userId));
         if (!user || user.length === 0 || !user[0].is_admin) {
-            return res.status(403).json({ error: 'Not authorized' });
+            return res.status(403).json({error: 'Not authorized'});
         }
-        const { allowed } = req.body;
+        const {allowed} = req.body;
         if (typeof allowed !== 'boolean') {
-            return res.status(400).json({ error: 'Invalid value for allowed' });
+            return res.status(400).json({error: 'Invalid value for allowed'});
         }
         db.$client.prepare("UPDATE settings SET value = ? WHERE key = 'allow_registration'").run(allowed ? 'true' : 'false');
-        res.json({ allowed });
+        res.json({allowed});
     } catch (err) {
         logger.error('Failed to set registration allowed', err);
-        res.status(500).json({ error: 'Failed to set registration allowed' });
+        res.status(500).json({error: 'Failed to set registration allowed'});
     }
 });
 

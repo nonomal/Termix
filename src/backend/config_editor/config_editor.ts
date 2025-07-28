@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { Client as SSHClient } from 'ssh2';
+import {Client as SSHClient} from 'ssh2';
 import chalk from "chalk";
 
 const app = express();
@@ -38,23 +38,25 @@ const logger = {
     }
 };
 
-// --- SSH Operations (per-session, in-memory, with cleanup) ---
 interface SSHSession {
     client: SSHClient;
     isConnected: boolean;
     lastActive: number;
     timeout?: NodeJS.Timeout;
 }
+
 const sshSessions: Record<string, SSHSession> = {};
-const SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
 
 function cleanupSession(sessionId: string) {
     const session = sshSessions[sessionId];
     if (session) {
-        try { session.client.end(); } catch {}
+        try {
+            session.client.end();
+        } catch {
+        }
         clearTimeout(session.timeout);
         delete sshSessions[sessionId];
-        logger.info(`Cleaned up SSH session: ${sessionId}`);
     }
 }
 
@@ -67,129 +69,111 @@ function scheduleSessionCleanup(sessionId: string) {
 }
 
 app.post('/ssh/config_editor/ssh/connect', (req, res) => {
-    const { sessionId, ip, port, username, password, sshKey, keyPassword } = req.body;
+    const {sessionId, ip, port, username, password, sshKey, keyPassword} = req.body;
     if (!sessionId || !ip || !username || !port) {
-        logger.warn('Missing SSH connection parameters');
-        return res.status(400).json({ error: 'Missing SSH connection parameters' });
+        return res.status(400).json({error: 'Missing SSH connection parameters'});
     }
-    
-    logger.info(`Attempting SSH connection: ${ip}:${port} as ${username} (session: ${sessionId})`);
-    logger.info(`Auth method: ${sshKey ? 'SSH Key' : password ? 'Password' : 'None'}`);
-    logger.info(`Request body keys: ${Object.keys(req.body).join(', ')}`);
-    logger.info(`Password present: ${!!password}, Key present: ${!!sshKey}`);
-    
+
     if (sshSessions[sessionId]?.isConnected) cleanupSession(sessionId);
     const client = new SSHClient();
     const config: any = {
-        host: ip, 
-        port: port || 22, 
+        host: ip,
+        port: port || 22,
         username,
-        readyTimeout: 20000, 
-        keepaliveInterval: 10000, 
+        readyTimeout: 20000,
+        keepaliveInterval: 10000,
         keepaliveCountMax: 3,
     };
-    
-    if (sshKey && sshKey.trim()) { 
-        config.privateKey = sshKey; 
-        if (keyPassword) config.passphrase = keyPassword; 
-        logger.info('Using SSH key authentication');
+
+    if (sshKey && sshKey.trim()) {
+        config.privateKey = sshKey;
+        if (keyPassword) config.passphrase = keyPassword;
+    } else if (password && password.trim()) {
+        config.password = password;
+    } else {
+        return res.status(400).json({error: 'Either password or SSH key must be provided'});
     }
-    else if (password && password.trim()) {
-        config.password = password; 
-        logger.info('Using password authentication');
-    }
-    else { 
-        logger.warn('No password or key provided'); 
-        return res.status(400).json({ error: 'Either password or SSH key must be provided' }); 
-    }
-    
-    // Create a response promise to handle async connection
+
     let responseSent = false;
-    
+
     client.on('ready', () => {
         if (responseSent) return;
         responseSent = true;
-        sshSessions[sessionId] = { client, isConnected: true, lastActive: Date.now() };
+        sshSessions[sessionId] = {client, isConnected: true, lastActive: Date.now()};
         scheduleSessionCleanup(sessionId);
-        logger.info(`SSH connected: ${ip}:${port} as ${username} (session: ${sessionId})`);
-        res.json({ status: 'success', message: 'SSH connection established' });
+        res.json({status: 'success', message: 'SSH connection established'});
     });
-    
+
     client.on('error', (err) => {
         if (responseSent) return;
         responseSent = true;
         logger.error(`SSH connection error for session ${sessionId}:`, err.message);
-        logger.error(`Connection details: ${ip}:${port} as ${username}`);
-        res.status(500).json({ status: 'error', message: err.message });
+        res.status(500).json({status: 'error', message: err.message});
     });
-    
+
     client.on('close', () => {
-        logger.info(`SSH connection closed for session ${sessionId}`);
         if (sshSessions[sessionId]) sshSessions[sessionId].isConnected = false;
         cleanupSession(sessionId);
     });
-    
+
     client.connect(config);
 });
 
 app.post('/ssh/config_editor/ssh/disconnect', (req, res) => {
-    const { sessionId } = req.body;
+    const {sessionId} = req.body;
     cleanupSession(sessionId);
-    res.json({ status: 'success', message: 'SSH connection disconnected' });
+    res.json({status: 'success', message: 'SSH connection disconnected'});
 });
 
 app.get('/ssh/config_editor/ssh/status', (req, res) => {
     const sessionId = req.query.sessionId as string;
     const isConnected = !!sshSessions[sessionId]?.isConnected;
-    res.json({ status: 'success', connected: isConnected });
+    res.json({status: 'success', connected: isConnected});
 });
 
 app.get('/ssh/config_editor/ssh/listFiles', (req, res) => {
     const sessionId = req.query.sessionId as string;
     const sshConn = sshSessions[sessionId];
     const sshPath = decodeURIComponent((req.query.path as string) || '/');
-    
+
     if (!sessionId) {
-        logger.warn('Session ID is required for listFiles');
-        return res.status(400).json({ error: 'Session ID is required' });
+        return res.status(400).json({error: 'Session ID is required'});
     }
-    
+
     if (!sshConn?.isConnected) {
-        logger.warn(`SSH connection not established for session: ${sessionId}`);
-        return res.status(400).json({ error: 'SSH connection not established' });
+        return res.status(400).json({error: 'SSH connection not established'});
     }
-    
+
     sshConn.lastActive = Date.now();
     scheduleSessionCleanup(sessionId);
-    
-    // Escape the path properly for shell command
+
     const escapedPath = sshPath.replace(/'/g, "'\"'\"'");
     sshConn.client.exec(`ls -la '${escapedPath}'`, (err, stream) => {
-        if (err) { 
-            logger.error('SSH listFiles error:', err); 
-            return res.status(500).json({ error: err.message }); 
+        if (err) {
+            logger.error('SSH listFiles error:', err);
+            return res.status(500).json({error: err.message});
         }
-        
+
         let data = '';
         let errorData = '';
-        
-        stream.on('data', (chunk: Buffer) => { 
-            data += chunk.toString(); 
+
+        stream.on('data', (chunk: Buffer) => {
+            data += chunk.toString();
         });
-        
-        stream.stderr.on('data', (chunk: Buffer) => { 
-            errorData += chunk.toString(); 
+
+        stream.stderr.on('data', (chunk: Buffer) => {
+            errorData += chunk.toString();
         });
-        
+
         stream.on('close', (code) => {
             if (code !== 0) {
-                logger.error(`SSH listFiles command failed with code ${code}: ${errorData}`);
-                return res.status(500).json({ error: `Command failed: ${errorData}` });
+                logger.error(`SSH listFiles command failed with code ${code}: ${errorData.replace(/\n/g, ' ').trim()}`);
+                return res.status(500).json({error: `Command failed: ${errorData}`});
             }
-            
+
             const lines = data.split('\n').filter(line => line.trim());
             const files = [];
-            
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 const parts = line.split(/\s+/);
@@ -198,17 +182,16 @@ app.get('/ssh/config_editor/ssh/listFiles', (req, res) => {
                     const name = parts.slice(8).join(' ');
                     const isDirectory = permissions.startsWith('d');
                     const isLink = permissions.startsWith('l');
-                    
-                    // Skip . and .. directories
+
                     if (name === '.' || name === '..') continue;
-                    
-                    files.push({ 
-                        name, 
-                        type: isDirectory ? 'directory' : (isLink ? 'link' : 'file') 
+
+                    files.push({
+                        name,
+                        type: isDirectory ? 'directory' : (isLink ? 'link' : 'file')
                     });
                 }
             }
-            
+
             res.json(files);
         });
     });
@@ -218,226 +201,188 @@ app.get('/ssh/config_editor/ssh/readFile', (req, res) => {
     const sessionId = req.query.sessionId as string;
     const sshConn = sshSessions[sessionId];
     const filePath = decodeURIComponent(req.query.path as string);
-    
+
     if (!sessionId) {
-        logger.warn('Session ID is required for readFile');
-        return res.status(400).json({ error: 'Session ID is required' });
+        return res.status(400).json({error: 'Session ID is required'});
     }
-    
+
     if (!sshConn?.isConnected) {
-        logger.warn(`SSH connection not established for session: ${sessionId}`);
-        return res.status(400).json({ error: 'SSH connection not established' });
+        return res.status(400).json({error: 'SSH connection not established'});
     }
-    
+
     if (!filePath) {
-        logger.warn('File path is required for readFile');
-        return res.status(400).json({ error: 'File path is required' });
+        return res.status(400).json({error: 'File path is required'});
     }
-    
+
     sshConn.lastActive = Date.now();
     scheduleSessionCleanup(sessionId);
-    
-    // Escape the file path properly
+
     const escapedPath = filePath.replace(/'/g, "'\"'\"'");
     sshConn.client.exec(`cat '${escapedPath}'`, (err, stream) => {
-        if (err) { 
-            logger.error('SSH readFile error:', err); 
-            return res.status(500).json({ error: err.message }); 
+        if (err) {
+            logger.error('SSH readFile error:', err);
+            return res.status(500).json({error: err.message});
         }
-        
+
         let data = '';
         let errorData = '';
-        
-        stream.on('data', (chunk: Buffer) => { 
-            data += chunk.toString(); 
+
+        stream.on('data', (chunk: Buffer) => {
+            data += chunk.toString();
         });
-        
-        stream.stderr.on('data', (chunk: Buffer) => { 
-            errorData += chunk.toString(); 
+
+        stream.stderr.on('data', (chunk: Buffer) => {
+            errorData += chunk.toString();
         });
-        
+
         stream.on('close', (code) => {
             if (code !== 0) {
-                logger.error(`SSH readFile command failed with code ${code}: ${errorData}`);
-                return res.status(500).json({ error: `Command failed: ${errorData}` });
+                logger.error(`SSH readFile command failed with code ${code}: ${errorData.replace(/\n/g, ' ').trim()}`);
+                return res.status(500).json({error: `Command failed: ${errorData}`});
             }
-            
-            res.json({ content: data, path: filePath });
+
+            res.json({content: data, path: filePath});
         });
     });
 });
 
 app.post('/ssh/config_editor/ssh/writeFile', (req, res) => {
-    const { sessionId, path: filePath, content } = req.body;
+    const {sessionId, path: filePath, content} = req.body;
     const sshConn = sshSessions[sessionId];
-    
+
     if (!sessionId) {
-        logger.warn('Session ID is required for writeFile');
-        return res.status(400).json({ error: 'Session ID is required' });
+        return res.status(400).json({error: 'Session ID is required'});
     }
-    
+
     if (!sshConn?.isConnected) {
-        logger.warn(`SSH connection not established for session: ${sessionId}`);
-        return res.status(400).json({ error: 'SSH connection not established' });
+        return res.status(400).json({error: 'SSH connection not established'});
     }
-    
-    logger.info(`SSH connection status for session ${sessionId}: connected=${sshConn.isConnected}, lastActive=${new Date(sshConn.lastActive).toISOString()}`);
-    
+
     if (!filePath) {
-        logger.warn('File path is required for writeFile');
-        return res.status(400).json({ error: 'File path is required' });
+        return res.status(400).json({error: 'File path is required'});
     }
-    
+
     if (content === undefined) {
-        logger.warn('File content is required for writeFile');
-        return res.status(400).json({ error: 'File content is required' });
+        return res.status(400).json({error: 'File content is required'});
     }
-    
+
     sshConn.lastActive = Date.now();
     scheduleSessionCleanup(sessionId);
-    
-    // Write to a temp file, then move - properly escape paths and content
+
     const tempFile = `/tmp/temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const escapedTempFile = tempFile.replace(/'/g, "'\"'\"'");
     const escapedFilePath = filePath.replace(/'/g, "'\"'\"'");
-    
-    // Use base64 encoding to safely transfer content
+
     const base64Content = Buffer.from(content, 'utf8').toString('base64');
-    
-    logger.info(`Starting writeFile operation: session=${sessionId}, path=${filePath}, contentLength=${content.length}, base64Length=${base64Content.length}`);
-    
-    // Add timeout to prevent hanging
-        const commandTimeout = setTimeout(() => {
-            logger.error(`SSH writeFile command timed out for session: ${sessionId}`);
-            if (!res.headersSent) {
-                res.status(500).json({ error: 'SSH command timed out' });
-            }
-        }, 15000); // 15 second timeout
-        
-            // First check file permissions and ownership
+
+    const commandTimeout = setTimeout(() => {
+        logger.error(`SSH writeFile command timed out for session: ${sessionId}`);
+        if (!res.headersSent) {
+            res.status(500).json({error: 'SSH command timed out'});
+        }
+    }, 15000);
+
     const checkCommand = `ls -la '${escapedFilePath}' 2>/dev/null || echo "File does not exist"`;
-    logger.info(`Checking file details: ${filePath}`);
-    
+
     sshConn.client.exec(checkCommand, (checkErr, checkStream) => {
         if (checkErr) {
-            logger.error('File check failed:', checkErr);
-            return res.status(500).json({ error: `File check failed: ${checkErr.message}` });
+            return res.status(500).json({error: `File check failed: ${checkErr.message}`});
         }
-        
+
         let checkResult = '';
         checkStream.on('data', (chunk: Buffer) => {
             checkResult += chunk.toString();
         });
-        
+
         checkStream.on('close', (checkCode) => {
-            logger.info(`File check result: ${checkResult.trim()}`);
-            
-            // Use a simpler approach: write base64 to temp file, decode and write to target, then clean up
-            // Add explicit exit to ensure the command completes
             const writeCommand = `echo '${base64Content}' > '${escapedTempFile}' && base64 -d '${escapedTempFile}' > '${escapedFilePath}' && rm -f '${escapedTempFile}' && echo "SUCCESS" && exit 0`;
-            
-            logger.info(`Executing write command for: ${filePath}`);
-            
+
             sshConn.client.exec(writeCommand, (err, stream) => {
-                if (err) { 
+                if (err) {
                     clearTimeout(commandTimeout);
-                    logger.error('SSH writeFile error:', err); 
+                    logger.error('SSH writeFile error:', err);
                     if (!res.headersSent) {
-                        return res.status(500).json({ error: err.message }); 
+                        return res.status(500).json({error: err.message});
                     }
                     return;
                 }
-                
+
                 let outputData = '';
                 let errorData = '';
-                
+
                 stream.on('data', (chunk: Buffer) => {
                     outputData += chunk.toString();
-                    logger.debug(`SSH writeFile stdout: ${chunk.toString()}`);
                 });
-                
-                stream.stderr.on('data', (chunk: Buffer) => { 
-                    errorData += chunk.toString(); 
-                    logger.debug(`SSH writeFile stderr: ${chunk.toString()}`);
-                    
-                    // Check for permission denied and fail fast
+
+                stream.stderr.on('data', (chunk: Buffer) => {
+                    errorData += chunk.toString();
+
                     if (chunk.toString().includes('Permission denied')) {
                         clearTimeout(commandTimeout);
                         logger.error(`Permission denied writing to file: ${filePath}`);
                         if (!res.headersSent) {
-                            return res.status(403).json({ 
-                                error: `Permission denied: Cannot write to ${filePath}. Check file ownership and permissions. Use 'ls -la ${filePath}' to verify.` 
+                            return res.status(403).json({
+                                error: `Permission denied: Cannot write to ${filePath}. Check file ownership and permissions. Use 'ls -la ${filePath}' to verify.`
                             });
                         }
                         return;
                     }
                 });
-                
+
                 stream.on('close', (code) => {
-                    logger.info(`SSH writeFile command completed with code: ${code}, output: "${outputData.trim()}", error: "${errorData.trim()}"`);
                     clearTimeout(commandTimeout);
-                    
-                    // Check if we got the success message
+
                     if (outputData.includes('SUCCESS')) {
-                        // Verify the file was actually written by checking its size
                         const verifyCommand = `ls -la '${escapedFilePath}' 2>/dev/null | awk '{print $5}'`;
-                        logger.info(`Verifying file was written: ${filePath}`);
-                        
+
                         sshConn.client.exec(verifyCommand, (verifyErr, verifyStream) => {
                             if (verifyErr) {
-                                logger.warn('File verification failed, but assuming success:');
                                 if (!res.headersSent) {
-                                    res.json({ message: 'File written successfully', path: filePath });
+                                    res.json({message: 'File written successfully', path: filePath});
                                 }
                                 return;
                             }
-                            
+
                             let verifyResult = '';
                             verifyStream.on('data', (chunk: Buffer) => {
                                 verifyResult += chunk.toString();
                             });
-                            
+
                             verifyStream.on('close', (verifyCode) => {
                                 const fileSize = Number(verifyResult.trim());
-                                logger.info(`File verification result: size=${fileSize} bytes`);
-                                
+
                                 if (fileSize > 0) {
-                                    logger.info(`File written successfully: ${filePath} (${fileSize} bytes)`);
                                     if (!res.headersSent) {
-                                        res.json({ message: 'File written successfully', path: filePath });
+                                        res.json({message: 'File written successfully', path: filePath});
                                     }
                                 } else {
-                                    logger.error(`File appears to be empty after write: ${filePath}`);
                                     if (!res.headersSent) {
-                                        res.status(500).json({ error: 'File write operation may have failed - file appears empty' });
+                                        res.status(500).json({error: 'File write operation may have failed - file appears empty'});
                                     }
                                 }
                             });
                         });
                         return;
                     }
-                    
+
                     if (code !== 0) {
-                        logger.error(`SSH writeFile command failed with code ${code}: ${errorData}`);
+                        logger.error(`SSH writeFile command failed with code ${code}: ${errorData.replace(/\n/g, ' ').trim()}`);
                         if (!res.headersSent) {
-                            return res.status(500).json({ error: `Command failed: ${errorData}` });
+                            return res.status(500).json({error: `Command failed: ${errorData}`});
                         }
                         return;
                     }
-                    
-                    // If code is 0 but no SUCCESS message, assume it worked anyway
-                    // This handles cases where the echo "SUCCESS" didn't work but the file write did
-                    logger.info(`File written successfully (code 0, no SUCCESS message): ${filePath}`);
+
                     if (!res.headersSent) {
-                        res.json({ message: 'File written successfully', path: filePath });
+                        res.json({message: 'File written successfully', path: filePath});
                     }
                 });
-                
+
                 stream.on('error', (streamErr) => {
                     clearTimeout(commandTimeout);
                     logger.error('SSH writeFile stream error:', streamErr);
                     if (!res.headersSent) {
-                        res.status(500).json({ error: `Stream error: ${streamErr.message}` });
+                        res.status(500).json({error: `Stream error: ${streamErr.message}`});
                     }
                 });
             });
@@ -456,4 +401,5 @@ process.on('SIGTERM', () => {
 });
 
 const PORT = 8084;
-app.listen(PORT, () => {});
+app.listen(PORT, () => {
+});

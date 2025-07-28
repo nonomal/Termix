@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
-import { SSHSidebar } from "@/apps/SSH/Terminal/SSHSidebar.tsx";
-import { SSHTerminal } from "./SSHTerminal.tsx";
-import { SSHTopbar } from "@/apps/SSH/Terminal/SSHTopbar.tsx";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable.tsx';
+import React, {useState, useRef, useEffect} from "react";
+import {SSHSidebar} from "@/apps/SSH/Terminal/SSHSidebar.tsx";
+import {SSHTerminal} from "./SSHTerminal.tsx";
+import {SSHTopbar} from "@/apps/SSH/Terminal/SSHTopbar.tsx";
+import {ResizablePanelGroup, ResizablePanel, ResizableHandle} from '@/components/ui/resizable.tsx';
 import * as ResizablePrimitive from "react-resizable-panels";
 
 interface ConfigEditorProps {
@@ -16,7 +16,7 @@ type Tab = {
     terminalRef: React.RefObject<any>;
 };
 
-export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
+export function SSH({onSelectView}: ConfigEditorProps): React.ReactElement {
     const [allTabs, setAllTabs] = useState<Tab[]>([]);
     const [currentTab, setCurrentTab] = useState<number | null>(null);
     const [allSplitScreenTab, setAllSplitScreenTab] = useState<number[]>([]);
@@ -72,7 +72,7 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
 
     const updatePanelRects = () => {
         setPanelRects((prev) => {
-            const next: Record<string, DOMRect | null> = { ...prev };
+            const next: Record<string, DOMRect | null> = {...prev};
             Object.entries(panelRefs.current).forEach(([id, ref]) => {
                 if (ref) {
                     next[id] = ref.getBoundingClientRect();
@@ -137,11 +137,21 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
             });
         }
         return (
-            <div ref={el => { panelRefs.current['parent'] = el; }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden' }}>
+            <div ref={el => {
+                panelRefs.current['parent'] = el;
+            }} style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 1,
+                overflow: 'hidden'
+            }}>
                 {allTabs.map((tab) => {
                     const style = layoutStyles[tab.id]
-                        ? { ...layoutStyles[tab.id], overflow: 'hidden' }
-                        : { display: 'none', overflow: 'hidden' };
+                        ? {...layoutStyles[tab.id], overflow: 'hidden'}
+                        : {display: 'none', overflow: 'hidden'};
                     const isVisible = !!layoutStyles[tab.id];
                     return (
                         <div key={tab.id} style={style} data-terminal-id={tab.id}>
@@ -170,15 +180,37 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         if (layoutTabs.length === 2) {
             const [tab1, tab2] = layoutTabs;
             return (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 10,
+                    pointerEvents: 'none'
+                }}>
                     <ResizablePrimitive.PanelGroup
-                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        ref={el => {
+                            panelGroupRefs.current['main'] = el;
+                        }}
                         direction="horizontal"
                         className="h-full w-full"
                         id="main-horizontal"
                     >
-                        <ResizablePanel key={tab1.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${tab1.id}`} order={1}>
-                            <div ref={el => { panelRefs.current[String(tab1.id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizablePanel key={tab1.id} defaultSize={50} minSize={20}
+                                        className="!overflow-hidden h-full w-full" id={`panel-${tab1.id}`} order={1}>
+                            <div ref={el => {
+                                panelRefs.current[String(tab1.id)] = el;
+                            }} style={{
+                                height: '100%',
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'transparent',
+                                margin: 0,
+                                padding: 0,
+                                position: 'relative'
+                            }}>
                                 <div style={{
                                     background: '#18181b',
                                     color: '#fff',
@@ -194,9 +226,21 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                 }}>{tab1.title}</div>
                             </div>
                         </ResizablePanel>
-                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                        <ResizablePanel key={tab2.id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${tab2.id}`} order={2}>
-                            <div ref={el => { panelRefs.current[String(tab2.id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                        <ResizablePanel key={tab2.id} defaultSize={50} minSize={20}
+                                        className="!overflow-hidden h-full w-full" id={`panel-${tab2.id}`} order={2}>
+                            <div ref={el => {
+                                panelRefs.current[String(tab2.id)] = el;
+                            }} style={{
+                                height: '100%',
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'transparent',
+                                margin: 0,
+                                padding: 0,
+                                position: 'relative'
+                            }}>
                                 <div style={{
                                     background: '#18181b',
                                     color: '#fff',
@@ -218,17 +262,43 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         }
         if (layoutTabs.length === 3) {
             return (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 10,
+                    pointerEvents: 'none'
+                }}>
                     <ResizablePrimitive.PanelGroup
-                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        ref={el => {
+                            panelGroupRefs.current['main'] = el;
+                        }}
                         direction="vertical"
                         className="h-full w-full"
                         id="main-vertical"
                     >
-                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="top-panel" order={1}>
-                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['top'] = el; }} direction="horizontal" className="h-full w-full" id="top-horizontal">
-                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[0].id}`} order={1}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[0].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full"
+                                        id="top-panel" order={1}>
+                            <ResizablePanelGroup ref={el => {
+                                panelGroupRefs.current['top'] = el;
+                            }} direction="horizontal" className="h-full w-full" id="top-horizontal">
+                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[0].id}`} order={1}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[0].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -244,9 +314,22 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                         }}>{layoutTabs[0].title}</div>
                                     </div>
                                 </ResizablePanel>
-                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[1].id}`} order={2}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[1].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[1].id}`} order={2}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[1].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -264,9 +347,21 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                 </ResizablePanel>
                             </ResizablePanelGroup>
                         </ResizablePanel>
-                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="bottom-panel" order={2}>
-                            <div ref={el => { panelRefs.current[String(layoutTabs[2].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full"
+                                        id="bottom-panel" order={2}>
+                            <div ref={el => {
+                                panelRefs.current[String(layoutTabs[2].id)] = el;
+                            }} style={{
+                                height: '100%',
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'transparent',
+                                margin: 0,
+                                padding: 0,
+                                position: 'relative'
+                            }}>
                                 <div style={{
                                     background: '#18181b',
                                     color: '#fff',
@@ -288,17 +383,43 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
         }
         if (layoutTabs.length === 4) {
             return (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' }}>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 10,
+                    pointerEvents: 'none'
+                }}>
                     <ResizablePrimitive.PanelGroup
-                        ref={el => { panelGroupRefs.current['main'] = el; }}
+                        ref={el => {
+                            panelGroupRefs.current['main'] = el;
+                        }}
                         direction="vertical"
                         className="h-full w-full"
                         id="main-vertical"
                     >
-                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="top-panel" order={1}>
-                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['top'] = el; }} direction="horizontal" className="h-full w-full" id="top-horizontal">
-                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[0].id}`} order={1}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[0].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full"
+                                        id="top-panel" order={1}>
+                            <ResizablePanelGroup ref={el => {
+                                panelGroupRefs.current['top'] = el;
+                            }} direction="horizontal" className="h-full w-full" id="top-horizontal">
+                                <ResizablePanel key={layoutTabs[0].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[0].id}`} order={1}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[0].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -314,9 +435,22 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                         }}>{layoutTabs[0].title}</div>
                                     </div>
                                 </ResizablePanel>
-                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[1].id}`} order={2}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[1].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                                <ResizablePanel key={layoutTabs[1].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[1].id}`} order={2}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[1].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -334,11 +468,27 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                 </ResizablePanel>
                             </ResizablePanelGroup>
                         </ResizablePanel>
-                        <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id="bottom-panel" order={2}>
-                            <ResizablePanelGroup ref={el => { panelGroupRefs.current['bottom'] = el; }} direction="horizontal" className="h-full w-full" id="bottom-horizontal">
-                                <ResizablePanel key={layoutTabs[2].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[2].id}`} order={1}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[2].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                        <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                        <ResizablePanel defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full"
+                                        id="bottom-panel" order={2}>
+                            <ResizablePanelGroup ref={el => {
+                                panelGroupRefs.current['bottom'] = el;
+                            }} direction="horizontal" className="h-full w-full" id="bottom-horizontal">
+                                <ResizablePanel key={layoutTabs[2].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[2].id}`} order={1}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[2].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -354,9 +504,22 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                         }}>{layoutTabs[2].title}</div>
                                     </div>
                                 </ResizablePanel>
-                                <ResizableHandle style={{ pointerEvents: 'auto', zIndex: 12 }} />
-                                <ResizablePanel key={layoutTabs[3].id} defaultSize={50} minSize={20} className="!overflow-hidden h-full w-full" id={`panel-${layoutTabs[3].id}`} order={2}>
-                                    <div ref={el => { panelRefs.current[String(layoutTabs[3].id)] = el; }} style={{height: '100%', width: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', margin: 0, padding: 0, position: 'relative'}}>
+                                <ResizableHandle style={{pointerEvents: 'auto', zIndex: 12}}/>
+                                <ResizablePanel key={layoutTabs[3].id} defaultSize={50} minSize={20}
+                                                className="!overflow-hidden h-full w-full"
+                                                id={`panel-${layoutTabs[3].id}`} order={2}>
+                                    <div ref={el => {
+                                        panelRefs.current[String(layoutTabs[3].id)] = el;
+                                    }} style={{
+                                        height: '100%',
+                                        width: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        background: 'transparent',
+                                        margin: 0,
+                                        padding: 0,
+                                        position: 'relative'
+                                    }}>
                                         <div style={{
                                             background: '#18181b',
                                             color: '#fff',
@@ -424,24 +587,31 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
     };
 
     return (
-        <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-            {/* Sidebar: fixed width */}
-            <div style={{ width: 256, flexShrink: 0, height: '100vh', position: 'relative', zIndex: 2, margin: 0, padding: 0, border: 'none' }}>
-            <SSHSidebar
-                onSelectView={onSelectView}
-                onAddHostSubmit={onAddHostSubmit}
-                onHostConnect={onHostConnect}
-                allTabs={allTabs}
-                runCommandOnTabs={(tabIds: number[], command: string) => {
-                    allTabs.forEach(tab => {
-                        if (tabIds.includes(tab.id) && tab.terminalRef?.current?.sendInput) {
-                            tab.terminalRef.current.sendInput(command);
-                        }
-                    });
-                }}
-            />
+        <div style={{display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden'}}>
+            <div style={{
+                width: 256,
+                flexShrink: 0,
+                height: '100vh',
+                position: 'relative',
+                zIndex: 2,
+                margin: 0,
+                padding: 0,
+                border: 'none'
+            }}>
+                <SSHSidebar
+                    onSelectView={onSelectView}
+                    onAddHostSubmit={onAddHostSubmit}
+                    onHostConnect={onHostConnect}
+                    allTabs={allTabs}
+                    runCommandOnTabs={(tabIds: number[], command: string) => {
+                        allTabs.forEach(tab => {
+                            if (tabIds.includes(tab.id) && tab.terminalRef?.current?.sendInput) {
+                                tab.terminalRef.current.sendInput(command);
+                            }
+                        });
+                    }}
+                />
             </div>
-            {/* Main area: fills the rest */}
             <div
                 className="terminal-container"
                 style={{
@@ -454,20 +624,17 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                     border: 'none',
                 }}
             >
-                {/* Always render the topbar at the top */}
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 10 }}>
-            <SSHTopbar
-                allTabs={allTabs}
+                <div style={{position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 10}}>
+                    <SSHTopbar
+                        allTabs={allTabs}
                         currentTab={currentTab ?? -1}
-                setActiveTab={setActiveTab}
-                allSplitScreenTab={allSplitScreenTab}
-                setSplitScreenTab={setSplitScreenTab}
-                setCloseTab={setCloseTab}
-            />
-        </div>
-                {/* Split area below the topbar */}
-                <div style={{ height: 'calc(100% - 46px)', marginTop: 46, position: 'relative' }}>
-                    {/* Show alert when no terminals are rendered */}
+                        setActiveTab={setActiveTab}
+                        allSplitScreenTab={allSplitScreenTab}
+                        setSplitScreenTab={setSplitScreenTab}
+                        setCloseTab={setCloseTab}
+                    />
+                </div>
+                <div style={{height: 'calc(100% - 46px)', marginTop: 46, position: 'relative'}}>
                     {allTabs.length === 0 && (
                         <div style={{
                             position: 'absolute',
@@ -483,17 +650,17 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                             maxWidth: '400px',
                             zIndex: 30
                         }}>
-                            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
+                            <div style={{fontSize: '18px', fontWeight: 'bold', marginBottom: '12px'}}>
                                 Welcome to Termix SSH
                             </div>
-                            <div style={{ fontSize: '14px', color: '#a1a1aa', lineHeight: '1.5' }}>
-                                Click on any host title in the sidebar to open a terminal connection, or use the "Add Host" button to create a new connection.
+                            <div style={{fontSize: '14px', color: '#a1a1aa', lineHeight: '1.5'}}>
+                                Click on any host title in the sidebar to open a terminal connection, or use the "Add
+                                Host" button to create a new connection.
                             </div>
                         </div>
                     )}
-                    {/* Absolutely render all terminals for persistence and layout */}
                     {allSplitScreenTab.length > 0 && (
-                        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, height: 28 }}>
+                        <div style={{position: 'absolute', top: 0, right: 0, zIndex: 20, height: 28}}>
                             <button
                                 style={{
                                     background: '#18181b',
@@ -514,12 +681,10 @@ export function SSH({ onSelectView }: ConfigEditorProps): React.ReactElement {
                                 onClick={() => {
                                     if (allSplitScreenTab.length === 1) {
                                         panelGroupRefs.current['main']?.setLayout([50, 50]);
-                                    }
-                                    else if (allSplitScreenTab.length === 2) {
+                                    } else if (allSplitScreenTab.length === 2) {
                                         panelGroupRefs.current['main']?.setLayout([50, 50]);
                                         panelGroupRefs.current['top']?.setLayout([50, 50]);
-                                    }
-                                    else if (allSplitScreenTab.length === 3) {
+                                    } else if (allSplitScreenTab.length === 3) {
                                         panelGroupRefs.current['main']?.setLayout([50, 50]);
                                         panelGroupRefs.current['top']?.setLayout([50, 50]);
                                         panelGroupRefs.current['bottom']?.setLayout([50, 50]);

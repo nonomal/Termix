@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
-import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
-import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel } from "@/apps/SSH/ssh-axios-fixed";
+import React, {useState, useEffect, useCallback} from "react";
+import {SSHTunnelSidebar} from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
+import {SSHTunnelViewer} from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
+import {getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel} from "@/apps/SSH/ssh-axios";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;
@@ -49,27 +49,24 @@ interface TunnelStatus {
     retryExhausted?: boolean;
 }
 
-export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactElement {
+export function SSHTunnel({onSelectView}: ConfigEditorProps): React.ReactElement {
     const [hosts, setHosts] = useState<SSHHost[]>([]);
     const [tunnelStatuses, setTunnelStatuses] = useState<Record<string, TunnelStatus>>({});
-    const [tunnelActions, setTunnelActions] = useState<Record<string, boolean>>({}); // Track loading states
+    const [tunnelActions, setTunnelActions] = useState<Record<string, boolean>>({});
 
     const fetchHosts = useCallback(async () => {
         try {
             const hostsData = await getSSHHosts();
             setHosts(hostsData);
         } catch (err) {
-            // Silent error handling
         }
     }, []);
 
-    // Poll backend for tunnel statuses
     const fetchTunnelStatuses = useCallback(async () => {
         try {
             const statusData = await getTunnelStatuses();
             setTunnelStatuses(statusData);
         } catch (err) {
-            // Silent error handling
         }
     }, []);
 
@@ -88,14 +85,13 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
     const handleTunnelAction = async (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => {
         const tunnel = host.tunnelConnections[tunnelIndex];
         const tunnelName = `${host.name || `${host.username}@${host.ip}`}_${tunnel.sourcePort}_${tunnel.endpointPort}`;
-        
-        setTunnelActions(prev => ({ ...prev, [tunnelName]: true }));
-        
+
+        setTunnelActions(prev => ({...prev, [tunnelName]: true}));
+
         try {
             if (action === 'connect') {
-                // Find the endpoint host configuration
-                const endpointHost = hosts.find(h => 
-                    h.name === tunnel.endpointHost || 
+                const endpointHost = hosts.find(h =>
+                    h.name === tunnel.endpointHost ||
                     `${h.username}@${h.ip}` === tunnel.endpointHost
                 );
 
@@ -103,7 +99,6 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
                     throw new Error('Endpoint host not found');
                 }
 
-                // Create tunnel configuration
                 const tunnelConfig = {
                     name: tunnelName,
                     hostName: host.name || `${host.username}@${host.ip}`,
@@ -126,7 +121,7 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
                     sourcePort: tunnel.sourcePort,
                     endpointPort: tunnel.endpointPort,
                     maxRetries: tunnel.maxRetries,
-                    retryInterval: tunnel.retryInterval * 1000, // Convert to milliseconds
+                    retryInterval: tunnel.retryInterval * 1000,
                     autoStart: tunnel.autoStart,
                     isPinned: host.pin
                 };
@@ -137,26 +132,23 @@ export function SSHTunnel({ onSelectView }: ConfigEditorProps): React.ReactEleme
             } else if (action === 'cancel') {
                 await cancelTunnel(tunnelName);
             }
-            
-            // Refresh statuses after action
+
             await fetchTunnelStatuses();
         } catch (err) {
-            console.error(`Failed to ${action} tunnel:`, err);
-            // Let the backend handle error status updates
         } finally {
-            setTunnelActions(prev => ({ ...prev, [tunnelName]: false }));
+            setTunnelActions(prev => ({...prev, [tunnelName]: false}));
         }
     };
 
     return (
         <div className="flex h-screen w-full">
             <div className="w-64 flex-shrink-0">
-                <SSHTunnelSidebar 
-                    onSelectView={onSelectView} 
+                <SSHTunnelSidebar
+                    onSelectView={onSelectView}
                 />
             </div>
             <div className="flex-1 overflow-auto">
-                <SSHTunnelViewer 
+                <SSHTunnelViewer
                     hosts={hosts}
                     tunnelStatuses={tunnelStatuses}
                     tunnelActions={tunnelActions}

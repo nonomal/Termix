@@ -41,7 +41,7 @@ const logger = {
 app.use(bodyParser.json());
 
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({status: 'ok'});
 });
 
 app.use('/users', userRoutes);
@@ -49,8 +49,9 @@ app.use('/ssh', sshRoutes);
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Unhandled error:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({error: 'Internal Server Error'});
 });
 
 const PORT = 8081;
-app.listen(PORT, () => {});
+app.listen(PORT, () => {
+});

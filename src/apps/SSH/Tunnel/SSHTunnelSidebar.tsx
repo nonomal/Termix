@@ -27,7 +27,7 @@ interface SidebarProps {
     onSelectView: (view: string) => void;
 }
 
-export function SSHTunnelSidebar({ onSelectView }: SidebarProps): React.ReactElement {
+export function SSHTunnelSidebar({onSelectView}: SidebarProps): React.ReactElement {
     return (
         <SidebarProvider>
             <Sidebar>
@@ -36,16 +36,17 @@ export function SSHTunnelSidebar({ onSelectView }: SidebarProps): React.ReactEle
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
                             Termix / Tunnel
                         </SidebarGroupLabel>
-                        <Separator className="p-0.25 mt-1 mb-1" />
+                        <Separator className="p-0.25 mt-1 mb-1"/>
                         <SidebarGroupContent className="flex flex-col flex-grow">
                             <SidebarMenu>
 
                                 <SidebarMenuItem key={"Homepage"}>
-                                    <Button className="w-full mt-2 mb-2 h-8" onClick={() => onSelectView("homepage")} variant="outline">
+                                    <Button className="w-full mt-2 mb-2 h-8" onClick={() => onSelectView("homepage")}
+                                            variant="outline">
                                         <CornerDownLeft className="h-4 w-4 mr-2"/>
                                         Return
                                     </Button>
-                                    <Separator className="p-0.25 mt-1 mb-1" />
+                                    <Separator className="p-0.25 mt-1 mb-1"/>
                                 </SidebarMenuItem>
 
                             </SidebarMenu>

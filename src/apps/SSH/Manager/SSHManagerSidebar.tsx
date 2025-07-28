@@ -26,7 +26,7 @@ interface SidebarProps {
     onSelectView: (view: string) => void;
 }
 
-export function SSHManagerSidebar({ onSelectView }: SidebarProps): React.ReactElement {
+export function SSHManagerSidebar({onSelectView}: SidebarProps): React.ReactElement {
     return (
         <SidebarProvider>
             <Sidebar>
@@ -35,17 +35,18 @@ export function SSHManagerSidebar({ onSelectView }: SidebarProps): React.ReactEl
                         <SidebarGroupLabel className="text-lg font-bold text-white flex items-center gap-2">
                             Termix / SSH Manager
                         </SidebarGroupLabel>
-                        <Separator className="p-0.25 mt-1 mb-1" />
+                        <Separator className="p-0.25 mt-1 mb-1"/>
                         <SidebarGroupContent className="flex flex-col flex-grow">
                             <SidebarMenu>
 
                                 {/* Sidebar Items */}
                                 <SidebarMenuItem key={"Homepage"}>
-                                    <Button className="w-full mt-2 mb-2 h-8" onClick={() => onSelectView("homepage")} variant="outline">
+                                    <Button className="w-full mt-2 mb-2 h-8" onClick={() => onSelectView("homepage")}
+                                            variant="outline">
                                         <CornerDownLeft/>
                                         Return
                                     </Button>
-                                    <Separator className="p-0.25 mt-1 mb-1" />
+                                    <Separator className="p-0.25 mt-1 mb-1"/>
                                 </SidebarMenuItem>
 
                             </SidebarMenu>

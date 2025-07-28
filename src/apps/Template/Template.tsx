@@ -5,7 +5,7 @@ interface ConfigEditorProps {
     onSelectView: (view: string) => void;
 }
 
-export function Template({ onSelectView }: ConfigEditorProps): React.ReactElement {
+export function Template({onSelectView}: ConfigEditorProps): React.ReactElement {
     return (
         <div>
             <TemplateSidebar

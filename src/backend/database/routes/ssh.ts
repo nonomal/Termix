@@ -1,11 +1,11 @@
 import express from 'express';
-import { db } from '../db/index.js';
-import { sshData, configEditorRecent, configEditorPinned, configEditorShortcuts } from '../db/schema.js';
-import { eq, and, desc } from 'drizzle-orm';
+import {db} from '../db/index.js';
+import {sshData, configEditorRecent, configEditorPinned, configEditorShortcuts} from '../db/schema.js';
+import {eq, and, desc} from 'drizzle-orm';
 import chalk from 'chalk';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import type { Request, Response, NextFunction } from 'express';
+import type {Request, Response, NextFunction} from 'express';
 
 const dbIconSymbol = '🗄️';
 const getTimeStamp = (): string => chalk.gray(`[${new Date().toLocaleTimeString()}]`);
@@ -38,6 +38,7 @@ const router = express.Router();
 function isNonEmptyString(val: any): val is string {
     return typeof val === 'string' && val.trim().length > 0;
 }
+
 function isValidPort(val: any): val is number {
     return typeof val === 'number' && val > 0 && val < 65536;
 }
@@ -48,14 +49,12 @@ interface JWTPayload {
     exp?: number;
 }
 
-// Configure multer for file uploads
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
+        fileSize: 10 * 1024 * 1024,
     },
     fileFilter: (req, file, cb) => {
-        // Only allow specific file types for SSH keys
         if (file.fieldname === 'key') {
             cb(null, true);
         } else {
@@ -64,12 +63,11 @@ const upload = multer({
     }
 });
 
-// JWT authentication middleware
 function authenticateJWT(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         logger.warn('Missing or invalid Authorization header');
-        return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+        return res.status(401).json({error: 'Missing or invalid Authorization header'});
     }
     const token = authHeader.split(' ')[1];
     const jwtSecret = process.env.JWT_SECRET || 'secret';
@@ -79,11 +77,10 @@ function authenticateJWT(req: Request, res: Response, next: NextFunction) {
         next();
     } catch (err) {
         logger.warn('Invalid or expired token');
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({error: 'Invalid or expired token'});
     }
 }
 
-// Helper to check if request is from localhost
 function isLocalhost(req: Request) {
     const ip = req.ip || req.connection?.remoteAddress;
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
@@ -93,7 +90,7 @@ function isLocalhost(req: Request) {
 router.get('/db/host/internal', async (req: Request, res: Response) => {
     if (!isLocalhost(req) && req.headers['x-internal-request'] !== '1') {
         logger.warn('Unauthorized attempt to access internal SSH host endpoint');
-        return res.status(403).json({ error: 'Forbidden' });
+        return res.status(403).json({error: 'Forbidden'});
     }
     try {
         const data = await db.select().from(sshData);
@@ -110,7 +107,7 @@ router.get('/db/host/internal', async (req: Request, res: Response) => {
         res.json(result);
     } catch (err) {
         logger.error('Failed to fetch SSH data (internal)', err);
-        res.status(500).json({ error: 'Failed to fetch SSH data' });
+        res.status(500).json({error: 'Failed to fetch SSH data'});
     }
 });
 
@@ -118,7 +115,7 @@ router.get('/db/host/internal', async (req: Request, res: Response) => {
 // POST /ssh/host
 router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
     let hostData: any;
-    
+
     // Check if this is a multipart form data request (file upload)
     if (req.headers['content-type']?.includes('multipart/form-data')) {
         // Parse the JSON data from the 'data' field
@@ -127,13 +124,13 @@ router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Reque
                 hostData = JSON.parse(req.body.data);
             } catch (err) {
                 logger.warn('Invalid JSON data in multipart request');
-                return res.status(400).json({ error: 'Invalid JSON data' });
+                return res.status(400).json({error: 'Invalid JSON data'});
             }
         } else {
             logger.warn('Missing data field in multipart request');
-            return res.status(400).json({ error: 'Missing data field' });
+            return res.status(400).json({error: 'Missing data field'});
         }
-        
+
         // Add the file data if present
         if (req.file) {
             hostData.key = req.file.buffer.toString('utf8');
@@ -142,12 +139,30 @@ router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Reque
         // Regular JSON request
         hostData = req.body;
     }
-    
-    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, pin, enableTerminal, enableTunnel, enableConfigEditor, defaultPath, tunnelConnections } = hostData;
+
+    const {
+        name,
+        folder,
+        tags,
+        ip,
+        port,
+        username,
+        password,
+        authMethod,
+        key,
+        keyPassword,
+        keyType,
+        pin,
+        enableTerminal,
+        enableTunnel,
+        enableConfigEditor,
+        defaultPath,
+        tunnelConnections
+    } = hostData;
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId) || !isNonEmptyString(ip) || !isValidPort(port)) {
         logger.warn('Invalid SSH data input');
-        return res.status(400).json({ error: 'Invalid SSH data' });
+        return res.status(400).json({error: 'Invalid SSH data'});
     }
 
     const sshDataObj: any = {
@@ -167,7 +182,6 @@ router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Reque
         defaultPath: defaultPath || null,
     };
 
-    // Handle authentication data based on authMethod
     if (authMethod === 'password') {
         sshDataObj.password = password;
         sshDataObj.key = null;
@@ -182,10 +196,10 @@ router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Reque
 
     try {
         await db.insert(sshData).values(sshDataObj);
-        res.json({ message: 'SSH data created' });
+        res.json({message: 'SSH data created'});
     } catch (err) {
         logger.error('Failed to save SSH data', err);
-        res.status(500).json({ error: 'Failed to save SSH data' });
+        res.status(500).json({error: 'Failed to save SSH data'});
     }
 });
 
@@ -193,37 +207,51 @@ router.post('/db/host', authenticateJWT, upload.single('key'), async (req: Reque
 // PUT /ssh/host/:id
 router.put('/db/host/:id', authenticateJWT, upload.single('key'), async (req: Request, res: Response) => {
     let hostData: any;
-    
-    // Check if this is a multipart form data request (file upload)
+
     if (req.headers['content-type']?.includes('multipart/form-data')) {
-        // Parse the JSON data from the 'data' field
         if (req.body.data) {
             try {
                 hostData = JSON.parse(req.body.data);
             } catch (err) {
                 logger.warn('Invalid JSON data in multipart request');
-                return res.status(400).json({ error: 'Invalid JSON data' });
+                return res.status(400).json({error: 'Invalid JSON data'});
             }
         } else {
             logger.warn('Missing data field in multipart request');
-            return res.status(400).json({ error: 'Missing data field' });
+            return res.status(400).json({error: 'Missing data field'});
         }
-        
-        // Add the file data if present
+
         if (req.file) {
             hostData.key = req.file.buffer.toString('utf8');
         }
     } else {
-        // Regular JSON request
         hostData = req.body;
     }
-    
-    const { name, folder, tags, ip, port, username, password, authMethod, key, keyPassword, keyType, pin, enableTerminal, enableTunnel, enableConfigEditor, defaultPath, tunnelConnections } = hostData;
-    const { id } = req.params;
+
+    const {
+        name,
+        folder,
+        tags,
+        ip,
+        port,
+        username,
+        password,
+        authMethod,
+        key,
+        keyPassword,
+        keyType,
+        pin,
+        enableTerminal,
+        enableTunnel,
+        enableConfigEditor,
+        defaultPath,
+        tunnelConnections
+    } = hostData;
+    const {id} = req.params;
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId) || !isNonEmptyString(ip) || !isValidPort(port) || !id) {
         logger.warn('Invalid SSH data input for update');
-        return res.status(400).json({ error: 'Invalid SSH data' });
+        return res.status(400).json({error: 'Invalid SSH data'});
     }
 
     const sshDataObj: any = {
@@ -242,7 +270,6 @@ router.put('/db/host/:id', authenticateJWT, upload.single('key'), async (req: Re
         defaultPath: defaultPath || null,
     };
 
-    // Handle authentication data based on authMethod
     if (authMethod === 'password') {
         sshDataObj.password = password;
         sshDataObj.key = null;
@@ -259,10 +286,10 @@ router.put('/db/host/:id', authenticateJWT, upload.single('key'), async (req: Re
         await db.update(sshData)
             .set(sshDataObj)
             .where(and(eq(sshData.id, Number(id)), eq(sshData.userId, userId)));
-        res.json({ message: 'SSH data updated' });
+        res.json({message: 'SSH data updated'});
     } catch (err) {
         logger.error('Failed to update SSH data', err);
-        res.status(500).json({ error: 'Failed to update SSH data' });
+        res.status(500).json({error: 'Failed to update SSH data'});
     }
 });
 
@@ -272,14 +299,13 @@ router.get('/db/host', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for SSH data fetch');
-        return res.status(400).json({ error: 'Invalid userId' });
+        return res.status(400).json({error: 'Invalid userId'});
     }
     try {
         const data = await db
             .select()
             .from(sshData)
             .where(eq(sshData.userId, userId));
-        // Convert tags to array, booleans to bool, tunnelConnections to array
         const result = data.map((row: any) => ({
             ...row,
             tags: typeof row.tags === 'string' ? (row.tags ? row.tags.split(',').filter(Boolean) : []) : [],
@@ -292,31 +318,31 @@ router.get('/db/host', authenticateJWT, async (req: Request, res: Response) => {
         res.json(result);
     } catch (err) {
         logger.error('Failed to fetch SSH data', err);
-        res.status(500).json({ error: 'Failed to fetch SSH data' });
+        res.status(500).json({error: 'Failed to fetch SSH data'});
     }
 });
 
 // Route: Get SSH host by ID (requires JWT)
 // GET /ssh/host/:id
 router.get('/db/host/:id', authenticateJWT, async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const {id} = req.params;
     const userId = (req as any).userId;
-    
+
     if (!isNonEmptyString(userId) || !id) {
         logger.warn('Invalid request for SSH host fetch');
-        return res.status(400).json({ error: 'Invalid request' });
+        return res.status(400).json({error: 'Invalid request'});
     }
-    
+
     try {
         const data = await db
             .select()
             .from(sshData)
             .where(and(eq(sshData.id, Number(id)), eq(sshData.userId, userId)));
-        
+
         if (data.length === 0) {
-            return res.status(404).json({ error: 'SSH host not found' });
+            return res.status(404).json({error: 'SSH host not found'});
         }
-        
+
         const host = data[0];
         const result = {
             ...host,
@@ -327,11 +353,11 @@ router.get('/db/host/:id', authenticateJWT, async (req: Request, res: Response) 
             tunnelConnections: host.tunnelConnections ? JSON.parse(host.tunnelConnections) : [],
             enableConfigEditor: !!host.enableConfigEditor,
         };
-        
+
         res.json(result);
     } catch (err) {
         logger.error('Failed to fetch SSH host', err);
-        res.status(500).json({ error: 'Failed to fetch SSH host' });
+        res.status(500).json({error: 'Failed to fetch SSH host'});
     }
 });
 
@@ -341,11 +367,11 @@ router.get('/db/folders', authenticateJWT, async (req: Request, res: Response) =
     const userId = (req as any).userId;
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for SSH folder fetch');
-        return res.status(400).json({ error: 'Invalid userId' });
+        return res.status(400).json({error: 'Invalid userId'});
     }
     try {
         const data = await db
-            .select({ folder: sshData.folder })
+            .select({folder: sshData.folder})
             .from(sshData)
             .where(eq(sshData.userId, userId));
 
@@ -361,7 +387,7 @@ router.get('/db/folders', authenticateJWT, async (req: Request, res: Response) =
         res.json(folders);
     } catch (err) {
         logger.error('Failed to fetch SSH folders', err);
-        res.status(500).json({ error: 'Failed to fetch SSH folders' });
+        res.status(500).json({error: 'Failed to fetch SSH folders'});
     }
 });
 
@@ -369,39 +395,37 @@ router.get('/db/folders', authenticateJWT, async (req: Request, res: Response) =
 // DELETE /ssh/host/:id
 router.delete('/db/host/:id', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { id } = req.params;
+    const {id} = req.params;
     if (!isNonEmptyString(userId) || !id) {
         logger.warn('Invalid userId or id for SSH host delete');
-        return res.status(400).json({ error: 'Invalid userId or id' });
+        return res.status(400).json({error: 'Invalid userId or id'});
     }
     try {
         const result = await db.delete(sshData)
             .where(and(eq(sshData.id, Number(id)), eq(sshData.userId, userId)));
-        res.json({ message: 'SSH host deleted' });
+        res.json({message: 'SSH host deleted'});
     } catch (err) {
         logger.error('Failed to delete SSH host', err);
-        res.status(500).json({ error: 'Failed to delete SSH host' });
+        res.status(500).json({error: 'Failed to delete SSH host'});
     }
 });
-
-// Config Editor Database Routes
 
 // Route: Get recent files (requires JWT)
 // GET /ssh/config_editor/recent
 router.get('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
-    
+
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for recent files fetch');
-        return res.status(400).json({ error: 'Invalid userId' });
+        return res.status(400).json({error: 'Invalid userId'});
     }
-    
+
     if (!hostId) {
         logger.warn('Host ID is required for recent files fetch');
-        return res.status(400).json({ error: 'Host ID is required' });
+        return res.status(400).json({error: 'Host ID is required'});
     }
-    
+
     try {
         const recentFiles = await db
             .select()
@@ -414,7 +438,7 @@ router.get('/config_editor/recent', authenticateJWT, async (req: Request, res: R
         res.json(recentFiles);
     } catch (err) {
         logger.error('Failed to fetch recent files', err);
-        res.status(500).json({ error: 'Failed to fetch recent files' });
+        res.status(500).json({error: 'Failed to fetch recent files'});
     }
 });
 
@@ -422,29 +446,27 @@ router.get('/config_editor/recent', authenticateJWT, async (req: Request, res: R
 // POST /ssh/config_editor/recent
 router.post('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
         logger.warn('Invalid request for adding recent file');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        // Check if file already exists in recent for this host
         const conditions = [
-            eq(configEditorRecent.userId, userId), 
+            eq(configEditorRecent.userId, userId),
             eq(configEditorRecent.path, path),
             eq(configEditorRecent.hostId, hostId)
         ];
-        
+
         const existing = await db
             .select()
             .from(configEditorRecent)
             .where(and(...conditions));
-        
+
         if (existing.length > 0) {
-            // Update lastOpened timestamp
             await db
                 .update(configEditorRecent)
-                .set({ lastOpened: new Date().toISOString() })
+                .set({lastOpened: new Date().toISOString()})
                 .where(and(...conditions));
         } else {
             // Add new recent file
@@ -456,10 +478,10 @@ router.post('/config_editor/recent', authenticateJWT, async (req: Request, res: 
                 lastOpened: new Date().toISOString()
             });
         }
-        res.json({ message: 'File added to recent' });
+        res.json({message: 'File added to recent'});
     } catch (err) {
         logger.error('Failed to add recent file', err);
-        res.status(500).json({ error: 'Failed to add recent file' });
+        res.status(500).json({error: 'Failed to add recent file'});
     }
 });
 
@@ -467,28 +489,25 @@ router.post('/config_editor/recent', authenticateJWT, async (req: Request, res: 
 // DELETE /ssh/config_editor/recent
 router.delete('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
         logger.warn('Invalid request for removing recent file');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        logger.info(`Removing recent file: ${name} at ${path} for user ${userId} and host ${hostId}`);
-        
         const conditions = [
-            eq(configEditorRecent.userId, userId), 
+            eq(configEditorRecent.userId, userId),
             eq(configEditorRecent.path, path),
             eq(configEditorRecent.hostId, hostId)
         ];
-        
+
         const result = await db
             .delete(configEditorRecent)
             .where(and(...conditions));
-        logger.info(`Recent file removed successfully`);
-        res.json({ message: 'File removed from recent' });
+        res.json({message: 'File removed from recent'});
     } catch (err) {
         logger.error('Failed to remove recent file', err);
-        res.status(500).json({ error: 'Failed to remove recent file' });
+        res.status(500).json({error: 'Failed to remove recent file'});
     }
 });
 
@@ -497,17 +516,17 @@ router.delete('/config_editor/recent', authenticateJWT, async (req: Request, res
 router.get('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
-    
+
     if (!isNonEmptyString(userId)) {
         logger.warn('Invalid userId for pinned files fetch');
-        return res.status(400).json({ error: 'Invalid userId' });
+        return res.status(400).json({error: 'Invalid userId'});
     }
-    
+
     if (!hostId) {
         logger.warn('Host ID is required for pinned files fetch');
-        return res.status(400).json({ error: 'Host ID is required' });
+        return res.status(400).json({error: 'Host ID is required'});
     }
-    
+
     try {
         const pinnedFiles = await db
             .select()
@@ -520,7 +539,7 @@ router.get('/config_editor/pinned', authenticateJWT, async (req: Request, res: R
         res.json(pinnedFiles);
     } catch (err) {
         logger.error('Failed to fetch pinned files', err);
-        res.status(500).json({ error: 'Failed to fetch pinned files' });
+        res.status(500).json({error: 'Failed to fetch pinned files'});
     }
 });
 
@@ -528,26 +547,24 @@ router.get('/config_editor/pinned', authenticateJWT, async (req: Request, res: R
 // POST /ssh/config_editor/pinned
 router.post('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
         logger.warn('Invalid request for adding pinned file');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        // Check if file already exists in pinned for this host
         const conditions = [
-            eq(configEditorPinned.userId, userId), 
+            eq(configEditorPinned.userId, userId),
             eq(configEditorPinned.path, path),
             eq(configEditorPinned.hostId, hostId)
         ];
-        
+
         const existing = await db
             .select()
             .from(configEditorPinned)
             .where(and(...conditions));
-        
+
         if (existing.length === 0) {
-            // Add new pinned file
             await db.insert(configEditorPinned).values({
                 userId,
                 hostId,
@@ -556,10 +573,10 @@ router.post('/config_editor/pinned', authenticateJWT, async (req: Request, res: 
                 pinnedAt: new Date().toISOString()
             });
         }
-        res.json({ message: 'File pinned successfully' });
+        res.json({message: 'File pinned successfully'});
     } catch (err) {
         logger.error('Failed to pin file', err);
-        res.status(500).json({ error: 'Failed to pin file' });
+        res.status(500).json({error: 'Failed to pin file'});
     }
 });
 
@@ -567,28 +584,25 @@ router.post('/config_editor/pinned', authenticateJWT, async (req: Request, res: 
 // DELETE /ssh/config_editor/pinned
 router.delete('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
         logger.warn('Invalid request for removing pinned file');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        logger.info(`Removing pinned file: ${name} at ${path} for user ${userId} and host ${hostId}`);
-        
         const conditions = [
-            eq(configEditorPinned.userId, userId), 
+            eq(configEditorPinned.userId, userId),
             eq(configEditorPinned.path, path),
             eq(configEditorPinned.hostId, hostId)
         ];
-        
+
         const result = await db
             .delete(configEditorPinned)
             .where(and(...conditions));
-        logger.info(`Pinned file removed successfully`);
-        res.json({ message: 'File unpinned successfully' });
+        res.json({message: 'File unpinned successfully'});
     } catch (err) {
         logger.error('Failed to unpin file', err);
-        res.status(500).json({ error: 'Failed to unpin file' });
+        res.status(500).json({error: 'Failed to unpin file'});
     }
 });
 
@@ -597,17 +611,15 @@ router.delete('/config_editor/pinned', authenticateJWT, async (req: Request, res
 router.get('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
-    
+
     if (!isNonEmptyString(userId)) {
-        logger.warn('Invalid userId for shortcuts fetch');
-        return res.status(400).json({ error: 'Invalid userId' });
+        return res.status(400).json({error: 'Invalid userId'});
     }
-    
+
     if (!hostId) {
-        logger.warn('Host ID is required for shortcuts fetch');
-        return res.status(400).json({ error: 'Host ID is required' });
+        return res.status(400).json({error: 'Host ID is required'});
     }
-    
+
     try {
         const shortcuts = await db
             .select()
@@ -620,7 +632,7 @@ router.get('/config_editor/shortcuts', authenticateJWT, async (req: Request, res
         res.json(shortcuts);
     } catch (err) {
         logger.error('Failed to fetch shortcuts', err);
-        res.status(500).json({ error: 'Failed to fetch shortcuts' });
+        res.status(500).json({error: 'Failed to fetch shortcuts'});
     }
 });
 
@@ -628,26 +640,23 @@ router.get('/config_editor/shortcuts', authenticateJWT, async (req: Request, res
 // POST /ssh/config_editor/shortcuts
 router.post('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
-        logger.warn('Invalid request for adding shortcut');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        // Check if shortcut already exists for this host
         const conditions = [
-            eq(configEditorShortcuts.userId, userId), 
+            eq(configEditorShortcuts.userId, userId),
             eq(configEditorShortcuts.path, path),
             eq(configEditorShortcuts.hostId, hostId)
         ];
-        
+
         const existing = await db
             .select()
             .from(configEditorShortcuts)
             .where(and(...conditions));
-        
+
         if (existing.length === 0) {
-            // Add new shortcut
             await db.insert(configEditorShortcuts).values({
                 userId,
                 hostId,
@@ -656,10 +665,10 @@ router.post('/config_editor/shortcuts', authenticateJWT, async (req: Request, re
                 createdAt: new Date().toISOString()
             });
         }
-        res.json({ message: 'Shortcut added successfully' });
+        res.json({message: 'Shortcut added successfully'});
     } catch (err) {
         logger.error('Failed to add shortcut', err);
-        res.status(500).json({ error: 'Failed to add shortcut' });
+        res.status(500).json({error: 'Failed to add shortcut'});
     }
 });
 
@@ -667,28 +676,24 @@ router.post('/config_editor/shortcuts', authenticateJWT, async (req: Request, re
 // DELETE /ssh/config_editor/shortcuts
 router.delete('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const { name, path, hostId } = req.body;
+    const {name, path, hostId} = req.body;
     if (!isNonEmptyString(userId) || !name || !path || !hostId) {
-        logger.warn('Invalid request for removing shortcut');
-        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+        return res.status(400).json({error: 'Invalid request - userId, name, path, and hostId are required'});
     }
     try {
-        logger.info(`Removing shortcut: ${name} at ${path} for user ${userId} and host ${hostId}`);
-        
         const conditions = [
-            eq(configEditorShortcuts.userId, userId), 
+            eq(configEditorShortcuts.userId, userId),
             eq(configEditorShortcuts.path, path),
             eq(configEditorShortcuts.hostId, hostId)
         ];
-        
+
         const result = await db
             .delete(configEditorShortcuts)
             .where(and(...conditions));
-        logger.info(`Shortcut removed successfully`);
-        res.json({ message: 'Shortcut removed successfully' });
+        res.json({message: 'Shortcut removed successfully'});
     } catch (err) {
         logger.error('Failed to remove shortcut', err);
-        res.status(500).json({ error: 'Failed to remove shortcut' });
+        res.status(500).json({error: 'Failed to remove shortcut'});
     }
 });
 

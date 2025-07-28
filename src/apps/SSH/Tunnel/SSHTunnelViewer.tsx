@@ -1,9 +1,9 @@
 import React from "react";
-import { SSHTunnelObject } from "./SSHTunnelObject.tsx";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion.tsx";
-import { Separator } from "@/components/ui/separator.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Search } from "lucide-react";
+import {SSHTunnelObject} from "./SSHTunnelObject.tsx";
+import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion.tsx";
+import {Separator} from "@/components/ui/separator.tsx";
+import {Input} from "@/components/ui/input.tsx";
+import {Search} from "lucide-react";
 
 interface TunnelConnection {
     sourcePort: number;
@@ -50,25 +50,23 @@ interface SSHTunnelViewerProps {
     onTunnelAction: (action: 'connect' | 'disconnect' | 'cancel', host: SSHHost, tunnelIndex: number) => Promise<any>;
 }
 
-export function SSHTunnelViewer({ 
-    hosts = [], 
-    tunnelStatuses = {},
-    tunnelActions = {},
-    onTunnelAction
-}: SSHTunnelViewerProps): React.ReactElement {
+export function SSHTunnelViewer({
+                                    hosts = [],
+                                    tunnelStatuses = {},
+                                    tunnelActions = {},
+                                    onTunnelAction
+                                }: SSHTunnelViewerProps): React.ReactElement {
     const [searchQuery, setSearchQuery] = React.useState("");
     const [debouncedSearch, setDebouncedSearch] = React.useState("");
 
-    // Debounce search
     React.useEffect(() => {
         const handler = setTimeout(() => setDebouncedSearch(searchQuery), 200);
         return () => clearTimeout(handler);
     }, [searchQuery]);
 
-    // Filter hosts by search query
     const filteredHosts = React.useMemo(() => {
         if (!debouncedSearch.trim()) return hosts;
-        
+
         const query = debouncedSearch.trim().toLowerCase();
         return hosts.filter(host => {
             const searchableText = [
@@ -84,16 +82,14 @@ export function SSHTunnelViewer({
         });
     }, [hosts, debouncedSearch]);
 
-    // Filter hosts to only show those with enableTunnel: true and tunnelConnections
     const tunnelHosts = React.useMemo(() => {
-        return filteredHosts.filter(host => 
-            host.enableTunnel && 
-            host.tunnelConnections && 
+        return filteredHosts.filter(host =>
+            host.enableTunnel &&
+            host.tunnelConnections &&
             host.tunnelConnections.length > 0
         );
     }, [filteredHosts]);
 
-    // Group hosts by folder and sort
     const hostsByFolder = React.useMemo(() => {
         const map: Record<string, SSHHost[]> = {};
         tunnelHosts.forEach(host => {
@@ -121,9 +117,8 @@ export function SSHTunnelViewer({
     };
 
     return (
-        <div className="w-full p-6" style={{ width: 'calc(100vw - 256px)', maxWidth: 'none' }}>
-            <div className="w-full min-w-0" style={{ width: '100%', maxWidth: 'none' }}>
-                {/* Header */}
+        <div className="w-full p-6" style={{width: 'calc(100vw - 256px)', maxWidth: 'none'}}>
+            <div className="w-full min-w-0" style={{width: '100%', maxWidth: 'none'}}>
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold text-foreground mb-2">
                         SSH Tunnels
@@ -133,9 +128,9 @@ export function SSHTunnelViewer({
                     </p>
                 </div>
 
-                {/* Search Bar */}
                 <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                     <Input
                         placeholder="Search hosts by name, username, IP, folder, tags..."
                         value={searchQuery}
@@ -144,14 +139,13 @@ export function SSHTunnelViewer({
                     />
                 </div>
 
-                {/* Accordion Layout */}
                 {tunnelHosts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <h3 className="text-lg font-semibold text-foreground mb-2">
                             No SSH Tunnels
                         </h3>
                         <p className="text-muted-foreground max-w-md">
-                            {searchQuery.trim() ? 
+                            {searchQuery.trim() ?
                                 "No hosts match your search criteria." :
                                 "Create your first SSH tunnel to get started. Use the SSH Manager to add hosts with tunnel connections."
                             }
@@ -160,8 +154,10 @@ export function SSHTunnelViewer({
                 ) : (
                     <Accordion type="multiple" className="w-full" defaultValue={sortedFolders}>
                         {sortedFolders.map((folder, idx) => (
-                            <AccordionItem value={folder} key={`folder-${folder}`} className={idx === 0 ? "mt-0" : "mt-2"}>
-                                <AccordionTrigger className="text-base font-semibold rounded-t-none px-3 py-2" style={{marginTop: idx === 0 ? 0 : undefined}}>
+                            <AccordionItem value={folder} key={`folder-${folder}`}
+                                           className={idx === 0 ? "mt-0" : "mt-2"}>
+                                <AccordionTrigger className="text-base font-semibold rounded-t-none px-3 py-2"
+                                                  style={{marginTop: idx === 0 ? 0 : undefined}}>
                                     {folder}
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col gap-1 px-3 pb-2 pt-1">
@@ -185,4 +181,4 @@ export function SSHTunnelViewer({
             </div>
         </div>
     );
-} 
+}
