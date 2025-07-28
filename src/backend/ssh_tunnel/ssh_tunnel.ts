@@ -545,7 +545,6 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
             });
 
             stream.on('close', (code: number) => {
-                logger.debug(`Verification for '${tunnelName}' completed with code ${code}, output: '${output}', error: '${errorOutput}'`);
                 if (code === 0) {
                     cleanupVerification(true);
                 } else {

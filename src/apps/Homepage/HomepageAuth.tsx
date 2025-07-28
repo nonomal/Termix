@@ -181,7 +181,7 @@ export function HomepageAuth({ className, setLoggedIn, setIsAdmin, setUsername, 
               <Alert className="my-2">
                 <AlertTitle>Logged in!</AlertTitle>
                 <AlertDescription>
-                  You are logged in! Use the sidebar to access all tools.
+                  You are logged in!  Use the sidebar to access all available tools. To get started, create an SSH Host in the SSH Manager tab. Once created, you can connect to that host using the other apps in the sidebar.
                 </AlertDescription>
               </Alert>
               
