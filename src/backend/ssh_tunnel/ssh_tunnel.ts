@@ -51,7 +51,7 @@ const countdownIntervals = new Map<string, NodeJS.Timeout>();
 const retryExhaustedTunnels = new Set<string>();
 
 const tunnelConfigs = new Map<string, TunnelConfig>();
-const activeTunnelProcesses = new Map<string, ChildProcess>();s
+const activeTunnelProcesses = new Map<string, ChildProcess>();
 
 interface TunnelConnection {
     sourcePort: number;
