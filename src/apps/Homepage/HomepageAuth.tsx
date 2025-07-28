@@ -213,7 +213,7 @@ export function HomepageAuth({ className, setLoggedIn, setIsAdmin, setUsername, 
                 <Button
                     variant="link"
                     className="text-sm"
-                    onClick={() => window.open('https://www.paypal.com/paypalme/LukeGustafson803', '_blank')}
+                    onClick={() => window.open('https://github.com/sponsors/LukeGus', '_blank')}
                 >
                   Fund
                 </Button>

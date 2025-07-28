@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { SSHTunnelSidebar } from "@/apps/SSH/Tunnel/SSHTunnelSidebar.tsx";
 import { SSHTunnelViewer } from "@/apps/SSH/Tunnel/SSHTunnelViewer.tsx";
-import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel } from "@/apps/SSH/ssh-axios";
+import { getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel } from "@/apps/SSH/ssh-axios-fixed";
 
 interface ConfigEditorProps {
     onSelectView: (view: string) => void;

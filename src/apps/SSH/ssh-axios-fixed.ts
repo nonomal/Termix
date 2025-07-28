@@ -185,17 +185,17 @@ export async function createSSHHost(hostData: SSHHostData): Promise<SSHHost> {
         if (hostData.authType === 'key' && hostData.key instanceof File) {
             const formData = new FormData();
             formData.append('key', hostData.key);
-
+            
             const dataWithoutFile = { ...submitData };
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
-
+            
             const response = await api.post('/ssh/db/host', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-
+            
             return response.data;
         } else {
             const response = await api.post('/ssh/db/host', submitData);
@@ -240,17 +240,17 @@ export async function updateSSHHost(hostId: number, hostData: SSHHostData): Prom
         if (hostData.authType === 'key' && hostData.key instanceof File) {
             const formData = new FormData();
             formData.append('key', hostData.key);
-
+            
             const dataWithoutFile = { ...submitData };
             delete dataWithoutFile.key;
             formData.append('data', JSON.stringify(dataWithoutFile));
-
+            
             const response = await api.put(`/ssh/db/host/${hostId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-
+            
             return response.data;
         } else {
             const response = await api.put(`/ssh/db/host/${hostId}`, submitData);
@@ -334,7 +334,7 @@ export async function cancelTunnel(tunnelName: string): Promise<any> {
     }
 }
 
-export { api, configEditorApi };
+export { api, configEditorApi }; 
 
 // Config Editor API functions
 interface ConfigEditorFile {
@@ -353,7 +353,9 @@ interface ConfigEditorShortcut {
 // Config Editor database functions (use port 8081 for database operations)
 export async function getConfigEditorRecent(hostId: number): Promise<ConfigEditorFile[]> {
     try {
+        console.log('Fetching recent files for host:', hostId);
         const response = await api.get(`/ssh/config_editor/recent?hostId=${hostId}`);
+        console.log('Recent files response:', response.data);
         return response.data || [];
     } catch (error) {
         console.error('Error fetching recent files:', error);
@@ -363,10 +365,13 @@ export async function getConfigEditorRecent(hostId: number): Promise<ConfigEdito
 
 export async function addConfigEditorRecent(file: { name: string; path: string; isSSH: boolean; sshSessionId?: string; hostId: number }): Promise<any> {
     try {
+        console.log('Making request to add recent file:', file);
         const response = await api.post('/ssh/config_editor/recent', file);
+        console.log('Add recent file response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Error adding recent file:', error);
+        throw error;
     }
 }
 
@@ -376,6 +381,7 @@ export async function removeConfigEditorRecent(file: { name: string; path: strin
         return response.data;
     } catch (error) {
         console.error('Error removing recent file:', error);
+        throw error;
     }
 }
 
@@ -395,6 +401,7 @@ export async function addConfigEditorPinned(file: { name: string; path: string; 
         return response.data;
     } catch (error) {
         console.error('Error adding pinned file:', error);
+        throw error;
     }
 }
 
@@ -404,6 +411,7 @@ export async function removeConfigEditorPinned(file: { name: string; path: strin
         return response.data;
     } catch (error) {
         console.error('Error removing pinned file:', error);
+        throw error;
     }
 }
 
@@ -423,6 +431,7 @@ export async function addConfigEditorShortcut(shortcut: { name: string; path: st
         return response.data;
     } catch (error) {
         console.error('Error adding shortcut:', error);
+        throw error;
     }
 }
 
@@ -432,6 +441,7 @@ export async function removeConfigEditorShortcut(shortcut: { name: string; path:
         return response.data;
     } catch (error) {
         console.error('Error removing shortcut:', error);
+        throw error;
     }
 }
 
@@ -504,14 +514,28 @@ export async function readSSHFile(sessionId: string, path: string): Promise<{ co
 
 export async function writeSSHFile(sessionId: string, path: string, content: string): Promise<any> {
     try {
+        console.log('Making writeSSHFile request:', { sessionId, path, contentLength: content.length });
         const response = await configEditorApi.post('/ssh/config_editor/ssh/writeFile', {
             sessionId,
             path,
             content
         });
-        return response.data;
+        console.log('writeSSHFile response:', response.data);
+        
+        // Check if the response indicates success
+        if (response.data && (response.data.message === 'File written successfully' || response.status === 200)) {
+            console.log('File write operation completed successfully');
+            return response.data;
+        } else {
+            throw new Error('File write operation did not return success status');
+        }
     } catch (error) {
         console.error('Error writing SSH file:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error constructor:', error?.constructor?.name);
+        console.error('Error response:', (error as any)?.response);
+        console.error('Error response data:', (error as any)?.response?.data);
+        console.error('Error response status:', (error as any)?.response?.status);
         throw error;
     }
 }

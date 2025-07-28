@@ -36,3 +36,30 @@ export const sshData = sqliteTable('ssh_data', {
     createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const configEditorRecent = sqliteTable('config_editor_recent', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    hostId: integer('host_id').notNull().references(() => sshData.id), // SSH host ID
+    name: text('name').notNull(), // File name
+    path: text('path').notNull(), // File path
+    lastOpened: text('last_opened').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const configEditorPinned = sqliteTable('config_editor_pinned', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    hostId: integer('host_id').notNull().references(() => sshData.id), // SSH host ID
+    name: text('name').notNull(), // File name
+    path: text('path').notNull(), // File path
+    pinnedAt: text('pinned_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const configEditorShortcuts = sqliteTable('config_editor_shortcuts', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    hostId: integer('host_id').notNull().references(() => sshData.id), // SSH host ID
+    name: text('name').notNull(), // Folder name
+    path: text('path').notNull(), // Folder path
+    createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});

@@ -19,7 +19,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx
 import React, {useEffect, useRef, useState} from "react";
 import {Switch} from "@/components/ui/switch.tsx";
 import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
-import { createSSHHost, updateSSHHost, getSSHHosts } from '@/apps/SSH/ssh-axios';
+import { createSSHHost, updateSSHHost, getSSHHosts } from '@/apps/SSH/ssh-axios-fixed';
 
 interface SSHHost {
     id: number;
@@ -1014,7 +1014,7 @@ export function SSHManagerHostEditor({ editingHost, onFormSubmit }: SSHManagerHo
                     </ScrollArea>
                     <footer className="shrink-0 w-full">
                         <Separator className="p-0.25 mt-1 mb-3"/>
-                        <Button type="submit">{editingHost ? "Update Host" : "Add Host"}</Button>
+                        <Button type="submit" variant="outline">{editingHost ? "Update Host" : "Add Host"}</Button>
                     </footer>
                 </form>
             </Form>

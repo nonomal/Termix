@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db/index.js';
-import { sshData } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { sshData, configEditorRecent, configEditorPinned, configEditorShortcuts } from '../db/schema.js';
+import { eq, and, desc } from 'drizzle-orm';
 import chalk from 'chalk';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
@@ -381,6 +381,314 @@ router.delete('/db/host/:id', authenticateJWT, async (req: Request, res: Respons
     } catch (err) {
         logger.error('Failed to delete SSH host', err);
         res.status(500).json({ error: 'Failed to delete SSH host' });
+    }
+});
+
+// Config Editor Database Routes
+
+// Route: Get recent files (requires JWT)
+// GET /ssh/config_editor/recent
+router.get('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
+    
+    if (!isNonEmptyString(userId)) {
+        logger.warn('Invalid userId for recent files fetch');
+        return res.status(400).json({ error: 'Invalid userId' });
+    }
+    
+    if (!hostId) {
+        logger.warn('Host ID is required for recent files fetch');
+        return res.status(400).json({ error: 'Host ID is required' });
+    }
+    
+    try {
+        const recentFiles = await db
+            .select()
+            .from(configEditorRecent)
+            .where(and(
+                eq(configEditorRecent.userId, userId),
+                eq(configEditorRecent.hostId, hostId)
+            ))
+            .orderBy(desc(configEditorRecent.lastOpened));
+        res.json(recentFiles);
+    } catch (err) {
+        logger.error('Failed to fetch recent files', err);
+        res.status(500).json({ error: 'Failed to fetch recent files' });
+    }
+});
+
+// Route: Add file to recent (requires JWT)
+// POST /ssh/config_editor/recent
+router.post('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for adding recent file');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        // Check if file already exists in recent for this host
+        const conditions = [
+            eq(configEditorRecent.userId, userId), 
+            eq(configEditorRecent.path, path),
+            eq(configEditorRecent.hostId, hostId)
+        ];
+        
+        const existing = await db
+            .select()
+            .from(configEditorRecent)
+            .where(and(...conditions));
+        
+        if (existing.length > 0) {
+            // Update lastOpened timestamp
+            await db
+                .update(configEditorRecent)
+                .set({ lastOpened: new Date().toISOString() })
+                .where(and(...conditions));
+        } else {
+            // Add new recent file
+            await db.insert(configEditorRecent).values({
+                userId,
+                hostId,
+                name,
+                path,
+                lastOpened: new Date().toISOString()
+            });
+        }
+        res.json({ message: 'File added to recent' });
+    } catch (err) {
+        logger.error('Failed to add recent file', err);
+        res.status(500).json({ error: 'Failed to add recent file' });
+    }
+});
+
+// Route: Remove file from recent (requires JWT)
+// DELETE /ssh/config_editor/recent
+router.delete('/config_editor/recent', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for removing recent file');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        logger.info(`Removing recent file: ${name} at ${path} for user ${userId} and host ${hostId}`);
+        
+        const conditions = [
+            eq(configEditorRecent.userId, userId), 
+            eq(configEditorRecent.path, path),
+            eq(configEditorRecent.hostId, hostId)
+        ];
+        
+        const result = await db
+            .delete(configEditorRecent)
+            .where(and(...conditions));
+        logger.info(`Recent file removed successfully`);
+        res.json({ message: 'File removed from recent' });
+    } catch (err) {
+        logger.error('Failed to remove recent file', err);
+        res.status(500).json({ error: 'Failed to remove recent file' });
+    }
+});
+
+// Route: Get pinned files (requires JWT)
+// GET /ssh/config_editor/pinned
+router.get('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
+    
+    if (!isNonEmptyString(userId)) {
+        logger.warn('Invalid userId for pinned files fetch');
+        return res.status(400).json({ error: 'Invalid userId' });
+    }
+    
+    if (!hostId) {
+        logger.warn('Host ID is required for pinned files fetch');
+        return res.status(400).json({ error: 'Host ID is required' });
+    }
+    
+    try {
+        const pinnedFiles = await db
+            .select()
+            .from(configEditorPinned)
+            .where(and(
+                eq(configEditorPinned.userId, userId),
+                eq(configEditorPinned.hostId, hostId)
+            ))
+            .orderBy(configEditorPinned.pinnedAt);
+        res.json(pinnedFiles);
+    } catch (err) {
+        logger.error('Failed to fetch pinned files', err);
+        res.status(500).json({ error: 'Failed to fetch pinned files' });
+    }
+});
+
+// Route: Add file to pinned (requires JWT)
+// POST /ssh/config_editor/pinned
+router.post('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for adding pinned file');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        // Check if file already exists in pinned for this host
+        const conditions = [
+            eq(configEditorPinned.userId, userId), 
+            eq(configEditorPinned.path, path),
+            eq(configEditorPinned.hostId, hostId)
+        ];
+        
+        const existing = await db
+            .select()
+            .from(configEditorPinned)
+            .where(and(...conditions));
+        
+        if (existing.length === 0) {
+            // Add new pinned file
+            await db.insert(configEditorPinned).values({
+                userId,
+                hostId,
+                name,
+                path,
+                pinnedAt: new Date().toISOString()
+            });
+        }
+        res.json({ message: 'File pinned successfully' });
+    } catch (err) {
+        logger.error('Failed to pin file', err);
+        res.status(500).json({ error: 'Failed to pin file' });
+    }
+});
+
+// Route: Remove file from pinned (requires JWT)
+// DELETE /ssh/config_editor/pinned
+router.delete('/config_editor/pinned', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for removing pinned file');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        logger.info(`Removing pinned file: ${name} at ${path} for user ${userId} and host ${hostId}`);
+        
+        const conditions = [
+            eq(configEditorPinned.userId, userId), 
+            eq(configEditorPinned.path, path),
+            eq(configEditorPinned.hostId, hostId)
+        ];
+        
+        const result = await db
+            .delete(configEditorPinned)
+            .where(and(...conditions));
+        logger.info(`Pinned file removed successfully`);
+        res.json({ message: 'File unpinned successfully' });
+    } catch (err) {
+        logger.error('Failed to unpin file', err);
+        res.status(500).json({ error: 'Failed to unpin file' });
+    }
+});
+
+// Route: Get folder shortcuts (requires JWT)
+// GET /ssh/config_editor/shortcuts
+router.get('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : null;
+    
+    if (!isNonEmptyString(userId)) {
+        logger.warn('Invalid userId for shortcuts fetch');
+        return res.status(400).json({ error: 'Invalid userId' });
+    }
+    
+    if (!hostId) {
+        logger.warn('Host ID is required for shortcuts fetch');
+        return res.status(400).json({ error: 'Host ID is required' });
+    }
+    
+    try {
+        const shortcuts = await db
+            .select()
+            .from(configEditorShortcuts)
+            .where(and(
+                eq(configEditorShortcuts.userId, userId),
+                eq(configEditorShortcuts.hostId, hostId)
+            ))
+            .orderBy(configEditorShortcuts.createdAt);
+        res.json(shortcuts);
+    } catch (err) {
+        logger.error('Failed to fetch shortcuts', err);
+        res.status(500).json({ error: 'Failed to fetch shortcuts' });
+    }
+});
+
+// Route: Add folder shortcut (requires JWT)
+// POST /ssh/config_editor/shortcuts
+router.post('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for adding shortcut');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        // Check if shortcut already exists for this host
+        const conditions = [
+            eq(configEditorShortcuts.userId, userId), 
+            eq(configEditorShortcuts.path, path),
+            eq(configEditorShortcuts.hostId, hostId)
+        ];
+        
+        const existing = await db
+            .select()
+            .from(configEditorShortcuts)
+            .where(and(...conditions));
+        
+        if (existing.length === 0) {
+            // Add new shortcut
+            await db.insert(configEditorShortcuts).values({
+                userId,
+                hostId,
+                name,
+                path,
+                createdAt: new Date().toISOString()
+            });
+        }
+        res.json({ message: 'Shortcut added successfully' });
+    } catch (err) {
+        logger.error('Failed to add shortcut', err);
+        res.status(500).json({ error: 'Failed to add shortcut' });
+    }
+});
+
+// Route: Remove folder shortcut (requires JWT)
+// DELETE /ssh/config_editor/shortcuts
+router.delete('/config_editor/shortcuts', authenticateJWT, async (req: Request, res: Response) => {
+    const userId = (req as any).userId;
+    const { name, path, hostId } = req.body;
+    if (!isNonEmptyString(userId) || !name || !path || !hostId) {
+        logger.warn('Invalid request for removing shortcut');
+        return res.status(400).json({ error: 'Invalid request - userId, name, path, and hostId are required' });
+    }
+    try {
+        logger.info(`Removing shortcut: ${name} at ${path} for user ${userId} and host ${hostId}`);
+        
+        const conditions = [
+            eq(configEditorShortcuts.userId, userId), 
+            eq(configEditorShortcuts.path, path),
+            eq(configEditorShortcuts.hostId, hostId)
+        ];
+        
+        const result = await db
+            .delete(configEditorShortcuts)
+            .where(and(...conditions));
+        logger.info(`Shortcut removed successfully`);
+        res.json({ message: 'Shortcut removed successfully' });
+    } catch (err) {
+        logger.error('Failed to remove shortcut', err);
+        res.status(500).json({ error: 'Failed to remove shortcut' });
     }
 });
 

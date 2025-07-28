@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getSSHHosts, deleteSSHHost } from "@/apps/SSH/ssh-axios";
+import { getSSHHosts, deleteSSHHost } from "@/apps/SSH/ssh-axios-fixed";
 import { Edit, Trash2, Server, Folder, Tag, Pin, Terminal, Network, FileEdit, Search } from "lucide-react";
 
 interface SSHHost {

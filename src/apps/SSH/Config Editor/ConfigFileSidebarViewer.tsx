@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { Card } from '@/components/ui/card.tsx';
 import { Separator } from '@/components/ui/separator.tsx';
-import { Plus, Folder, File, Star, Trash2, Edit, Link2, Server } from 'lucide-react';
+import {Plus, Folder, File, Star, Trash2, Edit, Link2, Server, Pin} from 'lucide-react';
 
 interface SSHConnection {
     id: string;
@@ -88,10 +88,10 @@ export function ConfigFileSidebarViewer({
                             >
                                 <Link2 className="w-4 h-4 mr-2" />
                                 {conn.name || conn.ip}
-                                {conn.isPinned && <Star className="w-3 h-3 ml-1 text-yellow-400" />}
+                                {conn.isPinned && <Pin className="w-3 h-3 ml-1 text-yellow-400" />}
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onPinSSH(conn)}>
-                                <Star className={`w-4 h-4 ${conn.isPinned ? 'text-yellow-400' : 'text-muted-foreground'}`} />
+                                <Pin className={`w-4 h-4 ${conn.isPinned ? 'text-yellow-400' : 'text-muted-foreground'}`} />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEditSSH(conn)}>
                                 <Edit className="w-4 h-4" />
@@ -123,7 +123,7 @@ export function ConfigFileSidebarViewer({
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onStarFile(item)}>
-                                        <Star className={`w-4 h-4 ${item.isStarred ? 'text-yellow-400' : 'text-muted-foreground'}`} />
+                                        <Pin className={`w-4 h-4 ${item.isStarred ? 'text-yellow-400' : 'text-muted-foreground'}`} />
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDeleteFile(item)}>
                                         <Trash2 className="w-4 h-4 text-red-500" />

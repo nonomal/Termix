@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/accordion.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { getSSHHosts } from "@/apps/SSH/ssh-axios";
+import { getSSHHosts } from "@/apps/SSH/ssh-axios-fixed";
 
 interface SSHHost {
     id: number;
@@ -350,7 +350,7 @@ const HostMenuItem = React.memo(function HostMenuItem({ host, onHostConnect }: {
                     >
                         <div className="flex items-center w-full">
                             {host.pin &&
-                                <Pin className="h-3.5 mr-1 w-3.5 mt-0.5 text-yellow-500 flex-shrink-0" />
+                                <Pin className="h-4.5 mr-1 w-4.5 mt-0.5 text-yellow-500 flex-shrink-0" />
                             }
                             <span className="font-medium truncate">{host.name || host.ip}</span>
                         </div>

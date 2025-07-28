@@ -7,15 +7,20 @@ import { EditorView } from '@codemirror/view';
 
 interface ConfigCodeEditorProps {
     content: string;
-    fileNameOld: string;
+    fileName: string;
     onContentChange: (value: string) => void;
 }
 
-export function ConfigCodeEditor({content, fileNameOld, onContentChange}: ConfigCodeEditorProps) {
-    const fileName = "test.js"
-
+export function ConfigCodeEditor({content, fileName, onContentChange}: ConfigCodeEditorProps) {
     function getLanguageName(filename: string): string {
-        const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
+        if (!filename || typeof filename !== 'string') {
+            return 'text'; // Default to text if no filename
+        }
+        const lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex === -1) {
+            return 'text'; // No extension found
+        }
+        const ext = filename.slice(lastDotIndex + 1).toLowerCase();
 
         switch (ext) {
             case 'ng': return 'angular';
@@ -162,7 +167,7 @@ export function ConfigCodeEditor({content, fileNameOld, onContentChange}: Config
             case 'yaml':
             case 'yml': return 'yaml';
             case 'z80': return 'z80';
-            default: return 'js';
+            default: return 'text';
         }
     }
 
@@ -189,7 +194,7 @@ export function ConfigCodeEditor({content, fileNameOld, onContentChange}: Config
                 <CodeMirror
                     value={content}
                     extensions={[
-                        loadLanguage(getLanguageName(fileName)),
+                        loadLanguage(getLanguageName(fileName || 'untitled.txt') as any) || [],
                         hyperLink,
                         oneDark,
                         EditorView.theme({
