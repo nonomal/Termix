@@ -17,14 +17,14 @@
 <br />
 <p align="center">
   <a href="https://github.com/LukeGus/Termix">
-    <img alt="Termix Banner" src=../../Termix/public/icon.svg style="width: 250px; height: auto;">  </a>
+    <img alt="Termix Banner" src=./public/icon.svg style="width: 250px; height: auto;">  </a>
 </p>
 
 If you would like, you can support the project here!\
 [![GitHub Sponsor](https://img.shields.io/badge/Sponsor-LukeGus-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/LukeGus)
 
 # Overview
-Termix is an open-source, forever-free, self-hosted all-in-one server management platform. It provides a web-based solution for managing your servers and infrastructure through a single, intuitive interface. Termix offers SSH terminal access, SSH tunneling capabilities, and remote file configuration editing - with many more tools to come.
+Termix is an open-source, forever-free, self-hosted all-in-one server management platform. It provides a web-based solution for managing your servers and infrastructure through a single, intuitive interface. Termix offers SSH terminal access, SSH tunneling capabilities, and remote file configuration editing, with many more tools to come.
 
 # Features
 - **SSH Terminal Access** - Full-featured terminal with split-screen support (up to 4 panels) and tab system
@@ -43,7 +43,24 @@ Termix is an open-source, forever-free, self-hosted all-in-one server management
 - **Improved Terminal Support** - Add more terminal protocols such as VNC and RDP (anyone who has experience in integrating RDP into a web-application similar to Apache Guacamole, please contact me by creating an issue)
 
 # Installation
-Visit the Termix [Docs](https://docs.termix.site/docs) for information on how to install Termix.
+Visit the Termix [Docs](https://docs.termix.site/docs) for more information on how to install Termix. Otherwise, view a sample docker-compose file here:
+```yaml
+services:
+  termix:
+    image: ghcr.io/lukegus/termix:latest
+    container_name: termix
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - termix-data:/app/data
+    environment:
+      PORT: "8080"
+
+volumes:
+  termix-data:
+    driver: local 
+```
 
 # Support
 If you need help with Termix, you can join the [Discord](https://discord.gg/jVQGdvHDrf) server and visit the support channel. You can also open an issue or open a pull request on the [GitHub](https://github.com/LukeGus/Termix/issues) repo.
