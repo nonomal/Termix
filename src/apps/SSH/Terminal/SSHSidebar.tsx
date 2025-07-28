@@ -232,14 +232,6 @@ export function SSHSidebar({onSelectView, onHostConnect, allTabs, runCommandOnTa
                                                     className="text-xs text-red-500 bg-red-500/10 rounded px-2 py-1 border border-red-500/20">{hostsError}</div>
                                             </div>
                                         )}
-                                        {!hostsLoading && !hostsError && hosts.length === 0 && (
-                                            <div className="px-2 py-1 mt-2">
-                                                <div
-                                                    className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1 border border-border/20">No
-                                                    hosts found.
-                                                </div>
-                                            </div>
-                                        )}
                                         <div className="flex-1 min-h-0">
                                             <ScrollArea className="w-full h-full">
                                                 <Accordion key={`host-accordion-${sortedFolders.length}`}

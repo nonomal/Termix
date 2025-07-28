@@ -5,58 +5,51 @@
 <a href="https://discord.gg/jVQGdvHDrf"><img alt="Discord" src="https://img.shields.io/discord/1347374268253470720"></a>
 #### Top Technologies
 [![React Badge](https://img.shields.io/badge/-React-61DBFB?style=flat-square&labelColor=black&logo=react&logoColor=61DBFB)](#)
-[![Javascript Badge](https://img.shields.io/badge/-Javascript-F0DB4F?style=flat-square&labelColor=black&logo=javascript&logoColor=F0DB4F)](#)
-[![Nodejs Badge](https://img.shields.io/badge/-Nodejs-3C873A?style=flat-square&labelColor=black&logo=node.js&logoColor=3C873A)](#)
-[![HTML Badge](https://img.shields.io/badge/-HTML-E34F26?style=flat-square&labelColor=black&logo=html5&logoColor=E34F26)](#)
+[![TypeScript Badge](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&labelColor=black&logo=typescript&logoColor=3178C6)](#)
+[![Node.js Badge](https://img.shields.io/badge/-Node.js-3C873A?style=flat-square&labelColor=black&logo=node.js&logoColor=3C873A)](#)
+[![Vite Badge](https://img.shields.io/badge/-Vite-646CFF?style=flat-square&labelColor=black&logo=vite&logoColor=646CFF)](#)
 [![Tailwind CSS Badge](https://img.shields.io/badge/-TailwindCSS-38B2AC?style=flat-square&labelColor=black&logo=tailwindcss&logoColor=38B2AC)](#)
 [![Docker Badge](https://img.shields.io/badge/-Docker-2496ED?style=flat-square&labelColor=black&logo=docker&logoColor=2496ED)](#)
-[![MongoDB Badge](https://img.shields.io/badge/-MongoDB-47A248?style=flat-square&labelColor=black&logo=mongodb&logoColor=47A248)](#)
-[![MUI Joy Badge](https://img.shields.io/badge/-MUI%20Joy-007FFF?style=flat-square&labelColor=black&logo=mui&logoColor=007FFF)](#)
+[![SQLite Badge](https://img.shields.io/badge/-SQLite-003B57?style=flat-square&labelColor=black&logo=sqlite&logoColor=003B57)](#)
+[![Radix UI Badge](https://img.shields.io/badge/-Radix%20UI-161618?style=flat-square&labelColor=black&logo=radixui&logoColor=161618)](#)
 
 
 <br />
 <p align="center">
   <a href="https://github.com/LukeGus/Termix">
-    <img alt="Termix Banner" src=../../Termix/repo-images/TermixLogo.png style="width: 125px; height: auto;">  </a>
+    <img alt="Termix Banner" src=../../Termix/public/icon.svg style="width: 250px; height: auto;">  </a>
 </p>
 
 If you would like, you can support the project here!\
-[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/LukeGustafson803)
+[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-LukeGus-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/LukeGus)
 
 # Overview
-Termix is an open-source forever free self-hosted Homepage (other protocols planned, see [Planned Features](#planned-features)) server management panel inspired by [Nexterm](https://github.com/gnmyt/Nexterm). Its purpose is to provide an all-in-one docker-hosted web solution to manage your servers in one easy place. I'm using this project to help me learn [React](https://github.com/facebook/react), [Vite](https://github.com/vitejs/vite-plugin-react), and [Docker](https://www.docker.com) but also because I could never settle on a server management software that I enjoyed to use.
-
-> [!WARNING]  
-> This app is in the VERY early stages of development. Expect bugs, data loss, and unexplainable issues! For that reason, I recommend you securely tunnel your connection to Termix through a VPN.
+Termix is an open-source, forever-free, self-hosted all-in-one server management platform. It provides a web-based solution for managing your servers and infrastructure through a single, intuitive interface. Termix offers SSH terminal access, SSH tunneling capabilities, and remote file configuration editing - with many more tools to come.
 
 # Features
-- Homepage
-- Split Screen (Up to 4) & Tab System
-- User Authentication
-- Save Hosts (and easily view, connect, and manage them)
-- SSHTerminal Themes
+- **SSH Terminal Access** - Full-featured terminal with split-screen support (up to 4 panels) and tab system
+- **SSH Tunnel Management** - Create and manage SSH tunnels with automatic reconnection and health monitoring
+- **Remote Config Editor** - Edit files directly on remote servers with syntax highlighting and file management
+- **SSH Host Manager** - Save, organize, and manage your SSH connections with tags and folders
+- **User Authentication** - Secure user management with admin controls
+- **Modern UI** - Clean, responsive interface built with React, Tailwind CSS, and the amazing Shadcn
+- **Docker Support** - Easy deployment with Docker and Docker Compose
 
 # Planned Features
-- VNC
-- RDP
-- SFTP (build in file transfer)
-- ChatGPT/Ollama Integration (for commands)
-- Apps (like notes, AI, etc)
-- User Management (roles, permissions, etc.)
-- Homepage Tunneling
-- More Authentication Methods
-- More Security Features (like 2FA, etc.)
+- **Improved Admin Control** - Ability to manage admins, and give more fine-grained control over their permissions, share hosts, reset passwords, delete accounts, etc
+- **More auth types** - Add 2FA, OCID support, etc
+- **Theming** - Modify themeing for all tools
+- **Improved SFTP Support** - Ability to manage files easier with the config editor by uploading, creating, and removing files
+- **Improved Terminal Support** - Add more terminal protocols such as VNC and RDP (anyone who has experience in integrating RDP into a web-application similar to Apache Guacamole, please contact me by creating an issue)
 
 # Installation
-Visit the Termix [Wiki](https://github.com/LukeGus/Termix/wiki) for information on how to install Termix. You can also use these links to go directly to guide. [Docker](https://github.com/LukeGus/Termix/wiki/Docker) or [Manual](https://github.com/LukeGus/Termix/wiki/Manual).
+Visit the Termix [Docs](https://docs.termix.site/docs) for information on how to install Termix.
 
 # Support
-If you need help with Termix, you can join the [Discord](https://discord.gg/jVQGdvHDrf) server and visit the support channel. You can also open an issue or open a pull request on the [GitHub](https://github.com/LukeGus/Termix/issues) repo. If you would like to support me financially, you can on [Paypal](https://paypal.me/LukeGustafson803).
+If you need help with Termix, you can join the [Discord](https://discord.gg/jVQGdvHDrf) server and visit the support channel. You can also open an issue or open a pull request on the [GitHub](https://github.com/LukeGus/Termix/issues) repo.
 
 # Show-off
-
-![Demo Image](../../Termix/repo-images/DemoImage1.png)
-![Demo Image](../../Termix/repo-images/DemoImage2.png)
+TBD
 
 # License
-Distributed under the MIT license. See LICENSE for more information.
+Distributed under the Apache License Version 2.0. See LICENSE for more information.

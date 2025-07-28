@@ -34,12 +34,6 @@ import {
 import {Checkbox} from "@/components/ui/checkbox.tsx";
 import axios from "axios";
 import {Button} from "@/components/ui/button.tsx";
-import {Homepage} from "@/apps/Homepage/Homepage.tsx";
-import {SSHManager} from "@/apps/SSH/Manager/SSHManager.tsx";
-import {SSH} from "@/apps/SSH/Terminal/SSH.tsx";
-import {SSHTunnel} from "@/apps/SSH/Tunnel/SSHTunnel.tsx";
-import {ConfigEditor} from "@/apps/SSH/Config Editor/ConfigEditor.tsx";
-import {Tools} from "@/apps/Tools/Tools.tsx";
 
 interface SidebarProps {
     onSelectView: (view: string) => void;
@@ -145,7 +139,7 @@ export function HomepageSidebar({
                                         </SidebarMenuItem>
                                     </div>
                                     <SidebarMenuItem key={"Tools"}>
-                                        <SidebarMenuButton onClick={() => onSelectView("tools")} disabled={disabled}>
+                                        <SidebarMenuButton onClick={() => window.open("https://dashix.dev", "_blank")} disabled={disabled}>
                                             <Hammer/>
                                             <span>Tools</span>
                                         </SidebarMenuButton>

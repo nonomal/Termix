@@ -1,10 +1,9 @@
-import React, {useEffect} from "react"
+import React from "react"
 
 import {Homepage} from "@/apps/Homepage/Homepage.tsx"
 import {SSH} from "@/apps/SSH/Terminal/SSH.tsx"
 import {SSHTunnel} from "@/apps/SSH/Tunnel/SSHTunnel.tsx";
 import {ConfigEditor} from "@/apps/SSH/Config Editor/ConfigEditor.tsx";
-import {Tools} from "@/apps/Tools/Tools.tsx";
 import {SSHManager} from "@/apps/SSH/Manager/SSHManager.tsx"
 
 function App() {
@@ -30,10 +29,6 @@ function App() {
                 />
             case "config_editor":
                 return <ConfigEditor
-                    onSelectView={setView}
-                />
-            case "tools":
-                return <Tools
                     onSelectView={setView}
                 />
         }

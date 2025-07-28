@@ -31,9 +31,23 @@ interface HomepageAuthProps extends React.ComponentProps<"div"> {
     setLoggedIn: (loggedIn: boolean) => void;
     setIsAdmin: (isAdmin: boolean) => void;
     setUsername: (username: string | null) => void;
+    loggedIn: boolean;
+    authLoading: boolean;
+    dbError: string | null;
+    setDbError: (error: string | null) => void;
 }
 
-export function HomepageAuth({className, setLoggedIn, setIsAdmin, setUsername, ...props}: HomepageAuthProps) {
+export function HomepageAuth({
+                                 className,
+                                 setLoggedIn,
+                                 setIsAdmin,
+                                 setUsername,
+                                 loggedIn,
+                                 authLoading,
+                                 dbError,
+                                 setDbError,
+                                 ...props
+                             }: HomepageAuthProps) {
     const [tab, setTab] = useState<"login" | "signup">("login");
     const [localUsername, setLocalUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -41,8 +55,12 @@ export function HomepageAuth({className, setLoggedIn, setIsAdmin, setUsername, .
     const [error, setError] = useState<string | null>(null);
     const [internalLoggedIn, setInternalLoggedIn] = useState(false);
     const [firstUser, setFirstUser] = useState(false);
-    const [dbError, setDbError] = useState<string | null>(null);
     const [registrationAllowed, setRegistrationAllowed] = useState(true);
+
+    useEffect(() => {
+        setInternalLoggedIn(loggedIn);
+    }, [loggedIn]);
+
     useEffect(() => {
         API.get("/registration-allowed").then(res => {
             setRegistrationAllowed(res.data.allowed);
@@ -61,43 +79,7 @@ export function HomepageAuth({className, setLoggedIn, setIsAdmin, setUsername, .
         }).catch(() => {
             setDbError("Could not connect to the database. Please try again later.");
         });
-    }, []);
-
-    useEffect(() => {
-        const jwt = getCookie("jwt");
-        if (jwt) {
-            setLoading(true);
-            Promise.all([
-                API.get("/me", {headers: {Authorization: `Bearer ${jwt}`}}),
-                API.get("/db-health")
-            ])
-                .then(([meRes]) => {
-                    setInternalLoggedIn(true);
-                    setLoggedIn(true);
-                    setIsAdmin(!!meRes.data.is_admin);
-                    setUsername(meRes.data.username || null);
-                    setDbError(null);
-                })
-                .catch((err) => {
-                    setInternalLoggedIn(false);
-                    setLoggedIn(false);
-                    setIsAdmin(false);
-                    setUsername(null);
-                    setCookie("jwt", "", -1);
-                    if (err?.response?.data?.error?.includes("Database")) {
-                        setDbError("Could not connect to the database. Please try again later.");
-                    } else {
-                        setDbError(null);
-                    }
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setInternalLoggedIn(false);
-            setLoggedIn(false);
-            setIsAdmin(false);
-            setUsername(null);
-        }
-    }, [setLoggedIn, setIsAdmin, setUsername]);
+    }, [setDbError]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -179,7 +161,7 @@ export function HomepageAuth({className, setLoggedIn, setIsAdmin, setUsername, .
                         </AlertDescription>
                     </Alert>
                 )}
-                {(internalLoggedIn || (loading && getCookie("jwt"))) && (
+                {(internalLoggedIn || (authLoading && getCookie("jwt"))) && (
                     <div className="flex flex-1 justify-center items-center p-0 m-0">
                         <div className="flex flex-col items-center gap-4">
                             <Alert className="my-2">
@@ -227,7 +209,7 @@ export function HomepageAuth({className, setLoggedIn, setIsAdmin, setUsername, .
                         </div>
                     </div>
                 )}
-                {(!internalLoggedIn && (!loading || !getCookie("jwt"))) && (
+                {(!internalLoggedIn && (!authLoading || !getCookie("jwt"))) && (
                     <>
                         <div className="flex gap-2 mb-6">
                             <button
