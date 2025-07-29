@@ -146,9 +146,16 @@ export function HomepageAuth({
                 {firstUser && !dbError && !internalLoggedIn && (
                     <Alert variant="default" className="mb-4">
                         <AlertTitle>First User</AlertTitle>
-                        <AlertDescription>
-                            You are the first user and will be made an admin. You can view admin settings in the sidebar
-                            user dropdown.
+                        <AlertDescription className="inline">
+                            You are the first user and will be made an admin. You can view admin settings in the sidebar user dropdown. If you think this is a mistake, check the docker logs, or create a{" "}
+                            <a
+                                href="https://github.com/LukeGus/Termix/issues/new"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 inline"
+                            >
+                                GitHub issue
+                            </a>.
                         </AlertDescription>
                     </Alert>
                 )}
