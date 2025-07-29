@@ -32,8 +32,7 @@ Termix is an open-source, forever-free, self-hosted all-in-one server management
 - **Remote Config Editor** - Edit files directly on remote servers with syntax highlighting and file management
 - **SSH Host Manager** - Save, organize, and manage your SSH connections with tags and folders
 - **User Authentication** - Secure user management with admin controls
-- **Modern UI** - Clean, responsive interface built with React, Tailwind CSS, and the amazing Shadcn
-- **Docker Support** - Easy deployment with Docker and Docker Compose
+- **Modern UI** - Clean interface built with React, Tailwind CSS, and the amazing Shadcn
 
 # Planned Features
 - **Improved Admin Control** - Ability to manage admins, and give more fine-grained control over their permissions, share hosts, reset passwords, delete accounts, etc
