@@ -130,6 +130,12 @@ wss.on('connection', (ws: WebSocket) => {
 
                 sshStream = stream;
 
+                const keepaliveTimer = setInterval(() => {
+                    if (sshStream && sshStream.writable) {
+                        sshStream.write('\x00');
+                    }
+                }, 30000);
+                
                 stream.on('data', (chunk: Buffer) => {
                     ws.send(JSON.stringify({ type: 'data', data: chunk.toString() }));
                 });
@@ -177,8 +183,8 @@ wss.on('connection', (ws: WebSocket) => {
             host: ip,
             port,
             username,
-            keepaliveInterval: 5000,
-            keepaliveCountMax: 10,
+            keepaliveInterval: 10000,
+            keepaliveCountMax: 60,
             readyTimeout: 10000,
 
             algorithms: {
