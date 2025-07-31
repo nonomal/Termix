@@ -336,7 +336,6 @@ function handleDisconnect(tunnelName: string, tunnelConfig: TunnelConfig | null,
     }
 
 
-
     if (retryExhaustedTunnels.has(tunnelName)) {
         broadcastTunnelStatus(tunnelName, {
             connected: false,
@@ -571,6 +570,10 @@ function verifyTunnelConnection(tunnelName: string, tunnelConfig: TunnelConfig, 
         port: tunnelConfig.sourceSSHPort,
         username: tunnelConfig.sourceUsername,
         readyTimeout: 10000,
+        keepaliveInterval: 30000,
+        keepaliveCountMax: 3,
+        tcpKeepAlive: true,
+        tcpKeepAliveInitialDelay: 30000,
         algorithms: {
             kex: [
                 'diffie-hellman-group14-sha256',
@@ -692,7 +695,7 @@ function setupPingInterval(tunnelName: string, tunnelConfig: TunnelConfig): void
                 handleDisconnect(tunnelName, tunnelConfig, !manualDisconnects.has(tunnelName));
             });
         });
-    }, 30000);
+    }, 60000);
 }
 
 function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
@@ -891,11 +894,9 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
             });
 
             stream.stdout?.on("data", (data: Buffer) => {
-                // Ignore stdout data
             });
 
             stream.on("error", (err: Error) => {
-                // Ignore stream errors
             });
 
             stream.stderr.on("data", (data) => {
@@ -909,10 +910,11 @@ function connectSSHTunnel(tunnelConfig: TunnelConfig, retryAttempt = 0): void {
         host: tunnelConfig.sourceIP,
         port: tunnelConfig.sourceSSHPort,
         username: tunnelConfig.sourceUsername,
-        keepaliveInterval: 5000,
-        keepaliveCountMax: 10,
+        keepaliveInterval: 30000,
+        keepaliveCountMax: 3,
         readyTimeout: 10000,
         tcpKeepAlive: true,
+        tcpKeepAliveInitialDelay: 30000,
         algorithms: {
             kex: [
                 'diffie-hellman-group14-sha256',
@@ -1025,10 +1027,11 @@ function killRemoteTunnelByMarker(tunnelConfig: TunnelConfig, tunnelName: string
         host: tunnelConfig.sourceIP,
         port: tunnelConfig.sourceSSHPort,
         username: tunnelConfig.sourceUsername,
-        keepaliveInterval: 5000,
-        keepaliveCountMax: 10,
+        keepaliveInterval: 30000,
+        keepaliveCountMax: 3,
         readyTimeout: 10000,
         tcpKeepAlive: true,
+        tcpKeepAliveInitialDelay: 30000,
         algorithms: {
             kex: [
                 'diffie-hellman-group14-sha256',
@@ -1087,8 +1090,10 @@ function killRemoteTunnelByMarker(tunnelConfig: TunnelConfig, tunnelName: string
                 conn.end();
                 callback();
             });
-            stream.on('data', () => {});
-            stream.stderr.on('data', () => {});
+            stream.on('data', () => {
+            });
+            stream.stderr.on('data', () => {
+            });
         });
     });
     conn.on('error', (err) => {
