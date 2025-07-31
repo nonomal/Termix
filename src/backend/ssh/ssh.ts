@@ -10,13 +10,19 @@ const formatMessage = (level: string, colorFn: chalk.Chalk, message: string): st
     return `${getTimeStamp()} ${colorFn(`[${level.toUpperCase()}]`)} ${chalk.hex('#1e3a8a')(`[${sshIconSymbol}]`)} ${message}`;
 };
 const logger = {
-    info: (msg: string): void => console.log(formatMessage('info', chalk.cyan, msg)),
-    warn: (msg: string): void => console.warn(formatMessage('warn', chalk.yellow, msg)),
+    info: (msg: string): void => {
+        console.log(formatMessage('info', chalk.cyan, msg));
+    },
+    warn: (msg: string): void => {
+        console.warn(formatMessage('warn', chalk.yellow, msg));
+    },
     error: (msg: string, err?: unknown): void => {
         console.error(formatMessage('error', chalk.redBright, msg));
         if (err) console.error(err);
     },
-    success: (msg: string): void => console.log(formatMessage('success', chalk.greenBright, msg)),
+    success: (msg: string): void => {
+        console.log(formatMessage('success', chalk.greenBright, msg));
+    },
     debug: (msg: string): void => {
         if (process.env.NODE_ENV !== 'production') {
             console.debug(formatMessage('debug', chalk.magenta, msg));
@@ -27,7 +33,6 @@ const logger = {
 wss.on('connection', (ws: WebSocket) => {
     let sshConn: Client | null = null;
     let sshStream: ClientChannel | null = null;
-    let keepAliveTimer: NodeJS.Timeout | null = null;
 
     ws.on('close', () => {
         cleanupSSH();
@@ -49,21 +54,38 @@ wss.on('connection', (ws: WebSocket) => {
             case 'connectToHost':
                 handleConnectToHost(data);
                 break;
+
             case 'resize':
                 handleResize(data);
                 break;
+
             case 'disconnect':
                 cleanupSSH();
                 break;
+
             case 'input':
                 if (sshStream) sshStream.write(data);
                 break;
+
             default:
                 logger.warn('Unknown message type: ' + type);
         }
     });
 
-    function handleConnectToHost(data: any) {
+    function handleConnectToHost(data: {
+        cols: number;
+        rows: number;
+        hostConfig: {
+            ip: string;
+            port: number;
+            username: string;
+            password?: string;
+            key?: string;
+            keyPassword?: string;
+            keyType?: string;
+            authType?: string;
+        };
+    }) {
         const { cols, rows, hostConfig } = data;
         const { ip, port, username, password, key, keyPassword, keyType, authType } = hostConfig;
 
@@ -72,11 +94,13 @@ wss.on('connection', (ws: WebSocket) => {
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid username provided' }));
             return;
         }
+        
         if (!ip || typeof ip !== 'string' || ip.trim() === '') {
             logger.error('Invalid IP provided');
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid IP provided' }));
             return;
         }
+        
         if (!port || typeof port !== 'number' || port <= 0) {
             logger.error('Invalid port provided');
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid port provided' }));
@@ -111,7 +135,6 @@ wss.on('connection', (ws: WebSocket) => {
                 });
 
                 stream.on('close', () => {
-                    ws.send(JSON.stringify({ type: 'disconnected', message: 'SSH session closed' }));
                     cleanupSSH();
                 });
 
@@ -121,37 +144,32 @@ wss.on('connection', (ws: WebSocket) => {
                 });
 
                 ws.send(JSON.stringify({ type: 'connected', message: 'SSH connected' }));
-
-                keepAliveTimer = setInterval(() => {
-                    if (sshStream && sshStream.writable) {
-                        sshStream.write(''); // keepalive
-                    }
-                }, 30000);
             });
         });
 
         sshConn.on('error', (err: Error) => {
             logger.error('SSH connection error: ' + err.message);
-            let errorMessage = 'SSH error: ' + err.message;
 
+            let errorMessage = 'SSH error: ' + err.message;
             if (err.message.includes('No matching key exchange algorithm')) {
-                errorMessage = 'SSH error: No compatible key exchange algorithm found.';
+                errorMessage = 'SSH error: No compatible key exchange algorithm found. This may be due to an older SSH server or network device.';
             } else if (err.message.includes('No matching cipher')) {
-                errorMessage = 'SSH error: No compatible cipher found.';
+                errorMessage = 'SSH error: No compatible cipher found. This may be due to an older SSH server or network device.';
+            } else if (err.message.includes('No matching MAC')) {
+                errorMessage = 'SSH error: No compatible MAC algorithm found. This may be due to an older SSH server or network device.';
             } else if (err.message.includes('ENOTFOUND') || err.message.includes('ENOENT')) {
                 errorMessage = 'SSH error: Could not resolve hostname or connect to server.';
             } else if (err.message.includes('ECONNREFUSED')) {
-                errorMessage = 'SSH error: Connection refused.';
+                errorMessage = 'SSH error: Connection refused. The server may not be running or the port may be incorrect.';
             } else if (err.message.includes('ETIMEDOUT')) {
-                errorMessage = 'SSH error: Connection timed out.';
+                errorMessage = 'SSH error: Connection timed out. Check your network connection and server availability.';
             }
-
+            
             ws.send(JSON.stringify({ type: 'error', message: errorMessage }));
             cleanupSSH();
         });
 
         sshConn.on('close', () => {
-            ws.send(JSON.stringify({ type: 'disconnected', message: 'SSH connection closed' }));
             cleanupSSH();
         });
 
@@ -159,9 +177,10 @@ wss.on('connection', (ws: WebSocket) => {
             host: ip,
             port,
             username,
-            keepaliveInterval: 10000,
-            keepaliveCountMax: 60,
+            keepaliveInterval: 5000,
+            keepaliveCountMax: 10,
             readyTimeout: 10000,
+
             algorithms: {
                 kex: [
                     'diffie-hellman-group14-sha256',
@@ -184,18 +203,30 @@ wss.on('connection', (ws: WebSocket) => {
                     'aes256-cbc',
                     '3des-cbc'
                 ],
-                hmac: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1', 'hmac-md5'],
-                compress: ['none', 'zlib@openssh.com', 'zlib']
+                hmac: [
+                    'hmac-sha2-256',
+                    'hmac-sha2-512',
+                    'hmac-sha1',
+                    'hmac-md5'
+                ],
+                compress: [
+                    'none',
+                    'zlib@openssh.com',
+                    'zlib'
+                ]
             }
         };
-
         if (authType === 'key' && key) {
             connectConfig.privateKey = key;
-            if (keyPassword) connectConfig.passphrase = keyPassword;
-            if (keyType && keyType !== 'auto') connectConfig.privateKeyType = keyType;
+            if (keyPassword) {
+                connectConfig.passphrase = keyPassword;
+            }
+            if (keyType && keyType !== 'auto') {
+                connectConfig.privateKeyType = keyType;
+            }
         } else if (authType === 'key') {
-            logger.error('SSH key auth requested but no key provided');
-            ws.send(JSON.stringify({ type: 'error', message: 'SSH key auth requested but no key provided' }));
+            logger.error('SSH key authentication requested but no key provided');
+            ws.send(JSON.stringify({ type: 'error', message: 'SSH key authentication requested but no key provided' }));
             return;
         } else {
             connectConfig.password = password;
@@ -212,10 +243,6 @@ wss.on('connection', (ws: WebSocket) => {
     }
 
     function cleanupSSH() {
-        if (keepAliveTimer) {
-            clearInterval(keepAliveTimer);
-            keepAliveTimer = null;
-        }
         if (sshStream) {
             try {
                 sshStream.end();
@@ -224,6 +251,7 @@ wss.on('connection', (ws: WebSocket) => {
             }
             sshStream = null;
         }
+
         if (sshConn) {
             try {
                 sshConn.end();
