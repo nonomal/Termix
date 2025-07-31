@@ -1,7 +1,7 @@
-import {useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react';
-import {useXTerm} from 'react-xtermjs';
-import {FitAddon} from '@xterm/addon-fit';
-import {ClipboardAddon} from '@xterm/addon-clipboard';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useXTerm } from 'react-xtermjs';
+import { FitAddon } from '@xterm/addon-fit';
+import { ClipboardAddon } from '@xterm/addon-clipboard';
 
 interface SSHTerminalProps {
     hostConfig: any;
@@ -12,41 +12,38 @@ interface SSHTerminalProps {
 }
 
 export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTerminal(
-    {hostConfig, isVisible, splitScreen = false},
+    { hostConfig, isVisible, splitScreen = false },
     ref
 ) {
-    const {instance: terminal, ref: xtermRef} = useXTerm();
+    const { instance: terminal, ref: xtermRef } = useXTerm();
     const fitAddonRef = useRef<FitAddon | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
+    const wasDisconnectedBySSH = useRef(false);
     const [visible, setVisible] = useState(false);
 
     useImperativeHandle(ref, () => ({
         disconnect: () => {
-            if (webSocketRef.current) {
-                webSocketRef.current.close();
-            }
+            webSocketRef.current?.close();
         },
         fit: () => {
-            if (fitAddonRef.current) {
-                fitAddonRef.current.fit();
-            }
+            fitAddonRef.current?.fit();
         },
         sendInput: (data: string) => {
-            if (webSocketRef.current && webSocketRef.current.readyState === 1) {
-                webSocketRef.current.send(JSON.stringify({type: 'input', data}));
+            if (webSocketRef.current?.readyState === 1) {
+                webSocketRef.current.send(JSON.stringify({ type: 'input', data }));
             }
         }
     }), []);
 
     useEffect(() => {
-        function handleWindowResize() {
-            fitAddonRef.current?.fit();
-        }
-
         window.addEventListener('resize', handleWindowResize);
         return () => window.removeEventListener('resize', handleWindowResize);
     }, []);
+
+    function handleWindowResize() {
+        fitAddonRef.current?.fit();
+    }
 
     useEffect(() => {
         if (!terminal || !xtermRef.current || !hostConfig) return;
@@ -70,78 +67,55 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             },
         };
 
-        const onResize = () => {
-            if (!xtermRef.current) return;
-            const {width, height} = xtermRef.current.getBoundingClientRect();
-
-            if (width < 100 || height < 50) return;
-
+        const resizeObserver = new ResizeObserver(() => {
             if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
             resizeTimeout.current = setTimeout(() => {
                 fitAddonRef.current?.fit();
-
                 const cols = terminal.cols + 1;
                 const rows = terminal.rows;
-
-                webSocketRef.current?.send(JSON.stringify({
-                    type: 'resize',
-                    data: {cols, rows}
-                }));
+                webSocketRef.current?.send(JSON.stringify({ type: 'resize', data: { cols, rows } }));
             }, 100);
-        };
+        });
 
-        const resizeObserver = new ResizeObserver(onResize);
         resizeObserver.observe(xtermRef.current);
-
         setTimeout(() => {
             fitAddon.fit();
             setVisible(true);
 
             const cols = terminal.cols + 1;
             const rows = terminal.rows;
-
             const wsUrl = window.location.hostname === 'localhost'
                 ? 'ws://localhost:8082'
                 : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ssh/websocket/`;
 
             const ws = new WebSocket(wsUrl);
-
             webSocketRef.current = ws;
+            wasDisconnectedBySSH.current = false;
 
             ws.addEventListener('open', () => {
-                ws.send(JSON.stringify({
-                    type: 'connectToHost',
-                    data: {
-                        cols,
-                        rows,
-                        hostConfig: hostConfig
-                    }
-                }));
-
+                ws.send(JSON.stringify({ type: 'connectToHost', data: { cols, rows, hostConfig } }));
                 terminal.onData((data) => {
-                    ws.send(JSON.stringify({
-                        type: 'input',
-                        data
-                    }));
+                    ws.send(JSON.stringify({ type: 'input', data }));
                 });
             });
 
             ws.addEventListener('message', (event) => {
                 try {
                     const msg = JSON.parse(event.data);
-
-                    if (msg.type === 'data') {
-                        terminal.write(msg.data);
-                    } else if (msg.type === 'error') {
-                        terminal.writeln(`\r\n[ERROR] ${msg.message}`);
-                    } else if (msg.type === 'connected') {
+                    if (msg.type === 'data') terminal.write(msg.data);
+                    else if (msg.type === 'error') terminal.writeln(`\r\n[ERROR] ${msg.message}`);
+                    else if (msg.type === 'connected') {}
+                    else if (msg.type === 'disconnected') {
+                        wasDisconnectedBySSH.current = true;
+                        terminal.writeln(`\r\n[${msg.message || 'Disconnected'}]`);
                     }
-                } catch (err) {
-                }
+                } catch (_) {}
             });
 
             ws.addEventListener('close', () => {
-                terminal.writeln('\r\n[Connection closed]');
+                if (!wasDisconnectedBySSH.current) {
+                    terminal.writeln('\r\n[Connection closed]');
+                }
             });
 
             ws.addEventListener('error', () => {
@@ -167,7 +141,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             ref={xtermRef}
             style={{
                 position: 'absolute',
-                top: splitScreen ? 0 : 0,
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
