@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { useXTerm } from 'react-xtermjs';
-import { FitAddon } from '@xterm/addon-fit';
-import { ClipboardAddon } from '@xterm/addon-clipboard';
+import {useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react';
+import {useXTerm} from 'react-xtermjs';
+import {FitAddon} from '@xterm/addon-fit';
+import {ClipboardAddon} from '@xterm/addon-clipboard';
 
 interface SSHTerminalProps {
     hostConfig: any;
@@ -12,18 +12,23 @@ interface SSHTerminalProps {
 }
 
 export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTerminal(
-    { hostConfig, isVisible, splitScreen = false },
+    {hostConfig, isVisible, splitScreen = false},
     ref
 ) {
-    const { instance: terminal, ref: xtermRef } = useXTerm();
+    const {instance: terminal, ref: xtermRef} = useXTerm();
     const fitAddonRef = useRef<FitAddon | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
     const wasDisconnectedBySSH = useRef(false);
+    const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [visible, setVisible] = useState(false);
 
     useImperativeHandle(ref, () => ({
         disconnect: () => {
+            if (pingIntervalRef.current) {
+                clearInterval(pingIntervalRef.current);
+                pingIntervalRef.current = null;
+            }
             webSocketRef.current?.close();
         },
         fit: () => {
@@ -31,7 +36,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
         },
         sendInput: (data: string) => {
             if (webSocketRef.current?.readyState === 1) {
-                webSocketRef.current.send(JSON.stringify({ type: 'input', data }));
+                webSocketRef.current.send(JSON.stringify({type: 'input', data}));
             }
         }
     }), []);
@@ -73,7 +78,7 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
                 fitAddonRef.current?.fit();
                 const cols = terminal.cols + 1;
                 const rows = terminal.rows;
-                webSocketRef.current?.send(JSON.stringify({ type: 'resize', data: { cols, rows } }));
+                webSocketRef.current?.send(JSON.stringify({type: 'resize', data: {cols, rows}}));
             }, 100);
         });
 
@@ -93,10 +98,16 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
             wasDisconnectedBySSH.current = false;
 
             ws.addEventListener('open', () => {
-                ws.send(JSON.stringify({ type: 'connectToHost', data: { cols, rows, hostConfig } }));
+                ws.send(JSON.stringify({type: 'connectToHost', data: {cols, rows, hostConfig}}));
                 terminal.onData((data) => {
-                    ws.send(JSON.stringify({ type: 'input', data }));
+                    ws.send(JSON.stringify({type: 'input', data}));
                 });
+
+                pingIntervalRef.current = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({type: 'ping'}));
+                    }
+                }, 30000);
             });
 
             ws.addEventListener('message', (event) => {
@@ -104,12 +115,13 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
                     const msg = JSON.parse(event.data);
                     if (msg.type === 'data') terminal.write(msg.data);
                     else if (msg.type === 'error') terminal.writeln(`\r\n[ERROR] ${msg.message}`);
-                    else if (msg.type === 'connected') {}
-                    else if (msg.type === 'disconnected') {
+                    else if (msg.type === 'connected') {
+                    } else if (msg.type === 'disconnected') {
                         wasDisconnectedBySSH.current = true;
                         terminal.writeln(`\r\n[${msg.message || 'Disconnected'}]`);
                     }
-                } catch (_) {}
+                } catch (_) {
+                }
             });
 
             ws.addEventListener('close', () => {
@@ -126,6 +138,10 @@ export const SSHTerminal = forwardRef<any, SSHTerminalProps>(function SSHTermina
         return () => {
             resizeObserver.disconnect();
             if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
+            if (pingIntervalRef.current) {
+                clearInterval(pingIntervalRef.current);
+                pingIntervalRef.current = null;
+            }
             webSocketRef.current?.close();
         };
     }, [xtermRef, terminal, hostConfig]);
