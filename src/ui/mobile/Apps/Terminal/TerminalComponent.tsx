@@ -7,14 +7,10 @@ import {WebLinksAddon} from '@xterm/addon-web-links';
 
 interface SSHTerminalProps {
     hostConfig: any;
-    isVisible: boolean;
-    title?: string;
-    showTitle?: boolean;
-    splitScreen?: boolean;
 }
 
 export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHTerminal(
-    {hostConfig, isVisible, splitScreen = false},
+    {hostConfig},
     ref
 ) {
     const {instance: terminal, ref: xtermRef} = useXTerm();
@@ -23,17 +19,11 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
     const wasDisconnectedBySSH = useRef(false);
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const [visible, setVisible] = useState(false);
-    const isVisibleRef = useRef<boolean>(false);
 
     const lastSentSizeRef = useRef<{ cols: number; rows: number } | null>(null);
     const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
     const notifyTimerRef = useRef<NodeJS.Timeout | null>(null);
     const DEBOUNCE_MS = 140;
-
-    useEffect(() => {
-        isVisibleRef.current = isVisible;
-    }, [isVisible]);
 
     function hardRefresh() {
         try {
@@ -93,59 +83,17 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
     }), [terminal]);
 
     useEffect(() => {
+        const handleWindowResize = () => {
+            if (fitAddonRef.current && terminal) {
+                fitAddonRef.current.fit();
+                scheduleNotify(terminal.cols, terminal.rows);
+                hardRefresh();
+            }
+        };
+
         window.addEventListener('resize', handleWindowResize);
         return () => window.removeEventListener('resize', handleWindowResize);
-    }, []);
-
-    function handleWindowResize() {
-        if (!isVisibleRef.current) return;
-        fitAddonRef.current?.fit();
-        if (terminal) scheduleNotify(terminal.cols, terminal.rows);
-        hardRefresh();
-    }
-
-    function getCookie(name: string) {
-        return document.cookie.split('; ').reduce((r, v) => {
-            const parts = v.split('=');
-            return parts[0] === name ? decodeURIComponent(parts[1]) : r;
-        }, "");
-    }
-
-    function getUseRightClickCopyPaste() {
-        return getCookie("rightClickCopyPaste") === "true"
-    }
-
-    async function writeTextToClipboard(text: string): Promise<void> {
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(text);
-                return;
-            }
-        } catch (_) {
-        }
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        try {
-            document.execCommand('copy');
-        } finally {
-            document.body.removeChild(textarea);
-        }
-    }
-
-    async function readTextFromClipboard(): Promise<string> {
-        try {
-            if (navigator.clipboard && navigator.clipboard.readText) {
-                return await navigator.clipboard.readText();
-            }
-        } catch (_) {
-        }
-        return '';
-    }
+    }, [terminal]);
 
     useEffect(() => {
         if (!terminal || !xtermRef.current || !hostConfig) return;
@@ -153,19 +101,18 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
         terminal.options = {
             cursorBlink: true,
             cursorStyle: 'bar',
-            scrollback: 10000,
-            fontSize: 14,
+            scrollback: 5000,
+            fontSize: 16,
             fontFamily: '"JetBrains Mono Nerd Font", "MesloLGS NF", "FiraCode Nerd Font", "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace',
             theme: {background: '#18181b', foreground: '#f7f7f7'},
             allowTransparency: true,
             convertEol: true,
-            windowsMode: false,
             macOptionIsMeta: false,
             macOptionClickForcesSelection: false,
-            rightClickSelectsWord: false,
             fastScrollModifier: 'alt',
             fastScrollSensitivity: 5,
             allowProposedApi: true,
+            rightClickSelectsWord: true,
         };
 
         const fitAddon = new FitAddon();
@@ -178,98 +125,87 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
         terminal.loadAddon(clipboardAddon);
         terminal.loadAddon(unicode11Addon);
         terminal.loadAddon(webLinksAddon);
-        terminal.open(xtermRef.current);
 
-        const element = xtermRef.current;
-        const handleContextMenu = async (e: MouseEvent) => {
-            if (!getUseRightClickCopyPaste()) return;
-            e.preventDefault();
-            e.stopPropagation();
-            try {
-                if (terminal.hasSelection()) {
-                    const selection = terminal.getSelection();
-                    if (selection) {
-                        await writeTextToClipboard(selection);
-                        terminal.clearSelection();
-                    }
-                } else {
-                    const pasteText = await readTextFromClipboard();
-                    if (pasteText) terminal.paste(pasteText);
-                }
-            } catch (_) {
-            }
-        };
-        element?.addEventListener('contextmenu', handleContextMenu);
+        terminal.open(xtermRef.current);
 
         const resizeObserver = new ResizeObserver(() => {
             if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
             resizeTimeout.current = setTimeout(() => {
-                if (!isVisibleRef.current) return;
-                fitAddonRef.current?.fit();
-                if (terminal) scheduleNotify(terminal.cols, terminal.rows);
-                hardRefresh();
+                if (fitAddonRef.current && terminal) {
+                    fitAddonRef.current.fit();
+                    scheduleNotify(terminal.cols, terminal.rows);
+                    hardRefresh();
+                }
             }, 100);
         });
 
-        resizeObserver.observe(xtermRef.current);
+        if (xtermRef.current) {
+            resizeObserver.observe(xtermRef.current);
+        }
 
         const readyFonts = (document as any).fonts?.ready instanceof Promise ? (document as any).fonts.ready : Promise.resolve();
         readyFonts.then(() => {
             setTimeout(() => {
-                fitAddon.fit();
-                setTimeout(() => {
-                    fitAddon.fit();
-                    if (terminal) scheduleNotify(terminal.cols, terminal.rows);
-                    hardRefresh();
-                    setVisible(true);
-                }, 0);
+                if (fitAddonRef.current && terminal) {
+                    fitAddonRef.current.fit();
+                    setTimeout(() => {
+                        if (fitAddonRef.current && terminal) {
+                            fitAddonRef.current.fit();
+                            scheduleNotify(terminal.cols, terminal.rows);
+                            hardRefresh();
+                        }
+                    }, 50);
+                }
 
-                const cols = terminal.cols;
-                const rows = terminal.rows;
-                const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8082' : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ssh/websocket/`;
+                if (terminal) {
+                    const cols = terminal.cols;
+                    const rows = terminal.rows;
+                    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8082' : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ssh/websocket/`;
 
-                const ws = new WebSocket(wsUrl);
-                webSocketRef.current = ws;
-                wasDisconnectedBySSH.current = false;
+                    const ws = new WebSocket(wsUrl);
+                    webSocketRef.current = ws;
+                    wasDisconnectedBySSH.current = false;
 
-                ws.addEventListener('open', () => {
-                    ws.send(JSON.stringify({type: 'connectToHost', data: {cols, rows, hostConfig}}));
-                    terminal.onData((data) => {
-                        ws.send(JSON.stringify({type: 'input', data}));
+                    ws.addEventListener('open', () => {
+                        ws.send(JSON.stringify({type: 'connectToHost', data: {cols, rows, hostConfig}}));
+                        terminal.onData((data) => {
+                            ws.send(JSON.stringify({type: 'input', data}));
+                        });
+                        pingIntervalRef.current = setInterval(() => {
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({type: 'ping'}));
+                            }
+                        }, 30000);
                     });
-                    pingIntervalRef.current = setInterval(() => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({type: 'ping'}));
-                        }
-                    }, 30000);
-                });
 
-                ws.addEventListener('message', (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.type === 'data') terminal.write(msg.data);
-                        else if (msg.type === 'error') terminal.writeln(`\r\n[ERROR] ${msg.message}`);
-                        else if (msg.type === 'connected') {
-                        } else if (msg.type === 'disconnected') {
-                            wasDisconnectedBySSH.current = true;
-                            terminal.writeln(`\r\n[${msg.message || 'Disconnected'}]`);
+                    ws.addEventListener('message', (event) => {
+                        try {
+                            const msg = JSON.parse(event.data);
+                            if (msg.type === 'data') terminal.write(msg.data);
+                            else if (msg.type === 'error') terminal.writeln(`\r\n[ERROR] ${msg.message}`);
+                            else if (msg.type === 'connected') {
+                                // Terminal is connected
+                            } else if (msg.type === 'disconnected') {
+                                wasDisconnectedBySSH.current = true;
+                                terminal.writeln(`\r\n[${msg.message || 'Disconnected'}]`);
+                            }
+                        } catch (error) {
+                            console.error('Error parsing WebSocket message:', error);
                         }
-                    } catch (error) {
-                    }
-                });
+                    });
 
-                ws.addEventListener('close', () => {
-                    if (!wasDisconnectedBySSH.current) terminal.writeln('\r\n[Connection closed]');
-                });
-                ws.addEventListener('error', () => {
-                    terminal.writeln('\r\n[Connection error]');
-                });
-            }, 300);
+                    ws.addEventListener('close', () => {
+                        if (!wasDisconnectedBySSH.current) terminal.writeln('\r\n[Connection closed]');
+                    });
+                    ws.addEventListener('error', () => {
+                        terminal.writeln('\r\n[Connection error]');
+                    });
+                }
+            }, 100);
         });
 
         return () => {
             resizeObserver.disconnect();
-            element?.removeEventListener('contextmenu', handleContextMenu);
             if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
             if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
             if (pingIntervalRef.current) {
@@ -280,31 +216,23 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
         };
     }, [xtermRef, terminal, hostConfig]);
 
-    useEffect(() => {
-        if (isVisible && fitAddonRef.current) {
-            setTimeout(() => {
-                fitAddonRef.current?.fit();
-                if (terminal) scheduleNotify(terminal.cols, terminal.rows);
-                hardRefresh();
-            }, 0);
-        }
-    }, [isVisible]);
-
-    useEffect(() => {
-        if (!fitAddonRef.current) return;
-        setTimeout(() => {
-            fitAddonRef.current?.fit();
-            if (terminal) scheduleNotify(terminal.cols, terminal.rows);
-            hardRefresh();
-        }, 0);
-    }, [splitScreen]);
-
     return (
-        <div ref={xtermRef} className="h-full w-full m-1"
-             style={{opacity: visible && isVisible ? 1 : 0, overflow: 'hidden'}}/>
+        <div className="terminal-container">
+            <div 
+                ref={xtermRef} 
+                className="terminal-wrapper"
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: '100%',
+                    display: 'block'
+                }}
+            />
+        </div>
     );
 });
 
+// Add mobile-optimized styles
 const style = document.createElement('style');
 style.innerHTML = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
@@ -334,32 +262,89 @@ style.innerHTML = `
   font-display: swap;
 }
 
-.xterm .xterm-viewport::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
-}
-.xterm .xterm-viewport::-webkit-scrollbar-thumb {
-  background: rgba(180,180,180,0.7);
-  border-radius: 4px;
-}
-.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: rgba(120,120,120,0.9);
-}
-.xterm .xterm-viewport {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(180,180,180,0.7) transparent;
+/* Terminal container styles */
+.terminal-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
+.terminal-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+.terminal-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #f7f7f7;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #333;
+  border-top: 3px solid #f7f7f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* XTerm specific styles */
 .xterm {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
   font-feature-settings: "liga" 1, "calt" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+.xterm .xterm-viewport {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(180,180,180,0.7);
+  border-radius: 4px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(120,120,120,0.9);
+}
+
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180,180,180,0.7) transparent;
+}
+
 .xterm .xterm-screen {
   font-family: 'JetBrains Mono Nerd Font', 'MesloLGS NF', 'FiraCode Nerd Font', 'Cascadia Code', 'JetBrains Mono', Consolas, "Courier New", monospace !important;
   font-variant-ligatures: contextual;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .xterm .xterm-screen .xterm-char {
@@ -369,5 +354,46 @@ style.innerHTML = `
 .xterm .xterm-screen .xterm-char[data-char-code^="\\uE"] {
   font-family: 'JetBrains Mono Nerd Font', 'MesloLGS NF', 'FiraCode Nerd Font' !important;
 }
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  .xterm {
+    font-size: 14px !important;
+  }
+  
+  .terminal-container {
+    padding: 0 !important;
+  }
+  
+  .terminal-wrapper {
+    padding: 0 !important;
+  }
+}
+
+/* Ensure the terminal takes full dimensions */
+.xterm .xterm-viewport,
+.xterm .xterm-screen,
+.xterm .xterm-rows {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Force full dimensions on all xterm elements */
+.xterm,
+.xterm-viewport,
+.xterm-screen,
+.xterm-rows,
+.xterm-cursor-layer,
+.xterm-selection-layer {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+}
 `;
-document.head.appendChild(style);
+
+// Only add the style once
+if (!document.getElementById('terminal-mobile-styles')) {
+    style.id = 'terminal-mobile-styles';
+    document.head.appendChild(style);
+}

@@ -1,9 +1,8 @@
-import {TerminalComponent} from "@/ui/desktop/Apps/Terminal/TerminalComponent.tsx";
+import {TerminalComponent} from "@/ui/mobile/Apps/Terminal/TerminalComponent.tsx";
 
 export function MobileApp() {
     return (
-        <div>
-            <p>
+        <div className="mobile-app-container">
                 <TerminalComponent
                     hostConfig={{
                         ip: "192.210.197.55",
@@ -12,12 +11,7 @@ export function MobileApp() {
                         password: "bugatti$123",
                         authType: "password",
                     }}
-                    isVisible={true}
-                    title={"test"}
-                    showTitle={false}
-                    splitScreen={false}
                 />
-            </p>
         </div>
     )
 }
