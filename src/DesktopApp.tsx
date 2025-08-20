@@ -1,11 +1,11 @@
 import React, {useState, useEffect} from "react"
-import {LeftSidebar} from "@/ui/Navigation/LeftSidebar.tsx"
+import {LeftSidebar} from "@/ui/desktop/Navigation/LeftSidebar.tsx"
 import {Homepage} from "@/ui/desktop/Homepage/Homepage.tsx"
-import {AppView} from "@/ui/Navigation/AppView.tsx"
-import {HostManager} from "@/ui/apps/Host Manager/HostManager.tsx"
-import {TabProvider, useTabs} from "@/ui/Navigation/Tabs/TabContext.tsx"
+import {AppView} from "@/ui/desktop/Navigation/AppView.tsx"
+import {HostManager} from "@/ui/desktop/Apps/Host Manager/HostManager.tsx"
+import {TabProvider, useTabs} from "@/ui/desktop/Navigation/Tabs/TabContext.tsx"
 import axios from "axios"
-import {TopNavbar} from "@/ui/Navigation/TopNavbar.tsx";
+import {TopNavbar} from "@/ui/desktop/Navigation/TopNavbar.tsx";
 import { AdminSettings } from "@/ui/desktop/Admin/AdminSettings";
 import { Toaster } from "@/components/ui/sonner";
 

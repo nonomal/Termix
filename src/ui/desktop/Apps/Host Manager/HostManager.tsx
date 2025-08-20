@@ -1,8 +1,8 @@
 import React, {useState} from "react";
-import {HostManagerHostViewer} from "@/ui/apps/Host Manager/HostManagerHostViewer.tsx"
+import {HostManagerHostViewer} from "@/ui/desktop/Apps/Host Manager/HostManagerHostViewer.tsx"
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
 import {Separator} from "@/components/ui/separator.tsx";
-import {HostManagerHostEditor} from "@/ui/apps/Host Manager/HostManagerHostEditor.tsx";
+import {HostManagerHostEditor} from "@/ui/desktop/Apps/Host Manager/HostManagerHostEditor.tsx";
 import {useSidebar} from "@/components/ui/sidebar.tsx";
 
 interface HostManagerProps {

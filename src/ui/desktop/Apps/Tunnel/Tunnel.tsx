@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {TunnelViewer} from "@/ui/apps/Tunnel/TunnelViewer.tsx";
+import {TunnelViewer} from "@/ui/desktop/Apps/Tunnel/TunnelViewer.tsx";
 import {getSSHHosts, getTunnelStatuses, connectTunnel, disconnectTunnel, cancelTunnel} from "@/ui/main-axios.ts";
 
 interface TunnelConnection {
