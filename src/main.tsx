@@ -1,13 +1,21 @@
 import {StrictMode} from 'react'
 import {createRoot} from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import DesktopApp from './DesktopApp.tsx'
 import {ThemeProvider} from "@/components/theme-provider"
+import {isMobile} from 'react-device-detect';
+import {MobileApp} from "@/MobileApp.tsx";
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-            <App/>
+            {isMobile && (
+                <MobileApp/>
+            )}
+
+            {!isMobile && (
+                <DesktopApp/>
+            )}
         </ThemeProvider>
     </StrictMode>,
 )

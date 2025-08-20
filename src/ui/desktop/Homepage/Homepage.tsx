@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
-import {HomepageAuth} from "@/ui/Homepage/HomepageAuth.tsx";
+import {HomepageAuth} from "@/ui/desktop/Homepage/HomepageAuth.tsx";
 import axios from "axios";
-import {HomepageUpdateLog} from "@/ui/Homepage/HompageUpdateLog.tsx";
-import {HomepageAlertManager} from "@/ui/Homepage/HomepageAlertManager.tsx";
+import {HomepageUpdateLog} from "@/ui/desktop/Homepage/HompageUpdateLog.tsx";
+import {HomepageAlertManager} from "@/ui/desktop/Homepage/HomepageAlertManager.tsx";
 import {Button} from "@/components/ui/button.tsx";
 
 interface HomepageProps {
