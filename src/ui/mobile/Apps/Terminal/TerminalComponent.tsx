@@ -1,16 +1,211 @@
-import {useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react';
+import React, {useEffect, useRef, useState, useImperativeHandle, forwardRef} from 'react';
 import {useXTerm} from 'react-xtermjs';
 import {FitAddon} from '@xterm/addon-fit';
 import {ClipboardAddon} from '@xterm/addon-clipboard';
 import {Unicode11Addon} from '@xterm/addon-unicode11';
 import {WebLinksAddon} from '@xterm/addon-web-links';
+import {Button} from '../../../../components/ui/button';
+import {Card} from '../../../../components/ui/card';
+import {Separator} from '../../../../components/ui/separator';
+import {ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Clipboard, RotateCcw, Terminal, X, ChevronUp, ChevronDown} from 'lucide-react';
 
 interface SSHTerminalProps {
     hostConfig: any;
+    isMobileKeyboardOpen?: boolean;
 }
 
+// Special Terminal Keys Component
+const TerminalControls = ({ onKeyPress, onPaste, isVisible, isMobileKeyboardOpen }: {
+    onKeyPress: (key: string) => void;
+    onPaste: () => void;
+    isVisible: boolean;
+    isMobileKeyboardOpen: boolean;
+}) => {
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            onKeyPress(text);
+        } catch (error) {
+            console.error('Failed to read clipboard:', error);
+        }
+    };
+
+    if (!isVisible) return null;
+
+    // Adjust position based on mobile keyboard state
+    const bottomPosition = isMobileKeyboardOpen ? '20px' : '8px';
+
+    return (
+        <Card className="fixed bottom-0 left-0 right-0 mx-2 bg-[#0e0e10] border-2 border-[#303032] rounded-lg shadow-lg" style={{ bottom: bottomPosition, padding: 0 }}>
+            <div className="p-1.5">
+                {/* Header - Compact */}
+                <div className="flex items-center justify-end mb-2">
+                    <div className="flex items-center gap-1 absolute top-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePaste}
+                            className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 px-2 text-xs"
+                        >
+                            <Clipboard className="h-3 w-3 mr-1" />
+                            Paste
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onKeyPress('close')}
+                            className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 w-6 p-0"
+                        >
+                            <X className="h-3 w-3" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Navigation Keys - Super Compact */}
+                <div className="mb-2">
+                    <div className="grid grid-cols-3 gap-1 max-w-28 mx-auto">
+                        <div className="col-start-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x1b[A')}
+                                className="w-6 h-6 bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white"
+                            >
+                                <ArrowUp className="h-2 w-2" />
+                            </Button>
+                        </div>
+                        <div className="col-start-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x1b[D')}
+                                className="w-6 h-6 bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white"
+                            >
+                                <ArrowLeft className="h-2 w-2" />
+                            </Button>
+                        </div>
+                        <div className="col-start-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x1b[B')}
+                                className="w-6 h-6 bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white"
+                            >
+                                <ArrowDown className="h-2 w-2" />
+                            </Button>
+                        </div>
+                        <div className="col-start-3">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x1b[C')}
+                                className="w-6 h-6 bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white"
+                            >
+                                <ArrowRight className="h-2 w-2" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Control Keys & Common Shortcuts - Side by Side */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <div className="grid grid-cols-2 gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x1b')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Esc
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\t')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Tab
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\r')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Enter
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x7f')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Del
+                            </Button>
+                        </div>
+                    </div>
+                    <div>
+                        <div className="grid grid-cols-2 gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x03')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Ctrl+C
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x04')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Ctrl+D
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x0c')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Ctrl+L
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress('\x15')}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                Ctrl+U
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Function Keys - Compact Grid */}
+                <div>
+                    <div className="grid grid-cols-6 gap-1">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                            <Button
+                                key={num}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onKeyPress(`\x1b[${num}~`)}
+                                className="bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white h-6 text-xs"
+                            >
+                                F{num}
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
 export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHTerminal(
-    {hostConfig},
+    {hostConfig, isMobileKeyboardOpen = false},
     ref
 ) {
     const {instance: terminal, ref: xtermRef} = useXTerm();
@@ -19,6 +214,7 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
     const wasDisconnectedBySSH = useRef(false);
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [showControls, setShowControls] = useState(false);
 
     const lastSentSizeRef = useRef<{ cols: number; rows: number } | null>(null);
     const pendingSizeRef = useRef<{ cols: number; rows: number } | null>(null);
@@ -49,6 +245,25 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
             }
         }, DEBOUNCE_MS);
     }
+
+    const handleKeyPress = (key: string) => {
+        if (key === 'close') {
+            setShowControls(false);
+            return;
+        }
+        if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+            webSocketRef.current.send(JSON.stringify({type: 'input', data: key}));
+        }
+    };
+
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            handleKeyPress(text);
+        } catch (error) {
+            console.error('Failed to read clipboard:', error);
+        }
+    };
 
     useImperativeHandle(ref, () => ({
         disconnect: () => {
@@ -216,8 +431,23 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
         };
     }, [xtermRef, terminal, hostConfig]);
 
+    // Calculate terminal height based on mobile keyboard and controls state
+    const getTerminalHeight = () => {
+        if (isMobileKeyboardOpen) {
+            return showControls ? 'calc(100% - 200px)' : 'calc(100% - 100px)';
+        }
+        return showControls ? 'calc(100% - 200px)' : '100%';
+    };
+
+    const getTerminalBottom = () => {
+        if (isMobileKeyboardOpen) {
+            return showControls ? '200px' : '100px';
+        }
+        return showControls ? '200px' : '0';
+    };
+
     return (
-        <div className="terminal-container" style={{position: 'absolute', inset: 0}}>
+        <div className="terminal-container bg-[#18181b] text-white rounded-lg border-2 border-[#303032] overflow-hidden" style={{position: 'absolute', inset: 0}}>
             <div 
                 ref={xtermRef} 
                 className="terminal-wrapper"
@@ -225,20 +455,37 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
                     position: 'absolute',
                     top: 0,
                     right: 0,
-                    bottom: 0,
+                    bottom: getTerminalBottom(),
                     left: 0,
                     width: '100%',
-                    height: '100%',
+                    height: getTerminalHeight(),
                     display: 'block'
                 }}
             />
-            {/* The isTerminalReady state was not defined in the original file, so this block is commented out. */}
-            {/* {!isTerminalReady && ( */}
-            {/* 	<div className="terminal-loading"> */}
-            {/* 		<div className="loading-spinner"></div> */}
-            {/* 		<p>Initializing terminal...</p> */}
-            {/* 	</div> */}
-            {/* )} */}
+            
+            {/* Show Controls Button - Only when controls are hidden */}
+            {!showControls && (
+                <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowControls(true)}
+                    className="absolute bottom-4 right-4 z-50 bg-[#1f2937] border-[#374151] text-white hover:bg-[#374151] hover:text-white shadow-lg"
+                    style={{
+                        bottom: isMobileKeyboardOpen ? '120px' : '16px'
+                    }}
+                >
+                    <Terminal className="h-4 w-4 mr-2" />
+                    Show Controls
+                </Button>
+            )}
+
+            {/* Terminal Controls */}
+            <TerminalControls
+                onKeyPress={handleKeyPress}
+                onPaste={handlePaste}
+                isVisible={showControls}
+                isMobileKeyboardOpen={isMobileKeyboardOpen}
+            />
         </div>
     );
 });
@@ -289,31 +536,6 @@ style.innerHTML = `
   height: 100%;
   min-height: 100%;
   position: relative;
-}
-
-.terminal-loading {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: #f7f7f7;
-  z-index: 10;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #333;
-  border-top: 3px solid #f7f7f7;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 16px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 /* XTerm specific styles */

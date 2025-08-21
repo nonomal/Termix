@@ -91,24 +91,25 @@ export function HomepageUpdateLog({loggedIn}: HomepageUpdateLogProps) {
             .replace(/[#*`]/g, '')
             .replace(/\s+/g, ' ')
             .trim()
-            .substring(0, 100) + (firstLine.length > 100 ? '...' : '');
+            .substring(0, 200) + (firstLine.length > 200 ? '...' : '');
     };
 
     return (
-        <div className="w-[400px] h-[600px] flex flex-col border-2 border-border rounded-lg bg-card p-4">
+        <div className="w-[400px] h-[600px] flex flex-col border-2 border-[#303032] rounded-lg bg-[#18181b] p-4 shadow-lg">
             <div>
-                <h3 className="text-lg font-semibold mb-3">Updates & Releases</h3>
+                <h3 className="text-lg font-bold mb-3 text-white">Updates & Releases</h3>
 
-                <Separator className="p-0.25 mt-3 mb-3"/>
+                <Separator className="p-0.25 mt-3 mb-3 bg-[#303032]"/>
 
                 {versionInfo && versionInfo.status === 'requires_update' && (
-                    <Alert>
-                        <AlertTitle>Update Available</AlertTitle>
-                        <AlertDescription>
+                    <Alert className="bg-[#0e0e10] border-[#303032] text-white">
+                        <AlertTitle className="text-white">Update Available</AlertTitle>
+                        <AlertDescription className="text-gray-300">
                             A new version ({versionInfo.version}) is available.
                             <Button
-                                variant="link"
-                                className="p-0 h-auto underline ml-1"
+                                variant="outline"
+                                size="sm"
+                                className="p-1 h-auto text-blue-400 border-blue-500 hover:bg-blue-500 hover:text-white ml-2 transition-colors"
                                 onClick={() => window.open("https://docs.termix.site/docs", '_blank')}
                             >
                                 Update now
@@ -119,46 +120,46 @@ export function HomepageUpdateLog({loggedIn}: HomepageUpdateLogProps) {
             </div>
 
             {versionInfo && versionInfo.status === 'requires_update' && (
-                <Separator className="p-0.25 mt-3 mb-3"/>
+                <Separator className="p-0.25 mt-3 mb-3 bg-[#303032]"/>
             )}
 
-            <div className="flex-1 overflow-y-auto space-y-3">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                 {loading && (
                     <div className="flex items-center justify-center h-32">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                     </div>
                 )}
 
                 {error && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
+                    <Alert variant="destructive" className="bg-red-900/20 border-red-500 text-red-300">
+                        <AlertTitle className="text-red-300">Error</AlertTitle>
+                        <AlertDescription className="text-red-300">{error}</AlertDescription>
                     </Alert>
                 )}
 
                 {releases?.items.map((release) => (
                     <div
                         key={release.id}
-                        className="border border-border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                        className="border border-[#303032] rounded-lg p-3 hover:bg-[#0e0e10] transition-colors cursor-pointer bg-[#0e0e10]/50"
                         onClick={() => window.open(release.link, '_blank')}
                     >
                         <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-sm leading-tight flex-1">
+                            <h4 className="font-semibold text-sm leading-tight flex-1 text-white">
                                 {release.title}
                             </h4>
                             {release.isPrerelease && (
                                 <span
-                                    className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded ml-2 flex-shrink-0">
+                                    className="text-xs bg-yellow-600 text-yellow-100 px-2 py-1 rounded ml-2 flex-shrink-0 font-medium">
                                     Pre-release
                                 </span>
                             )}
                         </div>
 
-                        <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                        <p className="text-xs text-gray-300 mb-2 leading-relaxed">
                             {formatDescription(release.description)}
                         </p>
 
-                        <div className="flex items-center text-xs text-muted-foreground">
+                        <div className="flex items-center text-xs text-gray-400">
                             <span>{new Date(release.pubDate).toLocaleDateString()}</span>
                             {release.assets.length > 0 && (
                                 <>
@@ -171,9 +172,9 @@ export function HomepageUpdateLog({loggedIn}: HomepageUpdateLogProps) {
                 ))}
 
                 {releases && releases.items.length === 0 && !loading && (
-                    <Alert>
-                        <AlertTitle>No Releases</AlertTitle>
-                        <AlertDescription>
+                    <Alert className="bg-[#0e0e10] border-[#303032] text-gray-300">
+                        <AlertTitle className="text-gray-300">No Releases</AlertTitle>
+                        <AlertDescription className="text-gray-400">
                             No releases found.
                         </AlertDescription>
                     </Alert>

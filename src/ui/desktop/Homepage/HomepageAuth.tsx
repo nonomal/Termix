@@ -340,7 +340,7 @@ export function HomepageAuth({
 
     return (
         <div
-            className={`w-[420px] max-w-full p-6 flex flex-col ${className || ''}`}
+            className={`w-[420px] max-w-full p-6 flex flex-col bg-[#18181b] border-2 border-[#303032] rounded-md ${className || ''}`}
             {...props}
         >
             {dbError && (

@@ -93,31 +93,19 @@ function AppContent() {
     return (
         <div>
             {!isAuthenticated && !authLoading && (
-                <div 
-                    className="fixed inset-0 bg-gradient-to-br from-background via-muted/20 to-background z-[9999]"
-                    aria-hidden="true"
-                >
-                    <div className="absolute inset-0 opacity-20">
-                        <div className="absolute inset-0" style={{
-                            backgroundImage: `repeating-linear-gradient(
-                                45deg,
-                                transparent,
-                                transparent 20px,
-                                hsl(var(--primary) / 0.4) 20px,
-                                hsl(var(--primary) / 0.4) 40px
-                            )`
-                        }} />
-                    </div>
-
-                    <div className="absolute inset-0 opacity-10">
-                        <div className="absolute inset-0" style={{
-                            backgroundImage: `linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
-                                            linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px)`,
-                            backgroundSize: '40px 40px'
-                        }} />
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/60" />
+                <div>
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: `linear-gradient(
+                            135deg,
+                            transparent 0%,
+                            transparent 49%,
+                            rgba(255, 255, 255, 0.03) 49%,
+                            rgba(255, 255, 255, 0.03) 51%,
+                            transparent 51%,
+                            transparent 100%
+                        )`,
+                        backgroundSize: '80px 80px'
+                    }} />
                 </div>
             )}
 
