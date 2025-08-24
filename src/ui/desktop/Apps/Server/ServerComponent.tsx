@@ -5,7 +5,7 @@ import {Separator} from "@/components/ui/separator.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Progress} from "@/components/ui/progress.tsx"
 import {Cpu, HardDrive, MemoryStick} from "lucide-react";
-import {Tunnel} from "@/ui/desktop/Apps/Tunnel/Tunnel.tsx";
+import {Tunnel} from "@/ui/desktop/Apps/Server/Tunnel/Tunnel.tsx";
 import {getServerStatusById, getServerMetricsById, ServerMetrics} from "@/ui/main-axios.ts";
 import {useTabs} from "@/ui/desktop/Navigation/Tabs/TabContext.tsx";
 
@@ -17,7 +17,7 @@ interface ServerProps {
     embedded?: boolean;
 }
 
-export function Server({
+export function ServerComponent({
                            hostConfig,
                            title,
                            isVisible = true,

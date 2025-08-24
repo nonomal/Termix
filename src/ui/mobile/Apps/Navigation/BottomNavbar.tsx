@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 import {Button} from "@/components/ui/button.tsx";
 import {Menu, X, Terminal, Server} from "lucide-react";
+import {Separator} from "@/components/ui/separator.tsx";
 
 interface Tab {
     id: number;
@@ -47,28 +48,31 @@ export function MobileBottomNavbar({
     };
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-[#18181b] border-2 border-[#303032] rounded-lg z-30">
+        <div className="fixed bottom-0 left-0 right-0 h-[50px] !bg-[#131316] border-t-2 border-[#303032] z-30">
             <div className="flex items-center h-full px-1 pr-2 gap-2">
                 {/* Sidebar Toggle Button */}
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={onOpenSidebar}
-                    className="h-[30px] w-[30px] p-0 flex-shrink-0 bg-[#18181b] border-[#303032] hover:bg-[#272728] active:bg-[#303032] transition-colors"
+                    className="h-[35px] w-[35px] ml-2 p-0 flex-shrink-0 bg-[#18181b] !border-2 !border-[#303032]"
                 >
                     <Menu className="h-4 w-4 text-white" />
                 </Button>
 
+                {/* Vertical Separator */}
+                <div className="p-0.25 h-[35px] bg-[#303032] flex-shrink-0" />
+
                 {/* Tabs Container */}
                 <div className="flex-1 overflow-x-auto overflow-y-hidden thin-scrollbar">
-                    <div className="flex items-center gap-2 h-full min-w-max px-2">
+                    <div className="flex items-center gap-2 h-full min-w-max">
                         {tabs.map((tab) => (
                             <div
                                 key={tab.id}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 flex-shrink-0 ${
+                                className={`flex items-center gap-2 px-3 py-2 border-2 h-[35px] border-[#303032] rounded-lg cursor-pointer transition-all duration-200 flex-shrink-0 ${
                                     tab.isActive
-                                        ? 'bg-[#3b82f6] text-white'
-                                        : 'bg-[#272728] text-gray-300 hover:bg-[#303032]'
+                                        ? 'bg-[#18181b] text-white'
+                                        : 'bg-[#111113] text-gray-300 hover:bg-[#303032]'
                                 }`}
                                 onClick={() => onTabChange(tab.id)}
                             >

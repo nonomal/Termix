@@ -246,20 +246,10 @@ export const TerminalComponent = forwardRef<any, SSHTerminalProps>(function SSHT
     }, [isVisible, visible]);
 
     return (
-        <div className="terminal-container" style={{position: 'absolute', inset: 0}}>
-            <div 
-                ref={xtermRef} 
-                className="terminal-wrapper"
-                style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    display: 'block'
-                }}
+        <div className="w-full h-full m-1">
+            <div
+                ref={xtermRef}
+                className="w-full h-full"
             />
         </div>
     );

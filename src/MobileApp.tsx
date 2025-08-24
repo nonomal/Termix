@@ -4,11 +4,75 @@ import { ServerComponent } from "@/ui/mobile/Apps/Server/ServerComponent.tsx";
 import { MobileLeftSidebar } from "@/ui/mobile/Apps/Navigation/LeftSidebar.tsx";
 import { MobileBottomNavbar } from "@/ui/mobile/Apps/Navigation/BottomNavbar.tsx";
 import { MobileTabProvider, useMobileTabs } from "@/ui/mobile/Apps/Navigation/TabContext.tsx";
+import { MobileAuth } from "@/ui/mobile/Apps/Auth/MobileAuth.tsx";
+import axios from "axios";
+
+function getCookie(name: string) {
+    return document.cookie.split('; ').reduce((r, v) => {
+        const parts = v.split('=');
+        return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+    }, "");
+}
+
+const apiBase = import.meta.env.DEV ? "http://localhost:8081/users" : "/users";
+const API = axios.create({ baseURL: apiBase });
 
 function MobileAppContent() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [username, setUsername] = useState<string | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [dbError, setDbError] = useState<string | null>(null);
     const { tabs, currentTab, setCurrentTab, removeTab, addTab } = useMobileTabs();
     const terminalRefs = useRef<Map<number, any>>(new Map());
+
+    // Check authentication status on component mount
+    useEffect(() => {
+        const checkAuth = async () => {
+            setAuthLoading(true);
+            try {
+                const jwt = getCookie("jwt");
+                if (jwt) {
+                    const res = await API.get("/me", {headers: {Authorization: `Bearer ${jwt}`}});
+                    setIsAdmin(!!res.data.is_admin);
+                    setUsername(res.data.username || null);
+                    setLoggedIn(true);
+                    setDbError(null);
+                } else {
+                    setLoggedIn(false);
+                    setIsAdmin(false);
+                    setUsername(null);
+                }
+            } catch (err) {
+                setLoggedIn(false);
+                setIsAdmin(false);
+                setUsername(null);
+                // Clear invalid JWT
+                document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            } finally {
+                setAuthLoading(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    const handleAuthSuccess = (authData: { isAdmin: boolean; username: string | null; userId: string | null }) => {
+        setLoggedIn(true);
+        setIsAdmin(authData.isAdmin);
+        setUsername(authData.username);
+        setDbError(null);
+    };
+
+    const handleLogout = () => {
+        setLoggedIn(false);
+        setIsAdmin(false);
+        setUsername(null);
+        document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        // Clear all tabs on logout
+        tabs.forEach(tab => removeTab(tab.id));
+    };
 
     const handleOpenSidebar = () => {
         setIsSidebarOpen(true);
@@ -18,18 +82,34 @@ function MobileAppContent() {
         setIsSidebarOpen(false);
     };
 
+    const generateNumberedTitle = (hostName: string, type: string) => {
+        const existingTabs = tabs.filter(tab => 
+            tab.type === type && 
+            tab.hostConfig && 
+            tab.hostConfig.name === hostName
+        );
+        
+        if (existingTabs.length === 0) {
+            return hostName;
+        } else {
+            return `${hostName} (${existingTabs.length + 1})`;
+        }
+    };
+
     const handleSelectView = (view: string, hostConfig?: any) => {
         // Add a new tab for the selected view with the actual selected host
         if (view === 'terminal' && hostConfig) {
+            const hostName = hostConfig.name || hostConfig.username || 'Terminal';
             addTab({
                 type: 'terminal',
-                title: hostConfig.name || hostConfig.username || 'Terminal',
+                title: generateNumberedTitle(hostName, 'terminal'),
                 hostConfig: hostConfig
             });
         } else if (view === 'server' && hostConfig) {
+            const hostName = hostConfig.name || hostConfig.username || 'Server';
             addTab({
                 type: 'server',
-                title: hostConfig.name || hostConfig.username || 'Server',
+                title: generateNumberedTitle(hostName, 'server'),
                 hostConfig: hostConfig
             });
         } else if (view === 'admin') {
@@ -68,7 +148,7 @@ function MobileAppContent() {
     return (
         <div className="h-screen w-screen bg-[#18181b] overflow-hidden">
             {/* Main Content Area - Render ALL tabs but only show active one */}
-            <div className="h-full pb-[50px] relative"> {/* pb-[50px] accounts for bottom navbar height */}
+            <div className="h-[calc(100%-50px)] relative"> {/* Subtract bottom navbar height from total height */}
                 {tabs.map((tab) => (
                     <div
                         key={tab.id}
@@ -122,9 +202,25 @@ function MobileAppContent() {
                 isOpen={isSidebarOpen}
                 onClose={handleCloseSidebar}
                 onSelectView={handleSelectView}
-                isAdmin={false}
-                username="user"
+                isAdmin={isAdmin}
+                username={username || 'user'}
+                onLogout={handleLogout}
             />
+
+            {/* Authentication Modal */}
+            {!loggedIn && !authLoading && (
+                <MobileAuth
+                    setLoggedIn={setLoggedIn}
+                    setIsAdmin={setIsAdmin}
+                    setUsername={setUsername}
+                    setUserId={() => {}} // Not used in mobile
+                    loggedIn={loggedIn}
+                    authLoading={authLoading}
+                    dbError={dbError}
+                    setDbError={setDbError}
+                    onAuthSuccess={handleAuthSuccess}
+                />
+            )}
         </div>
     );
 }

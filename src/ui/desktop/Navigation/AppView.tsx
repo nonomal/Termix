@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
 import {TerminalComponent} from "@/ui/desktop/Apps/Terminal/TerminalComponent.tsx";
-import {Server as ServerView} from "@/ui/desktop/Apps/Server/Server.tsx";
+import {ServerComponent as ServerView} from "@/ui/desktop/Apps/Server/ServerComponent.tsx";
 import {FileManager} from "@/ui/desktop/Apps/File Manager/FileManager.tsx";
 import {useTabs} from "@/ui/desktop/Navigation/Tabs/TabContext.tsx";
 import {ResizablePanelGroup, ResizablePanel, ResizableHandle} from '@/components/ui/resizable.tsx';
