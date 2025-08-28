@@ -4,13 +4,10 @@ import {Homepage} from "@/ui/Homepage/Homepage.tsx"
 import {AppView} from "@/ui/Navigation/AppView.tsx"
 import {HostManager} from "@/ui/apps/Host Manager/HostManager.tsx"
 import {TabProvider, useTabs} from "@/ui/Navigation/Tabs/TabContext.tsx"
-import axios from "axios"
 import {TopNavbar} from "@/ui/Navigation/TopNavbar.tsx";
 import { AdminSettings } from "@/ui/Admin/AdminSettings";
 import { Toaster } from "@/components/ui/sonner";
-
-const apiBase = import.meta.env.DEV ? "http://localhost:8081/users" : "/users";
-const API = axios.create({baseURL: apiBase});
+import { getUserInfo } from "@/ui/main-axios.ts";
 
 function getCookie(name: string) {
     return document.cookie.split('; ').reduce((r, v) => {
@@ -39,11 +36,11 @@ function AppContent() {
             const jwt = getCookie("jwt");
             if (jwt) {
                 setAuthLoading(true);
-                API.get("/me", {headers: {Authorization: `Bearer ${jwt}`}})
+                getUserInfo()
                     .then((meRes) => {
                         setIsAuthenticated(true);
-                        setIsAdmin(!!meRes.data.is_admin);
-                        setUsername(meRes.data.username || null);
+                        setIsAdmin(!!meRes.is_admin);
+                        setUsername(meRes.username || null);
                     })
                     .catch((err) => {
                         setIsAuthenticated(false);
@@ -93,31 +90,19 @@ function AppContent() {
     return (
         <div>
             {!isAuthenticated && !authLoading && (
-                <div 
-                    className="fixed inset-0 bg-gradient-to-br from-background via-muted/20 to-background z-[9999]"
-                    aria-hidden="true"
-                >
-                    <div className="absolute inset-0 opacity-20">
-                        <div className="absolute inset-0" style={{
-                            backgroundImage: `repeating-linear-gradient(
-                                45deg,
-                                transparent,
-                                transparent 20px,
-                                hsl(var(--primary) / 0.4) 20px,
-                                hsl(var(--primary) / 0.4) 40px
-                            )`
-                        }} />
-                    </div>
-
-                    <div className="absolute inset-0 opacity-10">
-                        <div className="absolute inset-0" style={{
-                            backgroundImage: `linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
-                                            linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px)`,
-                            backgroundSize: '40px 40px'
-                        }} />
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/60" />
+                <div>
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: `linear-gradient(
+                            135deg,
+                            transparent 0%,
+                            transparent 49%,
+                            rgba(255, 255, 255, 0.03) 49%,
+                            rgba(255, 255, 255, 0.03) 51%,
+                            transparent 51%,
+                            transparent 100%
+                        )`,
+                        backgroundSize: '80px 80px'
+                    }} />
                 </div>
             )}
 

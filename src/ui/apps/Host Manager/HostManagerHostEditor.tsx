@@ -582,11 +582,11 @@ export function HostManagerHostEditor({editingHost, onFormSubmit}: SSHManagerHos
                                         <FormField
                                             control={form.control}
                                             name="password"
-                                            render={({field}) => (
+                                            render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Password</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="password" {...field} />
+                                                        <Input type="password" placeholder="password" {...field} />
                                                     </FormControl>
                                                 </FormItem>
                                             )}

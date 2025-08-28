@@ -1,10 +1,21 @@
 import React, {useState, useEffect} from "react";
-import {cn} from "@/lib/utils.ts";
-import {Button} from "@/components/ui/button.tsx";
-import {Input} from "@/components/ui/input.tsx";
-import {Label} from "@/components/ui/label.tsx";
-import {Alert, AlertTitle, AlertDescription} from "@/components/ui/alert.tsx";
-import axios from "axios";
+import {cn} from "../../lib/utils.ts";
+import {Button} from "../../components/ui/button.tsx";
+import {Input} from "../../components/ui/input.tsx";
+import {Label} from "../../components/ui/label.tsx";
+import {Alert, AlertTitle, AlertDescription} from "../../components/ui/alert.tsx";
+import {
+    registerUser,
+    loginUser,
+    getUserInfo,
+    getRegistrationAllowed,
+    getOIDCConfig,
+    getUserCount,
+    initiatePasswordReset,
+    verifyPasswordResetCode,
+    completePasswordReset,
+    getOIDCAuthorizeUrl
+} from "../main-axios.ts";
 
 function setCookie(name: string, value: string, days = 7) {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
@@ -18,11 +29,7 @@ function getCookie(name: string) {
     }, "");
 }
 
-const apiBase = import.meta.env.DEV ? "http://localhost:8081/users" : "/users";
 
-const API = axios.create({
-    baseURL: apiBase,
-});
 
 interface HomepageAuthProps extends React.ComponentProps<"div"> {
     setLoggedIn: (loggedIn: boolean) => void;
@@ -74,14 +81,14 @@ export function HomepageAuth({
     }, [loggedIn]);
 
     useEffect(() => {
-        API.get("/registration-allowed").then(res => {
-            setRegistrationAllowed(res.data.allowed);
+        getRegistrationAllowed().then(res => {
+            setRegistrationAllowed(res.allowed);
         });
     }, []);
 
     useEffect(() => {
-        API.get("/oidc-config").then((response) => {
-            if (response.data) {
+        getOIDCConfig().then((response) => {
+            if (response) {
                 setOidcConfigured(true);
             } else {
                 setOidcConfigured(false);
@@ -96,8 +103,8 @@ export function HomepageAuth({
     }, []);
 
     useEffect(() => {
-        API.get("/count").then(res => {
-            if (res.data.count === 0) {
+        getUserCount().then(res => {
+            if (res.count === 0) {
                 setFirstUser(true);
                 setTab("signup");
             } else {
@@ -123,7 +130,7 @@ export function HomepageAuth({
         try {
             let res, meRes;
             if (tab === "login") {
-                res = await API.post("/login", {username: localUsername, password});
+                res = await loginUser(localUsername, password);
             } else {
                 if (password !== signupConfirmPassword) {
                     setError("Passwords do not match");
@@ -135,31 +142,37 @@ export function HomepageAuth({
                     setLoading(false);
                     return;
                 }
-                await API.post("/create", {username: localUsername, password});
-                res = await API.post("/login", {username: localUsername, password});
+
+                await registerUser(localUsername, password);
+                res = await loginUser(localUsername, password);
             }
-            setCookie("jwt", res.data.token);
+            
+            if (!res || !res.token) {
+                throw new Error('No token received from login');
+            }
+            
+            setCookie("jwt", res.token);
             [meRes] = await Promise.all([
-                API.get("/me", {headers: {Authorization: `Bearer ${res.data.token}`}}),
-                API.get("/db-health")
+                getUserInfo(),
             ]);
+            
             setInternalLoggedIn(true);
             setLoggedIn(true);
-            setIsAdmin(!!meRes.data.is_admin);
-            setUsername(meRes.data.username || null);
-            setUserId(meRes.data.id || null);
+            setIsAdmin(!!meRes.is_admin);
+            setUsername(meRes.username || null);
+            setUserId(meRes.userId || null);
             setDbError(null);
             onAuthSuccess({
-                isAdmin: !!meRes.data.is_admin,
-                username: meRes.data.username || null,
-                userId: meRes.data.id || null
+                isAdmin: !!meRes.is_admin,
+                username: meRes.username || null,
+                userId: meRes.userId || null
             });
             setInternalLoggedIn(true);
             if (tab === "signup") {
                 setSignupConfirmPassword("");
             }
         } catch (err: any) {
-            setError(err?.response?.data?.error || "Unknown error");
+            setError(err?.response?.data?.error || err?.message || "Unknown error");
             setInternalLoggedIn(false);
             setLoggedIn(false);
             setIsAdmin(false);
@@ -176,29 +189,26 @@ export function HomepageAuth({
         }
     }
 
-    async function initiatePasswordReset() {
+    async function handleInitiatePasswordReset() {
         setError(null);
         setResetLoading(true);
         try {
-            await API.post("/initiate-reset", {username: localUsername});
+            const result = await initiatePasswordReset(localUsername);
             setResetStep("verify");
             setError(null);
         } catch (err: any) {
-            setError(err?.response?.data?.error || "Failed to initiate password reset");
+            setError(err?.response?.data?.error || err?.message || "Failed to initiate password reset");
         } finally {
             setResetLoading(false);
         }
     }
 
-    async function verifyResetCode() {
+    async function handleVerifyResetCode() {
         setError(null);
         setResetLoading(true);
         try {
-            const response = await API.post("/verify-reset-code", {
-                username: localUsername,
-                resetCode: resetCode
-            });
-            setTempToken(response.data.tempToken);
+            const response = await verifyPasswordResetCode(localUsername, resetCode);
+            setTempToken(response.tempToken);
             setResetStep("newPassword");
             setError(null);
         } catch (err: any) {
@@ -208,7 +218,7 @@ export function HomepageAuth({
         }
     }
 
-    async function completePasswordReset() {
+    async function handleCompletePasswordReset() {
         setError(null);
         setResetLoading(true);
 
@@ -225,11 +235,7 @@ export function HomepageAuth({
         }
 
         try {
-            await API.post("/complete-reset", {
-                username: localUsername,
-                tempToken: tempToken,
-                newPassword: newPassword
-            });
+            await completePasswordReset(localUsername, tempToken, newPassword);
 
             setResetStep("initiate");
             setResetCode("");
@@ -267,8 +273,8 @@ export function HomepageAuth({
         setError(null);
         setOidcLoading(true);
         try {
-            const authResponse = await API.get("/oidc/authorize");
-            const {auth_url: authUrl} = authResponse.data;
+            const authResponse = await getOIDCAuthorizeUrl();
+            const {auth_url: authUrl} = authResponse;
 
             if (!authUrl || authUrl === 'undefined') {
                 throw new Error('Invalid authorization URL received from backend');
@@ -299,18 +305,18 @@ export function HomepageAuth({
             setError(null);
 
             setCookie("jwt", token);
-            API.get("/me", {headers: {Authorization: `Bearer ${token}`}})
+            getUserInfo()
                 .then(meRes => {
                     setInternalLoggedIn(true);
                     setLoggedIn(true);
-                    setIsAdmin(!!meRes.data.is_admin);
-                    setUsername(meRes.data.username || null);
-                    setUserId(meRes.data.id || null);
+                    setIsAdmin(!!meRes.is_admin);
+                    setUsername(meRes.username || null);
+                    setUserId(meRes.id || null);
                     setDbError(null);
                     onAuthSuccess({
-                        isAdmin: !!meRes.data.is_admin,
-                        username: meRes.data.username || null,
-                        userId: meRes.data.id || null
+                        isAdmin: !!meRes.is_admin,
+                        username: meRes.username || null,
+                        userId: meRes.id || null
                     });
                     setInternalLoggedIn(true);
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -340,7 +346,7 @@ export function HomepageAuth({
 
     return (
         <div
-            className={`w-[420px] max-w-full p-6 flex flex-col ${className || ''}`}
+            className={`w-[420px] max-w-full p-6 flex flex-col bg-[#18181b] border-2 border-[#303032] rounded-md ${className || ''}`}
             {...props}
         >
             {dbError && (
@@ -486,7 +492,7 @@ export function HomepageAuth({
                                                     type="button"
                                                     className="w-full h-11 text-base font-semibold"
                                                     disabled={resetLoading || !localUsername.trim()}
-                                                    onClick={initiatePasswordReset}
+                                                    onClick={handleInitiatePasswordReset}
                                                 >
                                                     {resetLoading ? Spinner : "Send Reset Code"}
                                                 </Button>
@@ -519,7 +525,7 @@ export function HomepageAuth({
                                                     type="button"
                                                     className="w-full h-11 text-base font-semibold"
                                                     disabled={resetLoading || resetCode.length !== 6}
-                                                    onClick={verifyResetCode}
+                                                    onClick={handleVerifyResetCode}
                                                 >
                                                     {resetLoading ? Spinner : "Verify Code"}
                                                 </Button>
@@ -598,7 +604,7 @@ export function HomepageAuth({
                                                     type="button"
                                                     className="w-full h-11 text-base font-semibold"
                                                     disabled={resetLoading || !newPassword || !confirmPassword}
-                                                    onClick={completePasswordReset}
+                                                    onClick={handleCompletePasswordReset}
                                                 >
                                                     {resetLoading ? Spinner : "Reset Password"}
                                                 </Button>

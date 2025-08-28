@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {HomepageAlertCard} from "./HomepageAlertCard.tsx";
 import {Button} from "@/components/ui/button.tsx";
-import axios from "axios";
+import { getUserAlerts, dismissAlert } from "@/ui/main-axios.ts";
 
 interface TermixAlert {
     id: string;
@@ -18,12 +18,6 @@ interface AlertManagerProps {
     userId: string | null;
     loggedIn: boolean;
 }
-
-const apiBase = import.meta.env.DEV ? "http://localhost:8081/alerts" : "/alerts";
-
-const API = axios.create({
-    baseURL: apiBase,
-});
 
 export function HomepageAlertManager({userId, loggedIn}: AlertManagerProps): React.ReactElement {
     const [alerts, setAlerts] = useState<TermixAlert[]>([]);
@@ -44,9 +38,9 @@ export function HomepageAlertManager({userId, loggedIn}: AlertManagerProps): Rea
         setError(null);
 
         try {
-            const response = await API.get(`/user/${userId}`);
+            const response = await getUserAlerts(userId);
 
-            const userAlerts = response.data.alerts || [];
+            const userAlerts = response.alerts || [];
 
             const sortedAlerts = userAlerts.sort((a: TermixAlert, b: TermixAlert) => {
                 const priorityOrder = {critical: 4, high: 3, medium: 2, low: 1};
@@ -73,10 +67,7 @@ export function HomepageAlertManager({userId, loggedIn}: AlertManagerProps): Rea
         if (!userId) return;
 
         try {
-            const response = await API.post('/dismiss', {
-                userId,
-                alertId
-            });
+            await dismissAlert(userId, alertId);
 
             setAlerts(prev => {
                 const newAlerts = prev.filter(alert => alert.id !== alertId);

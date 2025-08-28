@@ -25,7 +25,7 @@ export function Server({
                            embedded = false
                        }: ServerProps): React.ReactElement {
     const {state: sidebarState} = useSidebar();
-    const {addTab} = useTabs() as any;
+    const {addTab, tabs} = useTabs() as any;
     const [serverStatus, setServerStatus] = React.useState<'online' | 'offline'>('offline');
     const [metrics, setMetrics] = React.useState<ServerMetrics | null>(null);
     const [currentHostConfig, setCurrentHostConfig] = React.useState(hostConfig);
@@ -94,24 +94,36 @@ export function Server({
             }
         };
 
-        if (currentHostConfig?.id) {
+        if (currentHostConfig?.id && isVisible) {
             fetchStatus();
             fetchMetrics();
+            // Only poll when component is visible to reduce unnecessary connections
             intervalId = window.setInterval(() => {
-                fetchStatus();
-                fetchMetrics();
-            }, 10_000);
+                if (isVisible) {
+                    fetchStatus();
+                    fetchMetrics();
+                }
+            }, 300_000); // 5 minutes instead of 10 seconds
         }
 
         return () => {
             cancelled = true;
             if (intervalId) window.clearInterval(intervalId);
         };
-    }, [currentHostConfig?.id]);
+    }, [currentHostConfig?.id, isVisible]);
 
     const topMarginPx = isTopbarOpen ? 74 : 16;
     const leftMarginPx = sidebarState === 'collapsed' ? 16 : 8;
     const bottomMarginPx = 8;
+
+    // Check if a file manager tab for this host is already open
+    const isFileManagerAlreadyOpen = React.useMemo(() => {
+        if (!currentHostConfig) return false;
+        return tabs.some((tab: any) => 
+            tab.type === 'file_manager' && 
+            tab.hostConfig?.id === currentHostConfig.id
+        );
+    }, [tabs, currentHostConfig]);
 
     const wrapperStyle: React.CSSProperties = embedded
         ? {opacity: isVisible ? 1 : 0, height: '100%', width: '100%'}
@@ -142,13 +154,34 @@ export function Server({
                             <StatusIndicator/>
                         </Status>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                if (currentHostConfig?.id) {
+                                    try {
+                                        const res = await getServerStatusById(currentHostConfig.id);
+                                        setServerStatus(res?.status === 'online' ? 'online' : 'offline');
+                                        const data = await getServerMetricsById(currentHostConfig.id);
+                                        setMetrics(data);
+                                    } catch {
+                                        setServerStatus('offline');
+                                        setMetrics(null);
+                                    }
+                                }
+                            }}
+                            title="Refresh status and metrics"
+                        >
+                            Refresh
+                        </Button>
                         {currentHostConfig?.enableFileManager && (
                             <Button
                                 variant="outline"
                                 className="font-semibold"
+                                disabled={isFileManagerAlreadyOpen}
+                                title={isFileManagerAlreadyOpen ? "File Manager already open for this host" : "Open File Manager"}
                                 onClick={() => {
-                                    if (!currentHostConfig) return;
+                                    if (!currentHostConfig || isFileManagerAlreadyOpen) return;
                                     const titleBase = currentHostConfig?.name && currentHostConfig.name.trim() !== ''
                                         ? currentHostConfig.name.trim()
                                         : `${currentHostConfig.username}@${currentHostConfig.ip}`;
@@ -210,7 +243,7 @@ export function Server({
 
                     <Separator className="p-0.5 self-stretch" orientation="vertical"/>
 
-                    {/* HDD */}
+                    {/* Root Storage */}
                     <div className="flex-1 min-w-0 px-2 py-2">
                         <h1 className="font-bold xt-lg flex flex-row gap-2 mb-2">
                             <HardDrive/>
@@ -221,7 +254,7 @@ export function Server({
                                 const pctText = (typeof pct === 'number') ? `${pct}%` : 'N/A';
                                 const usedText = used ?? 'N/A';
                                 const totalText = total ?? 'N/A';
-                                return `HDD Space - ${pctText} (${usedText} of ${totalText})`;
+                                return `Root Storage Space - ${pctText} (${usedText} of ${totalText})`;
                             })()}
                         </h1>
 

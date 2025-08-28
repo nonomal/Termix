@@ -16,10 +16,16 @@ import {
     TableRow,
 } from "@/components/ui/table.tsx";
 import {Shield, Trash2, Users} from "lucide-react";
-import axios from "axios";
-
-const apiBase = import.meta.env.DEV ? "http://localhost:8081/users" : "/users";
-const API = axios.create({baseURL: apiBase});
+import { 
+    getOIDCConfig, 
+    getRegistrationAllowed, 
+    getUserList, 
+    updateRegistrationAllowed, 
+    updateOIDCConfig, 
+    makeUserAdmin, 
+    removeAdminStatus, 
+    deleteUser 
+} from "@/ui/main-axios.ts";
 
 function getCookie(name: string) {
     return document.cookie.split('; ').reduce((r, v) => {
@@ -67,9 +73,9 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
     React.useEffect(() => {
         const jwt = getCookie("jwt");
         if (!jwt) return;
-        API.get("/oidc-config", {headers: {Authorization: `Bearer ${jwt}`}})
+        getOIDCConfig()
             .then(res => {
-                if (res.data) setOidcConfig(res.data);
+                if (res) setOidcConfig(res);
             })
             .catch(() => {
             });
@@ -77,10 +83,10 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
     }, []);
 
     React.useEffect(() => {
-        API.get("/registration-allowed")
+        getRegistrationAllowed()
             .then(res => {
-                if (typeof res?.data?.allowed === 'boolean') {
-                    setAllowRegistration(res.data.allowed);
+                if (typeof res?.allowed === 'boolean') {
+                    setAllowRegistration(res.allowed);
                 }
             })
             .catch(() => {
@@ -92,8 +98,8 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
         if (!jwt) return;
         setUsersLoading(true);
         try {
-            const response = await API.get("/list", {headers: {Authorization: `Bearer ${jwt}`}});
-            setUsers(response.data.users);
+            const response = await getUserList();
+            setUsers(response.users);
         } finally {
             setUsersLoading(false);
         }
@@ -103,7 +109,7 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
         setRegLoading(true);
         const jwt = getCookie("jwt");
         try {
-            await API.patch("/registration-allowed", {allowed: checked}, {headers: {Authorization: `Bearer ${jwt}`}});
+            await updateRegistrationAllowed(checked);
             setAllowRegistration(checked);
         } finally {
             setRegLoading(false);
@@ -126,7 +132,7 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
 
         const jwt = getCookie("jwt");
         try {
-            await API.post("/oidc-config", oidcConfig, {headers: {Authorization: `Bearer ${jwt}`}});
+            await updateOIDCConfig(oidcConfig);
             setOidcSuccess("OIDC configuration updated successfully!");
         } catch (err: any) {
             setOidcError(err?.response?.data?.error || "Failed to update OIDC configuration");
@@ -147,7 +153,7 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
         setMakeAdminSuccess(null);
         const jwt = getCookie("jwt");
         try {
-            await API.post("/make-admin", {username: newAdminUsername.trim()}, {headers: {Authorization: `Bearer ${jwt}`}});
+            await makeUserAdmin(newAdminUsername.trim());
             setMakeAdminSuccess(`User ${newAdminUsername} is now an admin`);
             setNewAdminUsername("");
             fetchUsers();
@@ -162,7 +168,7 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
         if (!confirm(`Remove admin status from ${username}?`)) return;
         const jwt = getCookie("jwt");
         try {
-            await API.post("/remove-admin", {username}, {headers: {Authorization: `Bearer ${jwt}`}});
+            await removeAdminStatus(username);
             fetchUsers();
         } catch {
         }
@@ -172,7 +178,7 @@ export function AdminSettings({isTopbarOpen = true}: AdminSettingsProps): React.
         if (!confirm(`Delete user ${username}? This cannot be undone.`)) return;
         const jwt = getCookie("jwt");
         try {
-            await API.delete("/delete-user", {headers: {Authorization: `Bearer ${jwt}`}, data: {username}});
+            await deleteUser(username);
             fetchUsers();
         } catch {
         }

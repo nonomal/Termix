@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from "react";
-import {TerminalComponent} from "@/ui/apps/Terminal/TerminalComponent.tsx";
+import {Terminal} from "@/ui/apps/Terminal/Terminal.tsx";
 import {Server as ServerView} from "@/ui/apps/Server/Server.tsx";
 import {FileManager} from "@/ui/apps/File Manager/FileManager.tsx";
 import {useTabs} from "@/ui/Navigation/Tabs/TabContext.tsx";
@@ -108,12 +108,13 @@ export function AppView({isTopbarOpen = true}: TerminalViewProps): React.ReactEl
         const layoutTabs = [mainTab, ...splitTabs.filter((t: any) => t && t.id !== (mainTab && (mainTab as any).id))].filter(Boolean) as any[];
 
         if (allSplitScreenTab.length === 0 && mainTab) {
+            const isFileManagerTab = mainTab.type === 'file_manager';
             styles[mainTab.id] = {
                 position: 'absolute',
-                top: 2,
-                left: 2,
-                right: 2,
-                bottom: 2,
+                top: isFileManagerTab ? 0 : 2,
+                left: isFileManagerTab ? 0 : 2,
+                right: isFileManagerTab ? 0 : 2,
+                bottom: isFileManagerTab ? 0 : 2,
                 zIndex: 20,
                 display: 'block',
                 pointerEvents: 'auto',
@@ -154,9 +155,9 @@ export function AppView({isTopbarOpen = true}: TerminalViewProps): React.ReactEl
                     const effectiveVisible = isVisible && ready;
                     return (
                         <div key={t.id} style={finalStyle}>
-                            <div className="absolute inset-0 rounded-md" style={{background: '#18181b'}}>
+                            <div className="absolute inset-0 rounded-md bg-[#18181b]">
                                 {t.type === 'terminal' ? (
-                                    <TerminalComponent
+                                    <Terminal
                                         ref={t.terminalRef}
                                         hostConfig={t.hostConfig}
                                         isVisible={effectiveVisible}
@@ -523,6 +524,10 @@ export function AppView({isTopbarOpen = true}: TerminalViewProps): React.ReactEl
         return null;
     };
 
+    const currentTabData = tabs.find((tab: any) => tab.id === currentTab);
+    const isFileManager = currentTabData?.type === 'file_manager';
+    const isSplitScreen = allSplitScreenTab.length > 0;
+    
     const topMarginPx = isTopbarOpen ? 74 : 26;
     const leftMarginPx = sidebarState === 'collapsed' ? 26 : 8;
     const bottomMarginPx = 8;
@@ -533,7 +538,7 @@ export function AppView({isTopbarOpen = true}: TerminalViewProps): React.ReactEl
             className="border-2 border-[#303032] rounded-lg overflow-hidden overflow-x-hidden"
             style={{
                 position: 'relative',
-                background: '#18181b',
+                background: (isFileManager && !isSplitScreen) ? '#09090b' : '#18181b',
                 marginLeft: leftMarginPx,
                 marginRight: 17,
                 marginTop: topMarginPx,

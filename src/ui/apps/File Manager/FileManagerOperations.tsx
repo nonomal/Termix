@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {Card} from '@/components/ui/card.tsx';
@@ -48,7 +48,29 @@ export function FileManagerOperations({
     const [newName, setNewName] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
+    const [showTextLabels, setShowTextLabels] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const checkContainerWidth = () => {
+            if (containerRef.current) {
+                const width = containerRef.current.offsetWidth;
+                setShowTextLabels(width > 240);
+            }
+        };
+
+        checkContainerWidth();
+        
+        const resizeObserver = new ResizeObserver(checkContainerWidth);
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, []);
 
     const handleFileUpload = async () => {
         if (!uploadFile || !sshSessionId) return;
@@ -186,113 +208,121 @@ export function FileManagerOperations({
     }
 
     return (
-        <div className="p-4 space-y-4">
+        <div ref={containerRef} className="p-4 space-y-4">
             <div className="grid grid-cols-2 gap-2">
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowUpload(true)}
                     className="h-10 bg-[#18181b] border-2 border-[#303032] hover:border-[#434345] hover:bg-[#2d2d30]"
+                    title="Upload File"
                 >
-                    <Upload className="w-4 h-4 mr-2"/>
-                    Upload File
+                    <Upload className={cn("w-4 h-4", showTextLabels ? "mr-2" : "")}/>
+                    {showTextLabels && <span className="truncate">Upload File</span>}
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowCreateFile(true)}
                     className="h-10 bg-[#18181b] border-2 border-[#303032] hover:border-[#434345] hover:bg-[#2d2d30]"
+                    title="New File"
                 >
-                    <FilePlus className="w-4 h-4 mr-2"/>
-                    New File
+                    <FilePlus className={cn("w-4 h-4", showTextLabels ? "mr-2" : "")}/>
+                    {showTextLabels && <span className="truncate">New File</span>}
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowCreateFolder(true)}
                     className="h-10 bg-[#18181b] border-2 border-[#303032] hover:border-[#434345] hover:bg-[#2d2d30]"
+                    title="New Folder"
                 >
-                    <FolderPlus className="w-4 h-4 mr-2"/>
-                    New Folder
+                    <FolderPlus className={cn("w-4 h-4", showTextLabels ? "mr-2" : "")}/>
+                    {showTextLabels && <span className="truncate">New Folder</span>}
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowRename(true)}
                     className="h-10 bg-[#18181b] border-2 border-[#303032] hover:border-[#434345] hover:bg-[#2d2d30]"
+                    title="Rename"
                 >
-                    <Edit3 className="w-4 h-4 mr-2"/>
-                    Rename
+                    <Edit3 className={cn("w-4 h-4", showTextLabels ? "mr-2" : "")}/>
+                    {showTextLabels && <span className="truncate">Rename</span>}
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowDelete(true)}
                     className="h-10 bg-[#18181b] border-2 border-[#303032] hover:border-[#434345] hover:bg-[#2d2d30] col-span-2"
+                    title="Delete Item"
                 >
-                    <Trash2 className="w-4 h-4 mr-2"/>
-                    Delete Item
+                    <Trash2 className={cn("w-4 h-4", showTextLabels ? "mr-2" : "")}/>
+                    {showTextLabels && <span className="truncate">Delete Item</span>}
                 </Button>
             </div>
 
-            <div className="bg-[#18181b] border-2 border-[#303032] rounded-lg p-3">
-                <div className="flex items-center gap-2 text-sm">
-                    <Folder className="w-4 h-4 text-blue-400"/>
-                    <span className="text-muted-foreground">Current Path:</span>
-                    <span className="text-white font-mono truncate">{currentPath}</span>
+            <div className="bg-[#141416] border-2 border-[#373739] rounded-md p-3">
+                <div className="flex items-start gap-2 text-sm">
+                    <Folder className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5"/>
+                    <div className="flex-1 min-w-0">
+                        <span className="text-muted-foreground block mb-1">Current Path:</span>
+                        <span className="text-white font-mono text-xs break-all leading-relaxed">{currentPath}</span>
+                    </div>
                 </div>
             </div>
 
             <Separator className="p-0.25 bg-[#303032]"/>
 
             {showUpload && (
-                <Card className="bg-[#18181b] border-2 border-[#303032] p-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <div>
-                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Upload className="w-5 h-5"/>
-                                Upload File
+                <Card className="bg-[#18181b] border-2 border-[#303032] p-3 sm:p-4">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2 mb-1">
+                                <Upload className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"/>
+                                <span className="break-words">Upload File</span>
                             </h3>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Maximum file size: 100MB (JSON) / 200MB (Binary)
+                            <p className="text-xs text-muted-foreground break-words">
+                                Max: 100MB (JSON) / 200MB (Binary)
                             </p>
                         </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowUpload(false)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 ml-2"
                         >
                             <X className="w-4 h-4"/>
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="border-2 border-dashed border-[#434345] rounded-lg p-6 text-center">
+                    <div className="space-y-3">
+                        <div className="border-2 border-dashed border-[#434345] rounded-lg p-4 text-center">
                             {uploadFile ? (
-                                <div className="space-y-2">
-                                    <FileText className="w-8 h-8 text-blue-400 mx-auto"/>
-                                    <p className="text-white font-medium">{uploadFile.name}</p>
-                                    <p className="text-sm text-muted-foreground">
+                                <div className="space-y-3">
+                                    <FileText className="w-12 h-12 text-blue-400 mx-auto"/>
+                                    <p className="text-white font-medium text-sm break-words px-2">{uploadFile.name}</p>
+                                    <p className="text-xs text-muted-foreground">
                                         {(uploadFile.size / 1024).toFixed(2)} KB
                                     </p>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setUploadFile(null)}
-                                        className="mt-2"
+                                        className="w-full text-sm h-8"
                                     >
                                         Remove File
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
-                                    <Upload className="w-8 h-8 text-muted-foreground mx-auto"/>
-                                    <p className="text-white">Click to select a file</p>
+                                <div className="space-y-3">
+                                    <Upload className="w-12 h-12 text-muted-foreground mx-auto"/>
+                                    <p className="text-white text-sm break-words px-2">Click to select a file</p>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={openFileDialog}
+                                        className="w-full text-sm h-8"
                                     >
                                         Choose File
                                     </Button>
@@ -308,11 +338,11 @@ export function FileManagerOperations({
                             accept="*/*"
                         />
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <Button
                                 onClick={handleFileUpload}
                                 disabled={!uploadFile || isLoading}
-                                className="flex-1"
+                                className="w-full text-sm h-9"
                             >
                                 {isLoading ? 'Uploading...' : 'Upload File'}
                             </Button>
@@ -320,6 +350,7 @@ export function FileManagerOperations({
                                 variant="outline"
                                 onClick={() => setShowUpload(false)}
                                 disabled={isLoading}
+                                className="w-full text-sm h-9"
                             >
                                 Cancel
                             </Button>
@@ -329,23 +360,25 @@ export function FileManagerOperations({
             )}
 
             {showCreateFile && (
-                <Card className="bg-[#18181b] border-2 border-[#303032] p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <FilePlus className="w-5 h-5"/>
-                            Create New File
-                        </h3>
+                <Card className="bg-[#18181b] border-2 border-[#303032] p-3 sm:p-4">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                                <FilePlus className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"/>
+                                <span className="break-words">Create New File</span>
+                            </h3>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCreateFile(false)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 ml-2"
                         >
                             <X className="w-4 h-4"/>
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
                             <label className="text-sm font-medium text-white mb-2 block">
                                 File Name
@@ -354,16 +387,16 @@ export function FileManagerOperations({
                                 value={newFileName}
                                 onChange={(e) => setNewFileName(e.target.value)}
                                 placeholder="Enter file name (e.g., example.txt)"
-                                className="bg-[#23232a] border-2 border-[#434345] text-white"
+                                className="bg-[#23232a] border-2 border-[#434345] text-white text-sm"
                                 onKeyDown={(e) => e.key === 'Enter' && handleCreateFile()}
                             />
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <Button
                                 onClick={handleCreateFile}
                                 disabled={!newFileName.trim() || isLoading}
-                                className="flex-1"
+                                className="w-full text-sm h-9"
                             >
                                 {isLoading ? 'Creating...' : 'Create File'}
                             </Button>
@@ -371,6 +404,7 @@ export function FileManagerOperations({
                                 variant="outline"
                                 onClick={() => setShowCreateFile(false)}
                                 disabled={isLoading}
+                                className="w-full text-sm h-9"
                             >
                                 Cancel
                             </Button>
@@ -380,23 +414,25 @@ export function FileManagerOperations({
             )}
 
             {showCreateFolder && (
-                <Card className="bg-[#18181b] border-2 border-[#303032] p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <FolderPlus className="w-5 h-5"/>
-                            Create New Folder
-                        </h3>
+                <Card className="bg-[#18181b] border-2 border-[#303032] p-3">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <FolderPlus className="w-6 h-6 flex-shrink-0"/>
+                                <span className="break-words">Create New Folder</span>
+                            </h3>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCreateFolder(false)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 ml-2"
                         >
                             <X className="w-4 h-4"/>
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Folder Name
@@ -405,16 +441,16 @@ export function FileManagerOperations({
                                 value={newFolderName}
                                 onChange={(e) => setNewFolderName(e.target.value)}
                                 placeholder="Enter folder name"
-                                className="bg-[#23232a] border-2 border-[#434345] text-white"
+                                className="bg-[#23232a] border-2 border-[#434345] text-white text-sm"
                                 onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                             />
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <Button
                                 onClick={handleCreateFolder}
                                 disabled={!newFolderName.trim() || isLoading}
-                                className="flex-1"
+                                className="w-full text-sm h-9"
                             >
                                 {isLoading ? 'Creating...' : 'Create Folder'}
                             </Button>
@@ -422,6 +458,7 @@ export function FileManagerOperations({
                                 variant="outline"
                                 onClick={() => setShowCreateFolder(false)}
                                 disabled={isLoading}
+                                className="w-full text-sm h-9"
                             >
                                 Cancel
                             </Button>
@@ -431,27 +468,29 @@ export function FileManagerOperations({
             )}
 
             {showDelete && (
-                <Card className="bg-[#18181b] border-2 border-[#303032] p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Trash2 className="w-5 h-5 text-red-400"/>
-                            Delete Item
-                        </h3>
+                <Card className="bg-[#18181b] border-2 border-[#303032] p-3">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <Trash2 className="w-6 h-6 text-red-400 flex-shrink-0"/>
+                                <span className="break-words">Delete Item</span>
+                            </h3>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowDelete(false)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 ml-2"
                         >
                             <X className="w-4 h-4"/>
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-red-300">
-                                <AlertCircle className="w-4 h-4"/>
-                                <span className="text-sm font-medium">Warning: This action cannot be undone</span>
+                            <div className="flex items-start gap-2 text-red-300">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0"/>
+                                <span className="text-sm font-medium break-words">Warning: This action cannot be undone</span>
                             </div>
                         </div>
 
@@ -462,30 +501,30 @@ export function FileManagerOperations({
                             <Input
                                 value={deletePath}
                                 onChange={(e) => setDeletePath(e.target.value)}
-                                placeholder="Enter full path to item (e.g., /path/to/file.txt)"
-                                className="bg-[#23232a] border-2 border-[#434345] text-white"
+                                placeholder="Enter full path to item"
+                                className="bg-[#23232a] border-2 border-[#434345] text-white text-sm"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2">
                             <input
                                 type="checkbox"
                                 id="deleteIsDirectory"
                                 checked={deleteIsDirectory}
                                 onChange={(e) => setDeleteIsDirectory(e.target.checked)}
-                                className="rounded border-[#434345] bg-[#23232a]"
+                                className="rounded border-[#434345] bg-[#23232a] mt-0.5 flex-shrink-0"
                             />
-                            <label htmlFor="deleteIsDirectory" className="text-sm text-white">
+                            <label htmlFor="deleteIsDirectory" className="text-sm text-white break-words">
                                 This is a directory (will delete recursively)
                             </label>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <Button
                                 onClick={handleDelete}
                                 disabled={!deletePath || isLoading}
                                 variant="destructive"
-                                className="flex-1"
+                                className="w-full text-sm h-9"
                             >
                                 {isLoading ? 'Deleting...' : 'Delete Item'}
                             </Button>
@@ -493,6 +532,7 @@ export function FileManagerOperations({
                                 variant="outline"
                                 onClick={() => setShowDelete(false)}
                                 disabled={isLoading}
+                                className="w-full text-sm h-9"
                             >
                                 Cancel
                             </Button>
@@ -502,23 +542,25 @@ export function FileManagerOperations({
             )}
 
             {showRename && (
-                <Card className="bg-[#18181b] border-2 border-[#303032] p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Edit3 className="w-5 h-5"/>
-                            Rename Item
-                        </h3>
+                <Card className="bg-[#18181b] border-2 border-[#303032] p-3">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <Edit3 className="w-6 h-6 flex-shrink-0"/>
+                                <span className="break-words">Rename Item</span>
+                            </h3>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowRename(false)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 flex-shrink-0 ml-2"
                         >
                             <X className="w-4 h-4"/>
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
                             <label className="text-sm font-medium text-white mb-2 block">
                                 Current Path
@@ -527,7 +569,7 @@ export function FileManagerOperations({
                                 value={renamePath}
                                 onChange={(e) => setRenamePath(e.target.value)}
                                 placeholder="Enter current path to item"
-                                className="bg-[#23232a] border-2 border-[#434345] text-white"
+                                className="bg-[#23232a] border-2 border-[#434345] text-white text-sm"
                             />
                         </div>
 
@@ -539,29 +581,29 @@ export function FileManagerOperations({
                                 value={newName}
                                 onChange={(e) => setNewName(e.target.value)}
                                 placeholder="Enter new name"
-                                className="bg-[#23232a] border-2 border-[#434345] text-white"
+                                className="bg-[#23232a] border-2 border-[#434345] text-white text-sm"
                                 onKeyDown={(e) => e.key === 'Enter' && handleRename()}
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2">
                             <input
                                 type="checkbox"
                                 id="renameIsDirectory"
                                 checked={renameIsDirectory}
                                 onChange={(e) => setRenameIsDirectory(e.target.checked)}
-                                className="rounded border-[#434345] bg-[#23232a]"
+                                className="rounded border-[#434345] bg-[#23232a] mt-0.5 flex-shrink-0"
                             />
-                            <label htmlFor="renameIsDirectory" className="text-sm text-white">
+                            <label htmlFor="renameIsDirectory" className="text-sm text-white break-words">
                                 This is a directory
                             </label>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <Button
                                 onClick={handleRename}
                                 disabled={!renamePath || !newName.trim() || isLoading}
-                                className="flex-1"
+                                className="w-full text-sm h-9"
                             >
                                 {isLoading ? 'Renaming...' : 'Rename Item'}
                             </Button>
@@ -569,6 +611,7 @@ export function FileManagerOperations({
                                 variant="outline"
                                 onClick={() => setShowRename(false)}
                                 disabled={isLoading}
+                                className="w-full text-sm h-9"
                             >
                                 Cancel
                             </Button>

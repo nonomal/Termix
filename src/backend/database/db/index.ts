@@ -405,7 +405,6 @@ const migrateSchema = () => {
     addColumnIfNotExists('users', 'token_url', 'TEXT');
     try {
         sqlite.prepare(`ALTER TABLE users DROP COLUMN redirect_uri`).run();
-        logger.info('Removed redirect_uri column from users table');
     } catch (e) {
     }
 

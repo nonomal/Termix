@@ -50,7 +50,7 @@ export function TabProvider({children}: TabProviderProps) {
         const usedNumbers = new Set<number>();
         let rootUsed = false;
         tabs.forEach(t => {
-            if (t.type !== tabType || !t.title) return;
+            if (!t.title) return;
             if (t.title === root) {
                 rootUsed = true;
                 return;

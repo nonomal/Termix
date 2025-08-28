@@ -21,7 +21,7 @@ export function FileManagerTabList({tabs, activeTab, setActiveTab, closeTab, onH
             <Button
                 onClick={onHomeClick}
                 variant="outline"
-                className={`h-8 rounded-md flex items-center !px-2 border-1 border-[#303032] ${activeTab === 'home' ? '!bg-[#1d1d1f] !text-white !border-[#2d2d30] !hover:bg-[#1d1d1f] !active:bg-[#1d1d1f] !focus:bg-[#1d1d1f] !hover:text-white !active:text-white !focus:text-white' : ''}`}
+                className={`ml-1 h-8 rounded-md flex items-center !px-2 border-1 border-[#303032] ${activeTab === 'home' ? '!bg-[#1d1d1f] !text-white !border-[#2d2d30] !hover:bg-[#1d1d1f] !active:bg-[#1d1d1f] !focus:bg-[#1d1d1f] !hover:text-white !active:text-white !focus:text-white' : ''}`}
             >
                 <Home className="w-4 h-4"/>
             </Button>

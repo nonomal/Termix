@@ -45,11 +45,18 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table.tsx";
-import axios from "axios";
 import {Card} from "@/components/ui/card.tsx";
 import {FolderCard} from "@/ui/Navigation/Hosts/FolderCard.tsx";
 import {getSSHHosts} from "@/ui/main-axios.ts";
 import {useTabs} from "@/ui/Navigation/Tabs/TabContext.tsx";
+import { 
+    getOIDCConfig, 
+    getUserList, 
+    makeUserAdmin, 
+    removeAdminStatus, 
+    deleteUser, 
+    deleteAccount 
+} from "@/ui/main-axios.ts";
 
 interface SSHHost {
     id: number;
@@ -95,11 +102,7 @@ function getCookie(name: string) {
     }, "");
 }
 
-const apiBase = import.meta.env.DEV ? "http://localhost:8081/users" : "/users";
 
-const API = axios.create({
-    baseURL: apiBase,
-});
 
 export function LeftSidebar({
                                 onSelectView,
@@ -162,9 +165,9 @@ export function LeftSidebar({
         if (adminSheetOpen) {
             const jwt = getCookie("jwt");
             if (jwt && isAdmin) {
-                API.get("/oidc-config").then(res => {
-                    if (res.data) {
-                        setOidcConfig(res.data);
+                getOIDCConfig().then(res => {
+                    if (res) {
+                        setOidcConfig(res);
                     }
                 }).catch((error) => {
                 });
@@ -235,7 +238,7 @@ export function LeftSidebar({
 
     React.useEffect(() => {
         fetchHosts();
-        const interval = setInterval(fetchHosts, 10000);
+        const interval = setInterval(fetchHosts, 300000); // 5 minutes instead of 10 seconds
         return () => clearInterval(interval);
     }, [fetchHosts]);
 
@@ -308,10 +311,7 @@ export function LeftSidebar({
 
         const jwt = getCookie("jwt");
         try {
-            await API.delete("/delete-account", {
-                headers: {Authorization: `Bearer ${jwt}`},
-                data: {password: deletePassword}
-            });
+            await deleteAccount(deletePassword);
 
             handleLogout();
         } catch (err: any) {
@@ -329,12 +329,10 @@ export function LeftSidebar({
 
         setUsersLoading(true);
         try {
-            const response = await API.get("/list", {
-                headers: {Authorization: `Bearer ${jwt}`}
-            });
-            setUsers(response.data.users);
+            const response = await getUserList();
+            setUsers(response.users);
 
-            const adminUsers = response.data.users.filter((user: any) => user.is_admin);
+            const adminUsers = response.users.filter((user: any) => user.is_admin);
             setAdminCount(adminUsers.length);
         } catch (err: any) {
         } finally {
@@ -350,10 +348,8 @@ export function LeftSidebar({
         }
 
         try {
-            const response = await API.get("/list", {
-                headers: {Authorization: `Bearer ${jwt}`}
-            });
-            const adminUsers = response.data.users.filter((user: any) => user.is_admin);
+            const response = await getUserList();
+            const adminUsers = response.users.filter((user: any) => user.is_admin);
             setAdminCount(adminUsers.length);
         } catch (err: any) {
         }
@@ -373,10 +369,7 @@ export function LeftSidebar({
 
         const jwt = getCookie("jwt");
         try {
-            await API.post("/make-admin",
-                {username: newAdminUsername.trim()},
-                {headers: {Authorization: `Bearer ${jwt}`}}
-            );
+            await makeUserAdmin(newAdminUsername.trim());
             setMakeAdminSuccess(`User ${newAdminUsername} is now an admin`);
             setNewAdminUsername("");
             fetchUsers();
@@ -396,10 +389,7 @@ export function LeftSidebar({
 
         const jwt = getCookie("jwt");
         try {
-            await API.post("/remove-admin",
-                {username},
-                {headers: {Authorization: `Bearer ${jwt}`}}
-            );
+            await removeAdminStatus(username);
             fetchUsers();
         } catch (err: any) {
         }
@@ -414,10 +404,7 @@ export function LeftSidebar({
 
         const jwt = getCookie("jwt");
         try {
-            await API.delete("/delete-user", {
-                headers: {Authorization: `Bearer ${jwt}`},
-                data: {username}
-            });
+            await deleteUser(username);
             fetchUsers();
         } catch (err: any) {
         }

@@ -8,6 +8,7 @@ import {Button} from '@/components/ui/button.tsx';
 import {FIleManagerTopNavbar} from "@/ui/apps/File Manager/FIleManagerTopNavbar.tsx";
 import {cn} from '@/lib/utils.ts';
 import {Save, RefreshCw, Settings, Trash2} from 'lucide-react';
+import {Separator} from '@/components/ui/separator.tsx';
 import {toast} from 'sonner';
 import {
     getFileManagerRecent,
@@ -489,7 +490,7 @@ export function FileManager({onSelectView, embedded = false, initialHost = null}
 
     if (!currentHost) {
         return (
-            <div style={{position: 'relative', width: '100%', height: '100%', overflow: 'hidden'}}>
+            <div style={{position: 'absolute', inset: 0, overflow: 'hidden'}} className="rounded-md">
                 <div style={{position: 'absolute', top: 0, left: 0, width: 256, height: '100%', zIndex: 20}}>
                     <FileManagerLeftSidebar
                         onSelectView={onSelectView || (() => {
@@ -525,7 +526,7 @@ export function FileManager({onSelectView, embedded = false, initialHost = null}
     }
 
     return (
-        <div style={{position: 'relative', width: '100%', height: '100%', overflow: 'hidden'}}>
+        <div style={{position: 'absolute', inset: 0, overflow: 'hidden'}} className="rounded-md">
             <div style={{position: 'absolute', top: 0, left: 0, width: 256, height: '100%', zIndex: 20}}>
                 <FileManagerLeftSidebar
                     onSelectView={onSelectView || (() => {
@@ -570,6 +571,7 @@ export function FileManager({onSelectView, embedded = false, initialHost = null}
                         >
                             <Settings className="h-4 w-4"/>
                         </Button>
+                        <div className="p-0.25 w-px h-[30px] bg-[#303032]"></div>
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -599,9 +601,9 @@ export function FileManager({onSelectView, embedded = false, initialHost = null}
                 display: 'flex',
                 flexDirection: 'column'
             }}>
-                {activeTab === 'home' ? (
-                    <div className="flex h-full">
-                        <div className="flex-1">
+                <div className="flex h-full">
+                    <div className="flex-1">
+                        {activeTab === 'home' ? (
                             <FileManagerHomeView
                                 recent={recent}
                                 pinned={pinned}
@@ -614,36 +616,36 @@ export function FileManager({onSelectView, embedded = false, initialHost = null}
                                 onRemoveShortcut={handleRemoveShortcut}
                                 onAddShortcut={handleAddShortcut}
                             />
-                        </div>
-                        {showOperations && (
-                            <div className="w-80 border-l-2 border-[#303032] bg-[#09090b] overflow-y-auto">
-                                <FileManagerOperations
-                                    currentPath={currentPath}
-                                    sshSessionId={currentHost?.id.toString() || null}
-                                    onOperationComplete={handleOperationComplete}
-                                    onError={handleError}
-                                    onSuccess={handleSuccess}
-                                />
-                            </div>
+                        ) : (
+                            (() => {
+                                const tab = tabs.find(t => t.id === activeTab);
+                                if (!tab) return null;
+                                return (
+                                    <div className="flex flex-col h-full" style={{flex: 1, minHeight: 0}}>
+                                        <div className="flex-1 min-h-0">
+                                            <FileManagerFileEditor
+                                                content={tab.content}
+                                                fileName={tab.fileName}
+                                                onContentChange={content => setTabContent(tab.id, content)}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })()
                         )}
                     </div>
-                ) : (
-                    (() => {
-                        const tab = tabs.find(t => t.id === activeTab);
-                        if (!tab) return null;
-                        return (
-                            <div className="flex flex-col h-full" style={{flex: 1, minHeight: 0}}>
-                                <div className="flex-1 min-h-0">
-                                    <FileManagerFileEditor
-                                        content={tab.content}
-                                        fileName={tab.fileName}
-                                        onContentChange={content => setTabContent(tab.id, content)}
-                                    />
-                                </div>
-                            </div>
-                        );
-                    })()
-                )}
+                    {showOperations && (
+                        <div className="w-80 border-l-2 border-[#303032] bg-[#09090b] overflow-y-auto">
+                            <FileManagerOperations
+                                currentPath={currentPath}
+                                sshSessionId={currentHost?.id.toString() || null}
+                                onOperationComplete={handleOperationComplete}
+                                onError={handleError}
+                                onSuccess={handleSuccess}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {deletingItem && (

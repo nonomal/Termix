@@ -79,7 +79,12 @@ async function verifyOIDCToken(idToken: string, issuerUrl: string, clientId: str
         const key = await importJWK(publicKey);
 
         const {payload} = await jwtVerify(idToken, key, {
-            issuer: issuerUrl,
+            issuer: [
+                issuerUrl, 
+                normalizedIssuerUrl, 
+                issuerUrl.replace(/\/application\/o\/[^\/]+$/, ''),
+                normalizedIssuerUrl.replace(/\/application\/o\/[^\/]+$/, '')
+            ],
             audience: clientId,
         });
 
